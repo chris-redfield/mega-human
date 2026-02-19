@@ -1,0 +1,15 @@
+{
+    "palettes": {
+        "sprites": { "offset": "0x2BE00", "description": "Main sprite/character palettes (16 sub-palettes)" },
+        "stage": { "offset": "0x2D600", "description": "Stage/nature palettes" }
+    },
+    "tilesets": {
+        "bg_terrain": { "offset": "0x158000", "count": 512, "bpp": 4, "description": "Background terrain tiles" },
+        "sprites_a": { "offset": "0x15A000", "count": 512, "bpp": 4, "description": "Character/effect sprites" },
+        "sprites_b": { "offset": "0x164000", "count": 512, "bpp": 4, "description": "More sprites, details" },
+        "player": { "offset": "0x168000", "count": 512, "bpp": 4, "description": "Mega Man character sprites (palette 14)" }
+    },
+    "tilemaps": {
+        "indices": { "offset": "0x094000", "description": "Tilemap index data" }
+    }
+}

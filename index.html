@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MEGAGAME 2026</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        body {
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            /* 3x integer scale: 256*3=768, 224*3=672 */
+            width: 768px;
+            height: 672px;
+        }
+        #loading {
+            color: #00d4ff;
+            font-family: monospace;
+            font-size: 16px;
+        }
+        #controls {
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #555;
+            font-family: monospace;
+            font-size: 11px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">MEGAGAME 2026 — Loading ROM...</div>
+    <canvas id="game" style="display:none"></canvas>
+    <div id="controls" style="display:none">
+        Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash
+    </div>
+
+    <script type="module">
+        import { Game } from './src/engine/game.js';
+        import { GameplayState } from './src/states/gameplay.js';
+        import { AssetLoader } from './src/assets/asset-loader.js';
+
+        const loading = document.getElementById('loading');
+        const canvas = document.getElementById('game');
+        const controls = document.getElementById('controls');
+
+        async function init() {
+            try {
+                // Load ROM and decode assets
+                loading.textContent = 'MEGAGAME 2026 — Loading ROM...';
+                const assets = new AssetLoader();
+                await assets.loadRom('./mega-game-raw.sfc');
+
+                loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
+                // Build background tile spritesheet from ROM
+                assets.getSpriteSheet('bg_terrain', 'sprites', 0, false);
+                // Load player spritesheet PNG
+                await assets.loadImage('playerSprite', './assets/XDefault.png');
+
+                // Start game
+                loading.style.display = 'none';
+                canvas.style.display = 'block';
+                controls.style.display = 'block';
+
+                const game = new Game(canvas);
+                game.setState(new GameplayState(assets));
+                game.start();
+            } catch (e) {
+                loading.textContent = `Error: ${e.message}`;
+                console.error(e);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
