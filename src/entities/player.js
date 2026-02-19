@@ -66,6 +66,7 @@ export class Player extends Entity {
         this.hurtTimer = 0;
         this.invincibleTimer = 0;
         this.shotCooldown = 0;
+        this.shootAnimTimer = 0; // frames remaining for shoot sprite overlay
 
         // Projectiles managed externally
         this.shots = [];
@@ -85,6 +86,7 @@ export class Player extends Entity {
         if (this.wallJumpLock > 0) this.wallJumpLock--;
         if (this.invincibleTimer > 0) this.invincibleTimer--;
         if (this.shotCooldown > 0) this.shotCooldown--;
+        if (this.shootAnimTimer > 0) this.shootAnimTimer--;
 
         // State machine
         switch (this.state) {
@@ -107,8 +109,8 @@ export class Player extends Entity {
                 break;
         }
 
-        // Shooting (available in most states)
-        if (this.state !== 'hurt' && this.state !== 'dash') {
+        // Shooting (available in most states, including dash)
+        if (this.state !== 'hurt') {
             this._handleShooting(input);
         }
 
@@ -312,9 +314,30 @@ export class Player extends Entity {
 
     _handleShooting(input) {
         if (input.pressed('shoot') && this.shotCooldown <= 0 && this.shots.length < P.MAX_SHOTS) {
+            // Get hand position from current animation frame
+            const shooting = this.shootAnimTimer > 0;
+            const anim = getAnim(this.state, shooting);
+            const frameIdx = this.animFrame % anim.frames.length;
+            const frame = anim.frames[frameIdx];
+
+            // Spawn position: feet anchor + hand POI offset
+            const feetX = this.x + this.hitboxX + this.hitboxW / 2;
+            const feetY = this.y + this.hitboxY + this.hitboxH;
+
+            let spawnX, spawnY;
+            if (frame.hx !== undefined) {
+                // Hand POI: offset from sprite center-bottom
+                spawnX = feetX + (this.facing > 0 ? frame.hx : -frame.hx);
+                spawnY = feetY + (frame.hy || 0);
+            } else {
+                // Fallback: spawn from hitbox edge
+                spawnX = this.x + (this.facing > 0 ? this.hitboxW + this.hitboxX : this.hitboxX - 4);
+                spawnY = this.y + this.hitboxY + this.hitboxH / 2 - 2;
+            }
+
             this.shots.push({
-                x: this.x + (this.facing > 0 ? this.hitboxW + this.hitboxX : this.hitboxX - 4),
-                y: this.y + this.hitboxY + this.hitboxH / 2 - 2,
+                x: spawnX,
+                y: spawnY,
                 vx: P.SHOT_SPEED * this.facing,
                 w: 8,
                 h: 4,
@@ -322,6 +345,7 @@ export class Player extends Entity {
                 damage: 1,
             });
             this.shotCooldown = P.SHOT_COOLDOWN;
+            this.shootAnimTimer = 18; // 0.3 seconds at 60fps
         }
     }
 
@@ -405,15 +429,24 @@ export class Player extends Entity {
     // --- Animation ---
 
     _updateAnimation() {
-        const anim = getAnim(this.state);
+        const shooting = this.shootAnimTimer > 0;
+        const anim = getAnim(this.state, shooting);
         const frames = anim.frames;
         if (!frames.length) return;
 
-        // Reset animation when state changes
-        if (this.state !== this._prevAnimState) {
-            this._prevAnimState = this.state;
+        // Build a composite key so shoot overlay doesn't reset the base animation
+        const animKey = this.state;
+
+        // Reset animation when movement state changes (not when shoot overlay toggles)
+        if (animKey !== this._prevAnimState) {
+            this._prevAnimState = animKey;
             this.animFrame = 0;
             this.animTimer = 0;
+        }
+
+        // Clamp frame index to current animation length
+        if (this.animFrame >= frames.length) {
+            this.animFrame = anim.loop ? this.animFrame % frames.length : frames.length - 1;
         }
 
         // Advance frame timer
@@ -426,7 +459,7 @@ export class Player extends Entity {
                 if (anim.loop) {
                     this.animFrame = 0;
                 } else {
-                    this.animFrame = frames.length - 1; // hold last frame
+                    this.animFrame = frames.length - 1;
                 }
             }
         }
@@ -438,7 +471,8 @@ export class Player extends Entity {
         // Flash when invincible
         if (this.invincibleTimer > 0 && this.invincibleTimer % 4 < 2) return;
 
-        const anim = getAnim(this.state);
+        const shooting = this.shootAnimTimer > 0;
+        const anim = getAnim(this.state, shooting);
         const frameIdx = this.animFrame % anim.frames.length;
         const frame = anim.frames[frameIdx];
 

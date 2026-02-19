@@ -7,7 +7,6 @@
 import { Camera, SCREEN_W, SCREEN_H } from '../engine/camera.js';
 import { Player } from '../entities/player.js';
 import { createTestLevel } from '../levels/level.js';
-import { SPRITESHEET_PATH } from '../entities/sprite-data.js';
 
 export class GameplayState {
     constructor(assets) {

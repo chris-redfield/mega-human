@@ -12,7 +12,15 @@
  * Alignment: bottom-center (sprite positioned from its feet)
  */
 
-export const SPRITESHEET_PATH = 'assets/XDefault.png';
+// Shoot animation overlay mapping: state → shoot variant
+const SHOOT_ANIM_MAP = {
+    idle: 'shoot',
+    run: 'run_shoot',
+    jump: 'jump_shoot',
+    fall: 'fall_shoot',
+    dash: 'dash_shoot',
+    wall_slide: 'wall_slide_shoot',
+};
 
 export const ANIMATIONS = {
     idle: { loop: true, frames: [
@@ -90,9 +98,16 @@ export const ANIMATIONS = {
 
 /**
  * Get animation data for a player state.
+ * If shooting is true, returns the shoot variant (e.g. run → run_shoot).
  * Falls back to idle if state not found.
  */
-export function getAnim(state) {
+export function getAnim(state, shooting = false) {
+    if (shooting) {
+        const shootState = SHOOT_ANIM_MAP[state];
+        if (shootState && ANIMATIONS[shootState]) {
+            return ANIMATIONS[shootState];
+        }
+    }
     return ANIMATIONS[state] || ANIMATIONS.idle;
 }
 

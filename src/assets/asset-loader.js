@@ -4,7 +4,7 @@
  * Creates SpriteSheet objects ready for rendering.
  */
 
-import { loadRomFromHexDump, loadRomFromBinary } from '../rom/hex-parser.js';
+import { loadRomFromBinary } from '../rom/hex-parser.js';
 import { decodeTiles } from '../rom/tile-decoder.js';
 import { decodePalette } from '../rom/palette-decoder.js';
 import { SpriteSheet } from '../engine/renderer.js';
@@ -17,9 +17,6 @@ const ASSETS = {
     },
     tilesets: {
         bg_terrain: { offset: 0x158000, count: 512, bpp: 4 },
-        sprites_a:  { offset: 0x15A000, count: 512, bpp: 4 },
-        sprites_b:  { offset: 0x164000, count: 512, bpp: 4 },
-        player:     { offset: 0x168000, count: 512, bpp: 4 },
     },
 };
 
@@ -38,12 +35,6 @@ export class AssetLoader {
         this._decodeTilesets();
     }
 
-    async loadRomHex(url) {
-        this.rom = await loadRomFromHexDump(url);
-        this._decodePalettes();
-        this._decodeTilesets();
-    }
-
     _decodePalettes() {
         for (const [name, def] of Object.entries(ASSETS.palettes)) {
             const subPalettes = [];
@@ -57,25 +48,6 @@ export class AssetLoader {
     _decodeTilesets() {
         for (const [name, def] of Object.entries(ASSETS.tilesets)) {
             this.tilePixels[name] = decodeTiles(this.rom, def.offset, def.count, def.bpp);
-        }
-        this._patchPlayerLegTiles();
-    }
-
-    /**
-     * Patch leg tiles into the player tilesheet.
-     * Leg tiles (VRAM positions 64, 65, 80, 81) are NOT in the main player
-     * tilesheet at 0x168000. They're loaded from ROM $2F:$8D40 (0x178D40)
-     * during entity init by a separate mechanism (not the DMA table).
-     */
-    _patchPlayerLegTiles() {
-        const LEG_TILE_OFFSET = 0x178D40;
-        const legTiles = decodeTiles(this.rom, LEG_TILE_OFFSET, 4, 4);
-        const playerTiles = this.tilePixels['player'];
-        if (playerTiles) {
-            playerTiles[64] = legTiles[0]; // top-left of 16x16 leg block
-            playerTiles[65] = legTiles[1]; // top-right
-            playerTiles[80] = legTiles[2]; // bottom-left
-            playerTiles[81] = legTiles[3]; // bottom-right
         }
     }
 
