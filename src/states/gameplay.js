@@ -7,6 +7,8 @@
 import { Camera, SCREEN_W, SCREEN_H } from '../engine/camera.js';
 import { Player } from '../entities/player.js';
 import { TankEnemy } from '../entities/tank-enemy.js';
+import { HopperEnemy } from '../entities/hopper-enemy.js';
+import { BirdEnemy } from '../entities/bird-enemy.js';
 import { boxOverlap } from '../entities/entity.js';
 import { createLevelFromMap } from '../levels/level.js';
 
@@ -70,11 +72,10 @@ export class GameplayState {
     }
 
     _spawnEnemies() {
-        const tankSprite = this.assets.getImage('tankSprite');
+        const enemySprite = this.assets.getImage('tankSprite'); // sigma_viral.png (all enemies)
         const effectsSprite = this.assets.getImage('effectsSprite');
 
         // Place tanks at fixed positions along the highway stage
-        // These positions are on solid ground platforms in the highway map
         const tankPositions = [
             { x: 500, y: 100 },
             { x: 900, y: 100 },
@@ -83,9 +84,36 @@ export class GameplayState {
 
         for (const pos of tankPositions) {
             const tank = new TankEnemy(pos.x, pos.y);
-            tank.spriteImage = tankSprite;
+            tank.spriteImage = enemySprite;
             tank.effectsImage = effectsSprite;
             this.enemies.push(tank);
+        }
+
+        // Place hoppers — they jump and melee attack
+        const hopperPositions = [
+            { x: 650, y: 100 },
+            { x: 1100, y: 100 },
+        ];
+
+        for (const pos of hopperPositions) {
+            const hopper = new HopperEnemy(pos.x, pos.y);
+            hopper.spriteImage = enemySprite;
+            hopper.effectsImage = effectsSprite;
+            this.enemies.push(hopper);
+        }
+
+        // Place birds — they fly and swoop toward the player
+        const birdPositions = [
+            { x: 400, y: 60 },
+            { x: 800, y: 50 },
+            { x: 1200, y: 55 },
+        ];
+
+        for (const pos of birdPositions) {
+            const bird = new BirdEnemy(pos.x, pos.y);
+            bird.spriteImage = enemySprite;
+            bird.effectsImage = effectsSprite;
+            this.enemies.push(bird);
         }
     }
 

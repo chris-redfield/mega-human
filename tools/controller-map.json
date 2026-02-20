@@ -1,0 +1,15 @@
+{
+  "controller_name": "8BitDo Ultimate 2C Wireless Controller",
+  "shoot": 2,
+  "jump": 0,
+  "dash": 1,
+  "dpad": {
+    "hat_index": 0
+  },
+  "analog": {
+    "x_axis": 0,
+    "x_invert": false,
+    "y_axis": 1,
+    "y_invert": false
+  }
+}

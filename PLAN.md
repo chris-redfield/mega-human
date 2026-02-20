@@ -191,6 +191,40 @@ First enemy implemented: **Tank Mechaniloid** from `sigma_viral.png`.
 
 ---
 
+### 9. More Enemy Types (DONE — Hopper + Bird)
+
+#### Hopper Mechaniloid (`hopper-enemy.js`)
+
+**AI State Machine (4 states):**
+- `idle` — Waits on ground, faces player, timer before next hop
+- `hop` — Jumps toward player (3-frame hop animation), lands → idle or attack
+- `attack` — Melee slash when in close range (4-frame looping animation with forward hitbox)
+- `dying` — 8-frame explosion from effects.png, then remove
+
+**Combat:**
+- 6 HP, takes damage from player buster shots
+- Melee attack: 4 damage, 32x15 forward hitbox extending from body
+- Contact damage: 3 damage on body touch (60-frame cooldown)
+- Hops toward player at 1.2 px/frame, jump velocity -3.5
+
+**Sprites:** 3 animations (idle: 1 frame, hop: 3 frames, attack: 4 frames), all from `sigma_viral.png` y=991-1021. Alignment: botmid.
+
+#### Bird Mechaniloid (`bird-enemy.js`)
+
+**AI State Machine (3 states):**
+- `fly` — Patrols horizontally with sine-wave vertical oscillation (20px amplitude)
+- `swoop` — Dives toward player position at 2.5 px/frame, then returns to patrol height
+- `dying` — 8-frame explosion from effects.png, then remove
+
+**Combat:**
+- 4 HP, takes damage from player buster shots
+- Contact damage: 3 damage on body touch (60-frame cooldown)
+- No projectile attack — relies on swooping and body contact
+
+**Sprites:** 1 animation (fly: 3 frames looping wing-flap), from `sigma_viral.png` y=999-1023. Alignment: center (not botmid — flying enemy doesn't anchor to ground). No tile collision.
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -201,8 +235,8 @@ First enemy implemented: **Tank Mechaniloid** from `sigma_viral.png`.
 6. ~~**Dash-jump momentum**~~ — DONE (isDashing flag, 2x speed through air)
 7. ~~**Charged buster shot**~~ — DONE (2 charge levels, particles, flash, animated projectiles)
 8. ~~**Enemy characters**~~ — DONE (Tank Mechaniloid: patrol, chase, shoot, die)
-9. **More enemy types** — Hopper (jump + melee), Bird (flying) **<-- NEXT**
-10. **Boss fights** — Multi-phase boss AI
+9. ~~**More enemy types**~~ — DONE (Hopper + Bird, see below)
+10. **Boss fights** — Multi-phase boss AI **<-- NEXT**
 11. **Additional stages** — More MMX-Deathmatch stage assets
 12. **Health pickups / game over** — Item drops, respawn system
 
@@ -232,7 +266,9 @@ mega-human/
 │   │   ├── entity.js             — Base entity class + AABB overlap
 │   │   ├── player.js             — Player: 10-state machine, shooting, charge, dash-jump
 │   │   ├── sprite-data.js        — Player animation frames (19 anims) + projectile sprite data
-│   │   └── tank-enemy.js         — Tank Mechaniloid: 5-state AI, patrol/shoot enemy
+│   │   ├── tank-enemy.js         — Tank Mechaniloid: 5-state AI, patrol/shoot enemy
+│   │   ├── hopper-enemy.js       — Hopper Mechaniloid: 4-state AI, jump/melee enemy
+│   │   └── bird-enemy.js         — Bird Mechaniloid: 3-state AI, flying/swoop enemy
 │   ├── states/
 │   │   └── gameplay.js           — Gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/
