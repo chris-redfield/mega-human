@@ -40,11 +40,11 @@ const P = {
     HURT_DURATION:    30,   // frames
     INVINCIBLE_TIME:  90,   // frames of invincibility after being hurt
 
-    // Hitbox dimensions
-    WIDTH:            14,
-    HEIGHT:           24,
-    HITBOX_X:         1,
-    HITBOX_Y:         6,
+    // Hitbox dimensions (original MMX: 18x34, botmid aligned)
+    WIDTH:            18,
+    HEIGHT:           34,
+    HITBOX_X:         0,
+    HITBOX_Y:         0,
 };
 
 export class Player extends Entity {

@@ -72,7 +72,8 @@ function pointInPolygon(px, py, polygon) {
 
 /**
  * Create a Level from MMX-Deathmatch map.json data.
- * Rasterizes mergedWalls polygons onto a 16x16 tile grid.
+ * Rasterizes "Collision Shape" instances onto a 16x16 tile grid.
+ * (mergedWalls is for AI pathfinding only — not used for collision.)
  * @param {object} mapData - Parsed map.json
  * @returns {Level}
  */
@@ -85,7 +86,7 @@ export function createLevelFromMap(mapData) {
 
     const level = new Level(widthInTiles, heightInTiles, tileSize);
 
-    // Parse kill zones from instances (rectangular death regions)
+    // Parse instances
     if (mapData.instances) {
         for (const inst of mapData.instances) {
             if (inst.objectName === 'Kill Zone' && inst.points && inst.points.length >= 2) {
@@ -97,47 +98,11 @@ export function createLevelFromMap(mapData) {
                     w: Math.max(...xs) - Math.min(...xs),
                     h: Math.max(...ys) - Math.min(...ys),
                 });
-            }
-        }
-    }
-
-    // Fallback killY from explicit property (highway uses this)
-    level.killY = mapData.killY || (mapData.height + 100);
-
-    // Rasterize mergedWalls polygons onto the tile grid
-    if (mapData.mergedWalls) {
-        for (const polygon of mapData.mergedWalls) {
-            // Find bounding box of this polygon to limit rasterization
-            let minX = Infinity, minY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
-            for (const pt of polygon) {
-                if (pt[0] < minX) minX = pt[0];
-                if (pt[1] < minY) minY = pt[1];
-                if (pt[0] > maxPX) maxPX = pt[0];
-                if (pt[1] > maxPY) maxPY = pt[1];
-            }
-
-            const startCol = Math.max(0, Math.floor(minX / tileSize));
-            const endCol = Math.min(widthInTiles - 1, Math.floor(maxPX / tileSize));
-            const startRow = Math.max(0, Math.floor(minY / tileSize));
-            const endRow = Math.min(heightInTiles - 1, Math.floor(maxPY / tileSize));
-
-            for (let row = startRow; row <= endRow; row++) {
-                for (let col = startCol; col <= endCol; col++) {
-                    // Test tile center point
-                    const cx = col * tileSize + tileSize / 2;
-                    const cy = row * tileSize + tileSize / 2;
-                    if (pointInPolygon(cx, cy, polygon)) {
-                        level.setTile(col, row, 1);
-                    }
-                }
-            }
-        }
-    }
-
-    // Extract spawn points and health pickups from instances
-    if (mapData.instances) {
-        for (const inst of mapData.instances) {
-            if (inst.objectName === 'Spawn Point' && inst.pos) {
+            } else if (inst.objectName === 'Collision Shape' && inst.points && inst.points.length >= 3) {
+                // Rasterize collision polygon onto tile grid
+                const polygon = inst.points.map(p => [p.x, p.y]);
+                _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
+            } else if (inst.objectName === 'Spawn Point' && inst.pos) {
                 level.spawnPoints.push({ x: inst.pos.x, y: inst.pos.y });
             } else if (inst.objectName === 'Large Health' && inst.pos) {
                 level.healthPickups.push({ x: inst.pos.x, y: inst.pos.y, size: 'large' });
@@ -147,5 +112,36 @@ export function createLevelFromMap(mapData) {
         }
     }
 
+    // Fallback killY from explicit property (highway uses this)
+    level.killY = mapData.killY || (mapData.height + 100);
+
     return level;
+}
+
+/**
+ * Rasterize a polygon onto the tile grid, marking covered tiles as solid.
+ */
+function _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles) {
+    let minX = Infinity, minY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
+    for (const pt of polygon) {
+        if (pt[0] < minX) minX = pt[0];
+        if (pt[1] < minY) minY = pt[1];
+        if (pt[0] > maxPX) maxPX = pt[0];
+        if (pt[1] > maxPY) maxPY = pt[1];
+    }
+
+    const startCol = Math.max(0, Math.floor(minX / tileSize));
+    const endCol = Math.min(widthInTiles - 1, Math.floor(maxPX / tileSize));
+    const startRow = Math.max(0, Math.floor(minY / tileSize));
+    const endRow = Math.min(heightInTiles - 1, Math.floor(maxPY / tileSize));
+
+    for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+            const cx = col * tileSize + tileSize / 2;
+            const cy = row * tileSize + tileSize / 2;
+            if (pointInPolygon(cx, cy, polygon)) {
+                level.setTile(col, row, 1);
+            }
+        }
+    }
 }

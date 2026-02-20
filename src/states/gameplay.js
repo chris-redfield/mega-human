@@ -578,6 +578,27 @@ export class GameplayState {
         const fy = Math.floor(p.y + p.hitboxY + p.hitboxH - cam.y);
         ctx.fillStyle = 'rgba(255, 0, 255, 1)';
         ctx.fillRect(fx - 1, fy - 1, 3, 3);
+
+        // Enemy hitboxes (cyan)
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+        for (const enemy of this.enemies) {
+            if (!enemy.active) continue;
+            const box = enemy.getHitbox();
+            ctx.strokeRect(
+                Math.floor(box.x - cam.x) + 0.5,
+                Math.floor(box.y - cam.y) + 0.5,
+                box.w - 1, box.h - 1);
+        }
+
+        // Boss hitbox (yellow)
+        if (this.boss && this.boss.active) {
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.9)';
+            const box = this.boss.getHitbox();
+            ctx.strokeRect(
+                Math.floor(box.x - cam.x) + 0.5,
+                Math.floor(box.y - cam.y) + 0.5,
+                box.w - 1, box.h - 1);
+        }
     }
 
     /**
