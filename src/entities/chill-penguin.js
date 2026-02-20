@@ -330,7 +330,14 @@ export class ChillPenguin extends Entity {
             const inRange = Math.abs(dx) < CP.BLOW_RANGE;
 
             if (inFront && inRange) {
-                player.x += CP.BLOW_PUSH * this.facing;
+                const pushDx = CP.BLOW_PUSH * this.facing;
+                const hitX = player.x + player.hitboxX;
+                const hitY = player.y + player.hitboxY;
+                const newHitX = resolveHorizontal(
+                    level, hitX, hitY,
+                    player.hitboxW, player.hitboxH, pushDx
+                );
+                player.x = newHitX - player.hitboxX;
             }
         }
     }
