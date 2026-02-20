@@ -4,7 +4,7 @@
  * SNES resolution: 256×224.
  */
 
-export const SCREEN_W = 256;
+export const SCREEN_W = 307;
 export const SCREEN_H = 224;
 
 export class Camera {

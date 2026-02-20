@@ -405,16 +405,15 @@ First Maverick boss fight in the frozentown stage.
 15. ~~**Boss fights**~~ — DONE (Chill Penguin boss in frozentown, 3 attacks, boss HP bar)
 16. ~~**Warp-in beam animation**~~ — DONE (8x48 beam sprite from XDefault.png descends 200px at 7.5px/frame, player invisible during descent, then 6-frame materialize animation)
 17. ~~**Death explosion effect**~~ — DONE (spark flash + 0.75s die pose + 16-orb radial burst ×2 waves, fading over 2s, sprites from effects.png)
-18. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
-19. **Player death → respawn flow** — Fade out → respawn at checkpoint with warp beam **<-- NEXT**
-20. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
-21. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
-22. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
-23. **Score / lives system** — Lives counter, game over screen, score tracking
-19. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
-20. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
-21. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
-22. **Score / lives system** — Lives counter, game over screen, score tracking
+18. ~~**Player death → respawn flow**~~ — DONE (fade to black 40f → hold 30f → reset player/enemies/camera at spawn → fade in 40f → warp beam descent → materialize)
+19. ~~**Collision system fix**~~ — DONE (switched from mergedWalls to Collision Shape instances from map.json; updated player hitbox to 18x34 matching original MMX)
+20. ~~**Debug overlay**~~ — DONE (P key toggles: green collision tiles, magenta player hitbox, cyan enemy hitboxes, yellow boss hitbox, FPS + coordinates)
+21. ~~**Wider viewport**~~ — DONE (internal resolution 307x224, 3x CSS scale to 921x672, ~20% more level visible horizontally)
+22. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss **<-- NEXT**
+23. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
+24. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
+25. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
+26. **Score / lives system** — Lives counter, game over screen, score tracking
 
 ---
 
@@ -481,6 +480,14 @@ mega-human/
 **MMX dash behavior:** Original MMX has NO dash-end transition animation. X snaps directly from dash to idle/run. Early attempt to add a `dash_end` state was removed after verifying this against the MMX-Online-Deathmatch source (CharState.cs).
 
 **Charge composite rendering:** Canvas2D `globalCompositeOperation = 'lighter'` with `globalAlpha = 0.4` creates a convincing "charge flash" without shaders. The sprite is drawn twice — once normal, once with lighter blend mode.
+
+**Collision data source:** Map JSON contains both `mergedWalls` and `Collision Shape` instances. `mergedWalls` is for **AI pathfinding only** (6 rough polygons in frozentown). `Collision Shape` instances are the **actual collision boundaries** (43 precise rectangles in frozentown, 12 in highway). Always use `Collision Shape` instances for tile-grid rasterization.
+
+**Player hitbox (original MMX):** The original game uses `Rect(0, 0, 18, 34)` with `botmid` alignment, meaning the hitbox is 18×34 centered horizontally on the character's feet position. Our implementation matches: `WIDTH=18, HEIGHT=34, HITBOX_X=0, HITBOX_Y=0`.
+
+**External forces on player:** Any code that pushes the player (e.g. boss blow attack) MUST use `resolveHorizontal`/`resolveVertical` from `collision.js` — never modify `player.x`/`player.y` directly, or the player can clip through walls.
+
+**Original MMX screen width:** The original game uses 298×224, not 256×224. Our viewport is 307×224 (~20% wider than SNES 256, slightly wider than original MMX).
 
 ---
 
