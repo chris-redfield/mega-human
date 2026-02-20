@@ -37,6 +37,7 @@ export class AssetLoader {
             this.loadImage(`${name}_background`, `./assets/levels/${name}_background.png`),
             this.loadImage(`${name}_backwall`, `./assets/levels/${name}_backwall.png`),
             this.loadImage(`${name}_parallax`, `./assets/levels/${name}_parallax.png`),
+            this.loadImage(`${name}_foreground`, `./assets/levels/${name}_foreground.png`).catch(() => null),
             this.loadJSON(`${name}_map`, `./assets/levels/${name}_map.json`),
         ]);
     }

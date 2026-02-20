@@ -20,7 +20,10 @@ export class Level {
         // Collision grid: 0 = empty, 1 = solid
         this.collision = new Uint8Array(widthInTiles * heightInTiles);
 
-        // Y coordinate where falling kills the player
+        // Kill zones — rectangular regions that instantly kill the player
+        this.killZones = [];
+
+        // Fallback killY for stages without explicit kill zones (below map = death)
         this.killY = this.height + 100;
 
         // Spawn points extracted from map data
@@ -78,6 +81,24 @@ export function createLevelFromMap(mapData) {
     const heightInTiles = Math.ceil(maxY / tileSize);
 
     const level = new Level(widthInTiles, heightInTiles, tileSize);
+
+    // Parse kill zones from instances (rectangular death regions)
+    if (mapData.instances) {
+        for (const inst of mapData.instances) {
+            if (inst.objectName === 'Kill Zone' && inst.points && inst.points.length >= 2) {
+                const xs = inst.points.map(p => p.x);
+                const ys = inst.points.map(p => p.y);
+                level.killZones.push({
+                    x: Math.min(...xs),
+                    y: Math.min(...ys),
+                    w: Math.max(...xs) - Math.min(...xs),
+                    h: Math.max(...ys) - Math.min(...ys),
+                });
+            }
+        }
+    }
+
+    // Fallback killY from explicit property (highway uses this)
     level.killY = mapData.killY || (mapData.height + 100);
 
     // Rasterize mergedWalls polygons onto the tile grid

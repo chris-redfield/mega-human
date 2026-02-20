@@ -225,9 +225,9 @@ First enemy implemented: **Tank Mechaniloid** from `sigma_viral.png`.
 
 ---
 
-### 10. Classic MMX HP Bar
+### 10. Classic MMX HP Bar (DONE)
 
-Replace the current simple rectangle health bar with the authentic MMX vertical segmented bar using sprites from `effects.png`.
+Replaced the simple rectangle health bar with the authentic MMX vertical segmented bar using sprites from `effects.png`.
 
 **Sprite assets (all from effects.png, alignment: botmid):**
 
@@ -238,29 +238,88 @@ Replace the current simple rectangle health bar with the authentic MMX vertical 
 | Health empty | (2,37) → 14×2 | Empty cell |
 | Health top cap | (34,13) → 14×4 | Top piece capping the bar |
 
-**Rendering approach (matches MMX-Online-Deathmatch `GameMode.renderHealth()`):**
-1. Draw base piece at bottom (left side of screen, y = screenH/2 + 25)
-2. Stack filled cells upward (one per current HP), each 14×2px, contiguous
-3. Stack empty cells for remaining HP
-4. Draw top cap piece above all cells
-5. No drain animation — bar updates instantly
+**Two layouts (toggle with L key):**
+- **Vertical** (default) — Classic MMX style, upper-left corner, base at bottom, cells stacked upward
+- **Horizontal** — Same sprites rotated 90° CW, upper-left corner, base on left, cells extending right
 
-**Screen position:** Left edge, vertically centered (x=10, y=screenH/2).
+**Screen position:** Upper-left corner (x=8, y=8 padding).
 
 ---
 
-### 11. Enemy Damage Flash + Shot Hit Effect
+### 11. Enemy Damage Flash + Shot Hit Effect (DONE)
 
 **Enemy damage flash (white flash on hit):**
-- When an enemy takes damage, flash the sprite near-white for 6 frames (~0.1s)
-- Technique: draw sprite twice with `globalCompositeOperation = 'lighter'` at ~0.7 alpha (same approach as charge flash but stronger)
-- Add `hitFlashTimer` field to all enemy classes, set to 6 on `onHit()`, decrement each frame
-- Only visual — does not affect AI or movement
+- All enemy types (Tank, Hopper, Bird) flash near-white for 6 frames (~0.1s) when hit
+- Technique: `globalCompositeOperation = 'lighter'` at 0.7 alpha (same as charge flash, stronger)
+- `hitFlashTimer` set to 6 in `onHit()`, decremented each frame
 
 **Shot hit effect (buster fade on enemy hit):**
-- When a buster shot hits an enemy, play the same 3-frame fade animation already used for wall hits
-- Currently shots are set to `active = false` on enemy hit — instead set `fading = true` (same as wall collision path)
-- No new sprites needed — reuses existing `BUSTER_FRAMES.fade` / `BUSTER2_FRAMES.fade` / `BUSTER3_FRAMES.fade`
+- Buster shots now play the 3-frame fade animation when hitting enemies (same as wall hits)
+- Changed `shot.active = false` to `shot.fading = true` in `_checkPlayerShotsVsEnemies()`
+
+---
+
+### 12. Gamepad Support (DONE)
+
+**Controller mapping tool** (`tools/map-controller.py`):
+- Python/pygame script walks through each action (shoot, jump, dash, d-pad, analog stick)
+- Captures axis baselines to handle controllers with non-zero trigger resting values (8BitDo triggers rest at -1.0)
+- Outputs `tools/controller-map.json`
+
+**Browser Gamepad API integration** (`src/engine/input.js`):
+- Polls `navigator.getGamepads()` each frame, merges with keyboard input
+- D-pad (buttons 12-15) and analog stick (axes 0/1 with 0.3 deadzone) both map to directional actions
+- Note: browser button indices may differ from SDL/pygame (e.g. 8BitDo X button = SDL 2, browser 3)
+
+---
+
+### 13. Import Second Stage Map (DONE — Chill Penguin / Frozen Town)
+
+Imported the Chill Penguin stage ("frozentown") from MMX-Online-Deathmatch.
+
+**Stage details:**
+- Internal name: `frozentown` (displayName: "frozen town")
+- Dimensions: 1792 × 767 px (multi-tier vertical layout, much taller than highway's 224px)
+- Kill zone at y=583 (death pit in the middle section)
+- Parallax background with 0.5x scroll on both X and Y axes
+- Purple night sky with snow-covered mountains
+
+**What was added:**
+1. Copied `background.png`, `backwall.png`, `parallax.png`, `foreground.png`, `map.json` to `assets/levels/frozentown_*`
+2. Updated `level.js` to parse Kill Zone rectangle instances (not just a Y threshold)
+3. Updated `gameplay.js`: vertical parallax scrolling, per-stage enemy layouts, kill zone death check, foreground layer rendering
+4. Updated `index.html`: preloads both stages, F1/F2 switches between highway and frozentown
+5. Per-stage enemy spawn positions (tanks, hoppers, birds placed at appropriate positions per stage)
+6. Also imported `highway_foreground.png` which was previously missing
+
+**Stage import standard — always copy all 5 files from the source map directory:**
+1. `background.png` → `assets/levels/{name}_background.png` (main tilemap, scrolls 1:1)
+2. `backwall.png` → `assets/levels/{name}_backwall.png` (behind background, scrolls 1:1)
+3. `parallax.png` → `assets/levels/{name}_parallax.png` (distant layer, scrolls 0.5x)
+4. `foreground.png` → `assets/levels/{name}_foreground.png` (drawn over player/enemies)
+5. `map.json` → `assets/levels/{name}_map.json` (collision polygons, spawn points, kill zones)
+
+**Note:** More stages to be imported later. The asset pipeline (`loadStage()`) loads all 5 files automatically — foreground gracefully skipped if missing.
+
+---
+
+### 14. Health Recovery Items
+
+Add health pickup items that restore the player's HP bar, matching original MMX behavior.
+
+**Research needed from MMX-Online-Deathmatch:**
+- Health pellet sprites (small and large) from `effects.png` or item spritesheets
+- Drop mechanics: do enemies drop pickups on death? Random chance or guaranteed?
+- Recovery amounts: small pellet restores 2 HP, large pellet restores 8 HP (classic MMX values)
+- Pickup animation: does the item blink/flash? Does it have a despawn timer?
+- HP bar fill animation: in original MMX, the bar fills cell-by-cell with a ticking sound when picking up health
+
+**Implementation plan:**
+1. Find health pellet sprites in MMX-Online-Deathmatch assets
+2. Create `HealthPickup` entity class with idle animation and player overlap detection
+3. Spawn pickups on enemy death (random chance or fixed drops)
+4. On pickup: increment player HP (clamped to max), play cell-by-cell fill animation on HP bar
+5. Optional: place fixed health pickups at specific stage locations
 
 ---
 
@@ -275,11 +334,13 @@ Replace the current simple rectangle health bar with the authentic MMX vertical 
 7. ~~**Charged buster shot**~~ — DONE (2 charge levels, particles, flash, animated projectiles)
 8. ~~**Enemy characters**~~ — DONE (Tank Mechaniloid: patrol, chase, shoot, die)
 9. ~~**More enemy types**~~ — DONE (Hopper + Bird, see below)
-10. **Classic MMX HP bar** — Vertical segmented bar using sprites from effects.png **<-- NEXT**
-11. **Enemy damage flash + shot hit effect** — White flash on enemies when hit, buster fade anim on enemy hit
-12. **Boss fights** — Multi-phase boss AI
-13. **Additional stages** — More MMX-Deathmatch stage assets
-14. **Health pickups / game over** — Item drops, respawn system
+10. ~~**Classic MMX HP bar**~~ — DONE (segmented bar + horizontal toggle with L key)
+11. ~~**Enemy damage flash + shot hit effect**~~ — DONE (white flash + buster fade on enemy hit)
+12. ~~**Gamepad support**~~ — DONE (8BitDo controller, mapping tool + browser Gamepad API)
+13. ~~**Import second stage map**~~ — DONE (Chill Penguin / Frozen Town, F1/F2 stage select)
+14. **Health recovery items** — Health pellets dropped by enemies, cell-by-cell HP fill **<-- NEXT**
+15. **Boss fights** — Multi-phase boss AI
+16. **Additional stages** — More MMX-Deathmatch stage assets
 
 ---
 
@@ -291,12 +352,17 @@ mega-human/
 ├── PLAN.md                       — This file
 ├── assets/
 │   ├── XDefault.png              — Player spritesheet (from MMX Deathmatch)
-│   ├── effects.png               — Projectile/VFX spritesheet (buster shots, charge particles, explosions)
-│   ├── sigma_viral.png           — Tank Mechaniloid spritesheet (enemy sprites + projectile)
-│   ├── highway_background.png    — Highway stage background layer
-│   ├── highway_backwall.png      — Highway stage backwall layer
-│   ├── highway_parallax.png      — Highway stage parallax layer (0.5x scroll)
-│   └── highway_map.json          — Highway stage collision polygons + spawn points
+│   ├── effects.png               — Projectile/VFX/HUD spritesheet (buster shots, charge particles, explosions, HP bar)
+│   ├── sigma_viral.png           — Enemy spritesheet (Tank, Hopper, Bird mechaniloids)
+│   └── levels/
+│       ├── highway_background.png    — Highway stage background layer
+│       ├── highway_backwall.png      — Highway stage backwall layer
+│       ├── highway_parallax.png      — Highway stage parallax layer (0.5x scroll)
+│       ├── highway_map.json          — Highway stage collision polygons + spawn points
+│       ├── frozentown_background.png — Frozen Town (Chill Penguin) background layer
+│       ├── frozentown_backwall.png   — Frozen Town backwall layer
+│       ├── frozentown_parallax.png   — Frozen Town parallax layer (0.5x X+Y scroll)
+│       └── frozentown_map.json       — Frozen Town collision polygons + spawn points
 ├── src/
 │   ├── engine/
 │   │   ├── game.js               — Fixed 60fps game loop
@@ -319,6 +385,8 @@ mega-human/
 ├── analysis/
 │   └── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
 ├── tools/
+│   ├── map-controller.py         — Gamepad mapping tool (pygame, outputs controller-map.json)
+│   ├── controller-map.json       — Last generated controller mapping (8BitDo Ultimate 2C)
 │   ├── tile-viewer.html          — ROM tile browser (legacy)
 │   ├── sprite-assembler.html     — Manual sprite assembly tool (legacy)
 │   └── sprite-finder.html        — Tile search tool (legacy)

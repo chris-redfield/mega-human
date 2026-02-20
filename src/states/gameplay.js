@@ -24,6 +24,7 @@ export class GameplayState {
         this.backgroundImg = null;
         this.backwallImg = null;
         this.parallaxImg = null;
+        this.foregroundImg = null;
 
         // Enemies
         this.enemies = [];
@@ -45,6 +46,7 @@ export class GameplayState {
         this.backgroundImg = this.assets.getImage(`${this.stageName}_background`);
         this.backwallImg = this.assets.getImage(`${this.stageName}_backwall`);
         this.parallaxImg = this.assets.getImage(`${this.stageName}_parallax`);
+        this.foregroundImg = this.assets.getImage(`${this.stageName}_foreground`);
 
         // Parse background color from map data
         if (mapData.bgColorHex) {
@@ -52,9 +54,16 @@ export class GameplayState {
             this.bgColor = `#${hex}`;
         }
 
-        // Pick a spawn point (first non-race spawn, or fallback)
+        // Per-stage spawn overrides (deathmatch spawn points don't always suit platformer start)
+        const stageSpawns = {
+            frozentown: { x: 133, y: 640 },
+        };
+
         let spawnX = 100, spawnY = 80;
-        if (this.level.spawnPoints.length > 0) {
+        if (stageSpawns[this.stageName]) {
+            spawnX = stageSpawns[this.stageName].x;
+            spawnY = stageSpawns[this.stageName].y;
+        } else if (this.level.spawnPoints.length > 0) {
             const sp = this.level.spawnPoints[0];
             spawnX = sp.x;
             spawnY = sp.y;
@@ -78,41 +87,37 @@ export class GameplayState {
         const enemySprite = this.assets.getImage('tankSprite'); // sigma_viral.png (all enemies)
         const effectsSprite = this.assets.getImage('effectsSprite');
 
-        // Place tanks at fixed positions along the highway stage
-        const tankPositions = [
-            { x: 500, y: 100 },
-            { x: 900, y: 100 },
-            { x: 1300, y: 100 },
-        ];
+        // Per-stage enemy layouts
+        const layouts = {
+            highway: {
+                tanks:   [{ x: 500, y: 100 }, { x: 900, y: 100 }, { x: 1300, y: 100 }],
+                hoppers: [{ x: 650, y: 100 }, { x: 1100, y: 100 }],
+                birds:   [{ x: 400, y: 60 },  { x: 800, y: 50 },  { x: 1200, y: 55 }],
+            },
+            frozentown: {
+                tanks:   [{ x: 500, y: 150 }, { x: 900, y: 150 }, { x: 1400, y: 150 }],
+                hoppers: [{ x: 350, y: 350 }, { x: 700, y: 350 }, { x: 1100, y: 330 }],
+                birds:   [{ x: 600, y: 120 }, { x: 1000, y: 100 }, { x: 1500, y: 130 }],
+            },
+        };
 
-        for (const pos of tankPositions) {
+        const layout = layouts[this.stageName] || layouts.highway;
+
+        for (const pos of layout.tanks) {
             const tank = new TankEnemy(pos.x, pos.y);
             tank.spriteImage = enemySprite;
             tank.effectsImage = effectsSprite;
             this.enemies.push(tank);
         }
 
-        // Place hoppers — they jump and melee attack
-        const hopperPositions = [
-            { x: 650, y: 100 },
-            { x: 1100, y: 100 },
-        ];
-
-        for (const pos of hopperPositions) {
+        for (const pos of layout.hoppers) {
             const hopper = new HopperEnemy(pos.x, pos.y);
             hopper.spriteImage = enemySprite;
             hopper.effectsImage = effectsSprite;
             this.enemies.push(hopper);
         }
 
-        // Place birds — they fly and swoop toward the player
-        const birdPositions = [
-            { x: 400, y: 60 },
-            { x: 800, y: 50 },
-            { x: 1200, y: 55 },
-        ];
-
-        for (const pos of birdPositions) {
+        for (const pos of layout.birds) {
             const bird = new BirdEnemy(pos.x, pos.y);
             bird.spriteImage = enemySprite;
             bird.effectsImage = effectsSprite;
@@ -128,6 +133,28 @@ export class GameplayState {
         this._prevKeyL = !!game.input.rawKeys['KeyL'];
 
         this.player.update(game);
+
+        // Kill zones — rectangular death pits + fallback killY
+        if (!this.player.dead) {
+            const px = this.player.x + this.player.hitboxX + this.player.hitboxW / 2;
+            const py = this.player.y + this.player.hitboxY + this.player.hitboxH;
+            let killed = py > this.level.killY;
+            if (!killed) {
+                for (const kz of this.level.killZones) {
+                    if (px >= kz.x && px <= kz.x + kz.w && py >= kz.y && py <= kz.y + kz.h) {
+                        killed = true;
+                        break;
+                    }
+                }
+            }
+            if (killed) {
+                this.player.hp = 0;
+                this.player.state = 'die';
+                this.player.dead = true;
+                this.player.vx = 0;
+                this.player.vy = 0;
+            }
+        }
 
         // Update enemies
         for (const enemy of this.enemies) {
@@ -187,10 +214,11 @@ export class GameplayState {
         ctx.fillStyle = this.bgColor;
         ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-        // Parallax layer (scrolls at half camera speed)
+        // Parallax layer (scrolls at half camera speed on both axes)
         if (this.parallaxImg) {
             const px = Math.floor(-this.camera.x * 0.5);
-            ctx.drawImage(this.parallaxImg, px, 0);
+            const py = Math.floor(-this.camera.y * 0.5);
+            ctx.drawImage(this.parallaxImg, px, py);
         }
 
         // Backwall layer (scrolls 1:1 with camera, drawn behind main background)
@@ -210,6 +238,11 @@ export class GameplayState {
 
         // Render player (on top of enemies)
         this.player.render(ctx, this.camera);
+
+        // Foreground layer (drawn over player — lamp posts, pipes, etc.)
+        if (this.foregroundImg) {
+            ctx.drawImage(this.foregroundImg, Math.floor(-this.camera.x), Math.floor(-this.camera.y));
+        }
 
         // Render HUD
         this._renderHUD(ctx);

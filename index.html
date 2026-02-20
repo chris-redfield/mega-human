@@ -42,7 +42,7 @@
     <div id="loading">MEGAGAME 2026 — Loading...</div>
     <canvas id="game" style="display:none"></canvas>
     <div id="controls" style="display:none">
-        Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash
+        Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash &nbsp;|&nbsp; F1/F2: Stage Select
     </div>
 
     <script type="module">
@@ -56,11 +56,14 @@
 
         async function init() {
             try {
-                loading.textContent = 'MEGAGAME 2026 — Loading stage...';
+                loading.textContent = 'MEGAGAME 2026 — Loading stages...';
                 const assets = new AssetLoader();
 
-                // Load stage assets (background PNGs + map.json)
-                await assets.loadStage('highway');
+                // Load all stage assets
+                await Promise.all([
+                    assets.loadStage('highway'),
+                    assets.loadStage('frozentown'),
+                ]);
 
                 loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
                 // Load player spritesheet, effects, and enemy sprites
@@ -70,14 +73,29 @@
                     assets.loadImage('tankSprite', './assets/sigma_viral.png'),
                 ]);
 
-                // Start game
+                // Start game with highway
                 loading.style.display = 'none';
                 canvas.style.display = 'block';
                 controls.style.display = 'block';
 
+                const stages = ['highway', 'frozentown'];
+                let currentStageIdx = 0;
+
                 const game = new Game(canvas);
-                game.setState(new GameplayState(assets, 'highway'));
+                game.setState(new GameplayState(assets, stages[currentStageIdx]));
                 game.start();
+
+                // Stage switching with F1/F2
+                window.addEventListener('keydown', (e) => {
+                    let newIdx = -1;
+                    if (e.code === 'F1') newIdx = 0;
+                    if (e.code === 'F2') newIdx = 1;
+                    if (newIdx >= 0 && newIdx !== currentStageIdx) {
+                        e.preventDefault();
+                        currentStageIdx = newIdx;
+                        game.setState(new GameplayState(assets, stages[currentStageIdx]));
+                    }
+                });
             } catch (e) {
                 loading.textContent = `Error: ${e.message}`;
                 console.error(e);
