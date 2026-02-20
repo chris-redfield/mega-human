@@ -30,6 +30,9 @@ export class GameplayState {
 
         // Background fill color from map data
         this.bgColor = '#000';
+
+        // HP bar layout: 'vertical' (classic MMX) or 'horizontal' (rotated 90° CW, top-left)
+        this.hpBarLayout = 'vertical';
     }
 
     init(game) {
@@ -118,6 +121,12 @@ export class GameplayState {
     }
 
     update(game) {
+        // Toggle HP bar layout with L key
+        if (game.input.rawKeys['KeyL'] && !this._prevKeyL) {
+            this.hpBarLayout = this.hpBarLayout === 'vertical' ? 'horizontal' : 'vertical';
+        }
+        this._prevKeyL = !!game.input.rawKeys['KeyL'];
+
         this.player.update(game);
 
         // Update enemies
@@ -211,7 +220,11 @@ export class GameplayState {
         const ef = this.assets.getImage('effectsSprite');
 
         if (ef) {
-            this._renderHealthBar(ctx, ef, player);
+            if (this.hpBarLayout === 'horizontal') {
+                this._renderHealthBarHorizontal(ctx, ef, player);
+            } else {
+                this._renderHealthBar(ctx, ef, player);
+            }
         }
     }
 
@@ -227,12 +240,12 @@ export class GameplayState {
         const EMPTY = { sx: 2,  sy: 37, sw: 14, sh: 2 };  // Empty cell
         const CAP   = { sx: 34, sy: 13, sw: 14, sh: 4 };  // Top cap
 
-        const barX = 10;
+        const barX = 8;
         const maxHp = player.maxHp;
         const curHp = Math.ceil(player.hp);
 
-        // Start from bottom: base piece at vertical center + offset
-        let y = Math.floor(SCREEN_H / 2) + 25;
+        // Start from bottom: top margin (8) + cap (4) + cells (maxHp*2) + base (16)
+        let y = 8 + CAP.sh + maxHp * FULL.sh + BASE.sh;
 
         // Draw base piece (bottom, contains character icon)
         ctx.drawImage(ef, BASE.sx, BASE.sy, BASE.sw, BASE.sh,
@@ -252,5 +265,57 @@ export class GameplayState {
         // Draw top cap
         ctx.drawImage(ef, CAP.sx, CAP.sy, CAP.sw, CAP.sh,
             barX, y - CAP.sh, CAP.sw, CAP.sh);
+    }
+
+    /**
+     * Horizontal HP bar — the vertical bar rotated 90° clockwise, placed at top-left.
+     * Base piece on the left, cells extend right, cap on the right end.
+     * Each sprite is individually rotated 90° CW so its original height becomes width.
+     */
+    _renderHealthBarHorizontal(ctx, ef, player) {
+        const BASE  = { sx: 2,  sy: 55, sw: 14, sh: 16 };
+        const FULL  = { sx: 2,  sy: 51, sw: 14, sh: 2 };
+        const EMPTY = { sx: 2,  sy: 37, sw: 14, sh: 2 };
+        const CAP   = { sx: 34, sy: 13, sw: 14, sh: 4 };
+
+        const maxHp = player.maxHp;
+        const curHp = Math.ceil(player.hp);
+
+        // After 90° CW rotation, sprite dimensions swap:
+        // Base: 14×16 → appears 16w×14h on screen
+        // Cell: 14×2  → appears 2w×14h on screen
+        // Cap:  14×4  → appears 4w×14h on screen
+        const barY = 8;  // top margin
+        let x = 8;       // left margin, advances rightward
+
+        // Helper: draw a sprite rotated 90° CW at position (x, y)
+        // where (x, y) is the top-left of the rotated sprite on screen.
+        const drawRotatedCW = (spr, destX, destY) => {
+            // Rotated dimensions: rw = spr.sh, rh = spr.sw
+            const rw = spr.sh;
+            const rh = spr.sw;
+            ctx.save();
+            // Move to center of destination rect
+            ctx.translate(destX + rw / 2, destY + rh / 2);
+            ctx.rotate(Math.PI / 2); // 90° CW
+            // Draw centered at origin (in un-rotated sprite space)
+            ctx.drawImage(ef, spr.sx, spr.sy, spr.sw, spr.sh,
+                -spr.sw / 2, -spr.sh / 2, spr.sw, spr.sh);
+            ctx.restore();
+        };
+
+        // Base piece (leftmost)
+        drawRotatedCW(BASE, x, barY);
+        x += BASE.sh; // advance by original height (now width)
+
+        // Health cells left-to-right
+        for (let i = 0; i < maxHp; i++) {
+            const cell = i < curHp ? FULL : EMPTY;
+            drawRotatedCW(cell, x, barY);
+            x += cell.sh;
+        }
+
+        // Top cap (rightmost)
+        drawRotatedCW(CAP, x, barY);
     }
 }
