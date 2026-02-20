@@ -28,6 +28,9 @@ export class Level {
 
         // Spawn points extracted from map data
         this.spawnPoints = [];
+
+        // Health pickup positions from map instances
+        this.healthPickups = [];
     }
 
     /** Get collision value at tile coordinates. */
@@ -131,11 +134,15 @@ export function createLevelFromMap(mapData) {
         }
     }
 
-    // Extract spawn points from instances
+    // Extract spawn points and health pickups from instances
     if (mapData.instances) {
         for (const inst of mapData.instances) {
             if (inst.objectName === 'Spawn Point' && inst.pos) {
                 level.spawnPoints.push({ x: inst.pos.x, y: inst.pos.y });
+            } else if (inst.objectName === 'Large Health' && inst.pos) {
+                level.healthPickups.push({ x: inst.pos.x, y: inst.pos.y, size: 'large' });
+            } else if (inst.objectName === 'Small Health' && inst.pos) {
+                level.healthPickups.push({ x: inst.pos.x, y: inst.pos.y, size: 'small' });
             }
         }
     }

@@ -10,6 +10,8 @@ import { TankEnemy } from '../entities/tank-enemy.js';
 import { HopperEnemy } from '../entities/hopper-enemy.js';
 import { BirdEnemy } from '../entities/bird-enemy.js';
 import { boxOverlap } from '../entities/entity.js';
+import { HealthPickup } from '../entities/health-pickup.js';
+import { ChillPenguin } from '../entities/chill-penguin.js';
 import { createLevelFromMap } from '../levels/level.js';
 
 export class GameplayState {
@@ -28,6 +30,15 @@ export class GameplayState {
 
         // Enemies
         this.enemies = [];
+
+        // Health pickups
+        this.pickups = [];
+
+        // Heal queue: ticks +1 HP every 3 frames
+        this.healTickTimer = 0;
+
+        // Boss entity (only on boss stages)
+        this.boss = null;
 
         // Background fill color from map data
         this.bgColor = '#000';
@@ -77,6 +88,12 @@ export class GameplayState {
         // Spawn enemies — place a few tanks along the stage
         this._spawnEnemies();
 
+        // Spawn fixed health pickups from map data
+        this._spawnMapPickups();
+
+        // Init heal queue on player
+        this.player.healQueue = 0;
+
         // Expose on game object
         game.level = this.level;
         game.camera = this.camera;
@@ -123,6 +140,42 @@ export class GameplayState {
             bird.effectsImage = effectsSprite;
             this.enemies.push(bird);
         }
+
+        // Boss spawn (frozentown only)
+        const bossSpawns = {
+            frozentown: { x: 1650, y: 150 },
+        };
+        if (bossSpawns[this.stageName]) {
+            const pos = bossSpawns[this.stageName];
+            const boss = new ChillPenguin(pos.x, pos.y);
+            boss.spriteImage = this.assets.getImage('mavericksSprite');
+            boss.effectsImage = this.assets.getImage('effectsSprite');
+            this.boss = boss;
+        }
+    }
+
+    _spawnMapPickups() {
+        const effectsSprite = this.assets.getImage('effectsSprite');
+        for (const hp of this.level.healthPickups) {
+            const pickup = new HealthPickup(hp.x, hp.y, hp.size, false);
+            pickup.effectsImage = effectsSprite;
+            this.pickups.push(pickup);
+        }
+    }
+
+    _spawnEnemyDrop(x, y) {
+        let size;
+        if (Math.random() < 0.1) {
+            size = 'large';            // 10% large health
+        } else if (Math.random() < 0.3) {
+            size = 'small';            // 30% small health (if no large)
+        } else {
+            return;                    // No drop
+        }
+        const effectsSprite = this.assets.getImage('effectsSprite');
+        const pickup = new HealthPickup(x, y, size, true);
+        pickup.effectsImage = effectsSprite;
+        this.pickups.push(pickup);
     }
 
     update(game) {
@@ -168,8 +221,56 @@ export class GameplayState {
         // Player shots ↔ enemies collision
         this._checkPlayerShotsVsEnemies();
 
-        // Remove dead enemies
+        // Remove dead enemies, spawn drops
+        for (const enemy of this.enemies) {
+            if (!enemy.active) {
+                const cx = enemy.x + enemy.hitboxX + enemy.hitboxW / 2;
+                const cy = enemy.y + enemy.hitboxY + enemy.hitboxH;
+                this._spawnEnemyDrop(cx, cy);
+            }
+        }
         this.enemies = this.enemies.filter(e => e.active);
+
+        // Update boss
+        if (this.boss && this.boss.active) {
+            this.boss.update(game);
+            this.boss.checkPlayerCollision(this.player);
+        }
+        if (this.boss && !this.boss.active) {
+            this.boss = null;
+        }
+
+        // Player shots vs boss
+        this._checkPlayerShotsVsBoss();
+
+        // Update pickups
+        for (const pickup of this.pickups) {
+            if (!pickup.active) continue;
+            pickup.update(game);
+
+            // Check player overlap for collection
+            if (!this.player.dead && this.player.hp < this.player.maxHp) {
+                const pBox = this.player.getHitbox();
+                const pickBox = pickup.getHitbox();
+                if (boxOverlap(pBox, pickBox)) {
+                    pickup.active = false;
+                    this.player.healQueue = (this.player.healQueue || 0) + pickup.healAmount;
+                }
+            }
+        }
+        this.pickups = this.pickups.filter(p => p.active);
+
+        // Heal queue tick: +1 HP every 3 frames
+        if (this.player.healQueue > 0) {
+            this.healTickTimer++;
+            if (this.healTickTimer >= 3) {
+                this.healTickTimer = 0;
+                this.player.healQueue--;
+                this.player.hp = Math.min(this.player.hp + 1, this.player.maxHp);
+            }
+        } else {
+            this.healTickTimer = 0;
+        }
 
         this.camera.follow(this.player);
     }
@@ -209,6 +310,37 @@ export class GameplayState {
         }
     }
 
+    _checkPlayerShotsVsBoss() {
+        if (!this.boss || !this.boss.active || this.boss.state === 'dying') return;
+
+        for (const shot of this.player.shots) {
+            if (!shot.active || shot.fading) continue;
+
+            const bossBox = this.boss.getHitbox();
+            const shotBox = {
+                x: shot.x - 4, y: shot.y - 3,
+                w: 8, h: 6,
+            };
+
+            if (shot.type === 'charge1') {
+                shotBox.x = shot.x - 10; shotBox.y = shot.y - 8;
+                shotBox.w = 20; shotBox.h = 16;
+            } else if (shot.type === 'charge2') {
+                shotBox.x = shot.x - 16; shotBox.y = shot.y - 14;
+                shotBox.w = 32; shotBox.h = 28;
+            }
+
+            if (boxOverlap(shotBox, bossBox)) {
+                this.boss.onHit(shot.damage);
+                shot.fading = true;
+                shot.fadeFrame = 0;
+                shot.fadeTimer = 0;
+                shot.vx = 0;
+                break;
+            }
+        }
+    }
+
     render(ctx, game) {
         // Background fill color
         ctx.fillStyle = this.bgColor;
@@ -236,6 +368,16 @@ export class GameplayState {
             if (enemy.active) enemy.render(ctx, this.camera);
         }
 
+        // Render pickups (between enemies and player)
+        for (const pickup of this.pickups) {
+            if (pickup.active) pickup.render(ctx, this.camera);
+        }
+
+        // Render boss
+        if (this.boss && this.boss.active) {
+            this.boss.render(ctx, this.camera);
+        }
+
         // Render player (on top of enemies)
         this.player.render(ctx, this.camera);
 
@@ -257,6 +399,12 @@ export class GameplayState {
                 this._renderHealthBarHorizontal(ctx, ef, player);
             } else {
                 this._renderHealthBar(ctx, ef, player);
+            }
+
+            // Boss HP bar (right side, only when boss is near/on screen)
+            if (this.boss && this.boss.active && this.boss.state !== 'dying' &&
+                this._isBossNearScreen()) {
+                this._renderBossHealthBar(ctx, ef);
             }
         }
     }
@@ -350,5 +498,46 @@ export class GameplayState {
 
         // Top cap (rightmost)
         drawRotatedCW(CAP, x, barY);
+    }
+
+    _isBossNearScreen() {
+        if (!this.boss) return false;
+        const margin = 64; // Show bar slightly before boss is fully on screen
+        const bx = this.boss.x - this.camera.x;
+        const by = this.boss.y - this.camera.y;
+        return bx > -margin && bx < SCREEN_W + margin &&
+               by > -margin && by < SCREEN_H + margin;
+    }
+
+    /**
+     * Boss HP bar — same style as player bar, positioned on the right side of the screen.
+     */
+    _renderBossHealthBar(ctx, ef) {
+        const BASE  = { sx: 2,  sy: 55, sw: 14, sh: 16 };
+        const FULL  = { sx: 2,  sy: 51, sw: 14, sh: 2 };
+        const EMPTY = { sx: 2,  sy: 37, sw: 14, sh: 2 };
+        const CAP   = { sx: 34, sy: 13, sw: 14, sh: 4 };
+
+        const boss = this.boss;
+        const maxHp = boss.maxHp;
+        const curHp = Math.ceil(boss.hp);
+
+        const barX = SCREEN_W - 8 - BASE.sw; // Right side, mirroring player bar
+
+        let y = 8 + CAP.sh + maxHp * FULL.sh + BASE.sh;
+
+        ctx.drawImage(ef, BASE.sx, BASE.sy, BASE.sw, BASE.sh,
+            barX, y - BASE.sh, BASE.sw, BASE.sh);
+        y -= BASE.sh;
+
+        for (let i = 0; i < maxHp; i++) {
+            const cell = i < curHp ? FULL : EMPTY;
+            ctx.drawImage(ef, cell.sx, cell.sy, cell.sw, cell.sh,
+                barX, y - cell.sh, cell.sw, cell.sh);
+            y -= cell.sh;
+        }
+
+        ctx.drawImage(ef, CAP.sx, CAP.sy, CAP.sw, CAP.sh,
+            barX, y - CAP.sh, CAP.sw, CAP.sh);
     }
 }

@@ -303,23 +303,86 @@ Imported the Chill Penguin stage ("frozentown") from MMX-Online-Deathmatch.
 
 ---
 
-### 14. Health Recovery Items
+### 14. Health Recovery Items (DONE)
 
-Add health pickup items that restore the player's HP bar, matching original MMX behavior.
+Health pickup items that restore HP cell-by-cell, matching original MMX behavior.
 
-**Research needed from MMX-Online-Deathmatch:**
-- Health pellet sprites (small and large) from `effects.png` or item spritesheets
-- Drop mechanics: do enemies drop pickups on death? Random chance or guaranteed?
-- Recovery amounts: small pellet restores 2 HP, large pellet restores 8 HP (classic MMX values)
-- Pickup animation: does the item blink/flash? Does it have a despawn timer?
-- HP bar fill animation: in original MMX, the bar fills cell-by-cell with a ticking sound when picking up health
+**Entity:** `src/entities/health-pickup.js` — `HealthPickup` class extending `Entity`.
 
-**Implementation plan:**
-1. Find health pellet sprites in MMX-Online-Deathmatch assets
-2. Create `HealthPickup` entity class with idle animation and player overlap detection
-3. Spawn pickups on enemy death (random chance or fixed drops)
-4. On pickup: increment player HP (clamped to max), play cell-by-cell fill animation on HP bar
-5. Optional: place fixed health pickups at specific stage locations
+**Two sizes:**
+
+| Size | Sprite Source (effects.png) | Heal Amount | Hitbox |
+|------|---------------------------|-------------|--------|
+| Small | y=138, h=8, frames at x=6(8w), 22(10w), 40(10w), 58(10w) | 4 HP | 8×8 |
+| Large | y=150, h=12, frames at x=3(14w), 19(16w), 37(16w), 55(16w) | 8 HP | 14×12 |
+
+**Animation:** 7-step bounce sequence [0,1,2,3,2,1,0], 2 frames per step, looping.
+
+**Spawning:**
+- **Fixed map placements**: Parsed from map.json `Large Health` / `Small Health` instances (highway: 1 small, frozentown: 3 large). No despawn timer.
+- **Enemy drops**: 10% large health, then 30% small health (rolled independently). Despawns after 480 frames (8s), blinks last 120 frames (2s).
+
+**Collection:** Player must overlap pickup AND have `hp < maxHp`. Sets pickup inactive, adds `healAmount` to `player.healQueue`.
+
+**Heal queue:** In `gameplay.js` update, ticks +1 HP every 3 frames from `player.healQueue`. HP bar reads `player.hp` directly so it fills cell-by-cell automatically.
+
+**Physics:** Gravity + `resolveVertical` to land on ground (same as enemies).
+
+---
+
+### 15. Boss Fights (DONE — Chill Penguin)
+
+First Maverick boss fight in the frozentown stage.
+
+**Entity:** `src/entities/chill-penguin.js` — `ChillPenguin` class extending `Entity`.
+**Sprites:** All from `assets/mavericks.png` (botmid alignment).
+
+**AI States (6):**
+
+| State | Behavior |
+|-------|----------|
+| `idle` | Face player, walk toward if >120px away, countdown 40-80 frames then pick random attack |
+| `shoot` | 2-frame windup → fire ice projectile (speed 4.2, damage 3, 45-frame lifetime) → idle |
+| `slide` | 2-frame windup → belly slide at 5.8 px/f, bounces off walls, decelerates after 45f, stops at 75f. Has armor (no hurt interruption). Hitbox switches to 34x24 (wider, shorter) |
+| `blow` | 2-frame windup → push player horizontally 2.5 px/f if in front & within 180px, lasts 96 frames → idle |
+| `hurt` | 6-frame recoil (skipped during slide — armor) |
+| `dying` | 8-frame explosion from effects.png |
+
+**Key values:** 32 HP, contact damage 3 (60-frame cooldown), slide damage 3, ice shot 14x14 sprite (center-aligned, from mavericks.png at 194,232).
+
+**Invincibility:** 45 frames (~0.75s) after taking damage, same pattern as player — `invincibleTimer` blocks damage in `onHit()`, sprite flashes (skip render every other 4 frames). Slide armor still applies on top (no hurt state interruption during slide).
+
+**Boss HP bar:** Vertical segmented bar on right side of screen (x = SCREEN_W - 8 - 14 = 234), same BASE/FULL/EMPTY/CAP sprites as player bar from effects.png. Only shown when boss is on or near screen (64px margin via `_isBossNearScreen()`). Hidden during dying state.
+
+**Spawn:** Configurable per-stage in `_spawnEnemies()` via `bossSpawns` object. Currently: frozentown at x=1650, y=150. Boss is stored in `this.boss` (separate from `this.enemies[]` — no health drops on boss death). Designed to be easily moved to a dedicated boss room later.
+
+**Sprite animations (all from mavericks.png, botmid alignment):**
+
+| Animation | Frames | Source Rects | Notes |
+|-----------|--------|-------------|-------|
+| idle | 2, loop | (221,77) 38x36, (43,77) 38x36 | dur=8 each |
+| run | 4, loop | y=266-310, 35x37-39 | dur=6 each |
+| shoot | 5, once | 2 windup + 3 shoot | POI(18,-22) on frames 2+ |
+| slide | 3, once | 2 windup + (4,133) 40x31 | Slide pose held (dur=999) |
+| blow | 4, loopFrom=2 | 2 windup + 2 blow | POI(23,-22), loops blow frames |
+| jump | 1 | (181,127) 37x38 | ox=1 |
+| fall | 1 | (60,20) 35x44 | ox=-1, oy=6 |
+| land | 3, once | 3 frames | dur 4/6/4 |
+| hurt | 2, loop | (175,165) 38x47, (221,169) 35x41 | dur=3 each |
+| die | 1 | (221,169) 35x41 | oy=3 |
+
+**Integration (gameplay.js):**
+- Import `ChillPenguin` from `chill-penguin.js`
+- Boss spawned in `_spawnEnemies()`, assigned `mavericksSprite` + `effectsSprite`
+- Boss update + `checkPlayerCollision()` after enemy loop
+- Separate `_checkPlayerShotsVsBoss()` method (same shot hitbox logic as enemies)
+- Boss rendered between pickups and player layers
+- Boss HP bar in `_renderHUD()` with screen proximity check
+- Boss cleared (`this.boss = null`) when death animation finishes
+
+**Asset pipeline:**
+- `mavericks.png` copied from `MMX-Online-Deathmatch/LevelEditor/assets/spritesheets/` to `assets/`
+- Loaded in `index.html` as key `'mavericksSprite'`
 
 ---
 
@@ -338,9 +401,9 @@ Add health pickup items that restore the player's HP bar, matching original MMX 
 11. ~~**Enemy damage flash + shot hit effect**~~ — DONE (white flash + buster fade on enemy hit)
 12. ~~**Gamepad support**~~ — DONE (8BitDo controller, mapping tool + browser Gamepad API)
 13. ~~**Import second stage map**~~ — DONE (Chill Penguin / Frozen Town, F1/F2 stage select)
-14. **Health recovery items** — Health pellets dropped by enemies, cell-by-cell HP fill **<-- NEXT**
-15. **Boss fights** — Multi-phase boss AI
-16. **Additional stages** — More MMX-Deathmatch stage assets
+14. ~~**Health recovery items**~~ — DONE (small/large pickups, 10% large + 30% small enemy drops, cell-by-cell heal queue)
+15. ~~**Boss fights**~~ — DONE (Chill Penguin boss in frozentown, 3 attacks, boss HP bar)
+16. **Additional stages** — More MMX-Deathmatch stage assets **<-- NEXT**
 
 ---
 
@@ -354,6 +417,7 @@ mega-human/
 │   ├── XDefault.png              — Player spritesheet (from MMX Deathmatch)
 │   ├── effects.png               — Projectile/VFX/HUD spritesheet (buster shots, charge particles, explosions, HP bar)
 │   ├── sigma_viral.png           — Enemy spritesheet (Tank, Hopper, Bird mechaniloids)
+│   ├── mavericks.png             — Maverick boss spritesheet (Chill Penguin + others)
 │   └── levels/
 │       ├── highway_background.png    — Highway stage background layer
 │       ├── highway_backwall.png      — Highway stage backwall layer
@@ -375,7 +439,9 @@ mega-human/
 │   │   ├── sprite-data.js        — Player animation frames (19 anims) + projectile sprite data
 │   │   ├── tank-enemy.js         — Tank Mechaniloid: 5-state AI, patrol/shoot enemy
 │   │   ├── hopper-enemy.js       — Hopper Mechaniloid: 4-state AI, jump/melee enemy
-│   │   └── bird-enemy.js         — Bird Mechaniloid: 3-state AI, flying/swoop enemy
+│   │   ├── bird-enemy.js         — Bird Mechaniloid: 3-state AI, flying/swoop enemy
+│   │   ├── health-pickup.js      — Health pickup: small (4 HP) / large (8 HP), shimmer animation
+│   │   └── chill-penguin.js      — Chill Penguin boss: 6-state AI, ice shot/slide/blow attacks
 │   ├── states/
 │   │   └── gameplay.js           — Gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/
