@@ -403,7 +403,13 @@ First Maverick boss fight in the frozentown stage.
 13. ~~**Import second stage map**~~ — DONE (Chill Penguin / Frozen Town, F1/F2 stage select)
 14. ~~**Health recovery items**~~ — DONE (small/large pickups, 10% large + 30% small enemy drops, cell-by-cell heal queue)
 15. ~~**Boss fights**~~ — DONE (Chill Penguin boss in frozentown, 3 attacks, boss HP bar)
-16. **Additional stages** — More MMX-Deathmatch stage assets **<-- NEXT**
+16. **Warp-in beam animation** — Add the blue descent ray to the spawn/warp_in animation (currently X just appears, missing the classic blue beam dropping from sky)
+17. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss **<-- NEXT**
+18. **Player death → respawn flow** — Death animation → fade out → respawn at checkpoint or stage start
+19. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
+20. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
+21. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
+22. **Score / lives system** — Lives counter, game over screen, score tracking
 
 ---
 
