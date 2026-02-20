@@ -32,6 +32,65 @@ export const BUSTER_FRAMES = {
     ],
 };
 
+// Charged shot level 1 (buster2) — looping animation frames 5-7
+export const BUSTER2_FRAMES = {
+    startup: [
+        { sx: 138, sy: 274, sw: 15, sh: 14, dur: 2 },
+        { sx: 158, sy: 269, sw: 24, sh: 24, dur: 2 },
+        { sx: 187, sy: 275, sw: 28, sh: 12, dur: 2 },
+        { sx: 221, sy: 277, sw: 32, sh: 8, dur: 2 },
+        { sx: 260, sy: 275, sw: 38, sh: 12, dur: 2 },
+    ],
+    loop: [
+        { sx: 303, sy: 270, sw: 36, sh: 22, dur: 3 },
+        { sx: 344, sy: 275, sw: 38, sh: 12, dur: 3 },
+        { sx: 388, sy: 270, sw: 40, sh: 19, dur: 3 },
+    ],
+    fade: [
+        { sx: 434, sy: 274, sw: 15, sh: 14, dur: 2 },
+        { sx: 454, sy: 269, sw: 24, sh: 24, dur: 2 },
+        { sx: 487, sy: 273, sw: 16, sh: 16, dur: 2 },
+        { sx: 507, sy: 269, sw: 24, sh: 24, dur: 2 },
+    ],
+};
+
+// Charged shot level 2 (buster3) — looping animation frames 2-4
+export const BUSTER3_FRAMES = {
+    startup: [
+        { sx: 148, sy: 319, sw: 14, sh: 20, dur: 2 },
+        { sx: 170, sy: 321, sw: 23, sh: 16, dur: 2 },
+    ],
+    loop: [
+        { sx: 199, sy: 313, sw: 32, sh: 32, dur: 3 },
+        { sx: 239, sy: 317, sw: 27, sh: 24, dur: 3 },
+        { sx: 271, sy: 313, sw: 40, sh: 32, dur: 3 },
+    ],
+    fade: [
+        { sx: 320, sy: 319, sw: 14, sh: 20, dur: 2 },
+        { sx: 341, sy: 315, sw: 24, sh: 28, dur: 2 },
+        { sx: 374, sy: 315, sw: 28, sh: 28, dur: 2 },
+        { sx: 406, sy: 316, sw: 26, sh: 26, dur: 2 },
+    ],
+};
+
+// Charge particle sprites (from effects.png) — 8 particles orbit player while charging
+export const CHARGE_PARTICLES = {
+    // Level 1 charge particles (small, 2x2 shrinking to 1x1)
+    1: [
+        { sx: 126, sy: 282, sw: 2, sh: 2 },
+        { sx: 126, sy: 282, sw: 2, sh: 2 },
+        { sx: 121, sy: 283, sw: 1, sh: 1 },
+        { sx: 121, sy: 283, sw: 1, sh: 1 },
+    ],
+    // Level 2 charge particles (medium, 4x4 shrinking to 1x1)
+    2: [
+        { sx: 134, sy: 327, sw: 4, sh: 4 },
+        { sx: 127, sy: 328, sw: 3, sh: 3 },
+        { sx: 121, sy: 329, sw: 2, sh: 2 },
+        { sx: 116, sy: 330, sw: 1, sh: 1 },
+    ],
+};
+
 export const ANIMATIONS = {
     idle: { loop: true, frames: [
         {sx:226, sy:29, sw:30, sh:34, dur:60},

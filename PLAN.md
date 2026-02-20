@@ -1,10 +1,10 @@
-# MEGAGAME 2026: SNES to JavaScript Port Plan
+# MEGAGAME 2026: Mega Man X Browser Game
 
 ## Context
 
-We're porting **MEGAGAME 2026**, a 1.5MB LoROM SNES action platformer (Mega Man X2), to a native JavaScript game using plain HTML5 Canvas. The ROM is at `mega-game-raw.sfc` (binary). The ROM contains story references to Mega Man X characters (Sigma, Zero, X-Hunters, Dr. Cain).
+A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScript. All sprite and stage assets sourced from [MMX-Online-Deathmatch](https://github.com/gamemaker19/MMX-Online-Deathmatch), an open-source fan game with complete, high-quality PNG spritesheets and JSON animation data. Originally started as a SNES ROM port (Plan 1.0, abandoned due to CX4 coprocessor complexity).
 
-**Goal:** A playable browser game — not an emulator wrapper.
+**Goal:** A playable browser game with authentic MMX gameplay — not an emulator wrapper.
 
 ---
 
@@ -59,25 +59,28 @@ All needed assets are copied into our `assets/` folder — nothing references th
 
 ### Current Status
 
-**Working:**
-- Player spritesheet (`assets/XDefault.png`) loaded and rendering correctly
-- 20 animations in `src/entities/sprite-data.js` (generated from MMX Deathmatch JSONs)
-- Full state machine: warp_in, idle, run, jump, fall, land, wall_slide, dash, dash_end, hurt, die
-- Warp-in animation plays at level start (input locked during animation)
-- Land animation plays on landing from air (2-frame squash, jump-cancellable)
-- Dash-end animation plays after ground dash ends (brief stand-up transition)
-- Die state on 0 HP (animation plays, player stops)
-- Shooting animation overlay: 6 shoot variants (idle, run, jump, fall, dash, wall_slide)
-- Buster projectile sprites from `assets/effects.png` (8x6 shot + 3-frame fade on wall hit)
-- Projectile spawn from hand POI (`hx`/`hy` buster position per animation frame)
-- Wall slide flip fix (sprite inverted for correct wall-facing)
-- Wall slide shooting fires in correct direction (away from wall)
-- Left-facing sprite rendering stable (flip axis fixed at character center)
-- **Highway stage** background from MMX-Deathmatch PNG assets (parallax + backwall + background layers)
-- Stage collision rasterized from map.json polygon data onto 16x16 tile grid
-- Spawn points loaded from map.json
-- Full movement state machine (run, jump, wall-jump, dash, shoot mechanics)
-- **ROM dependency fully removed** — no .sfc file needed, all `src/rom/` deleted
+**Player Character (X):**
+- Spritesheet: `assets/XDefault.png`, 19 animations in `sprite-data.js`
+- 10-state machine: warp_in, idle, run, jump, fall, land, wall_slide, dash, hurt, die
+- Warp-in animation on spawn (input locked), land squash on landing (jump-cancellable)
+- Dash snaps directly to idle/run on ground (no transition anim, matches original MMX)
+- 6 shoot animation overlays (idle, run, jump, fall, dash, wall_slide)
+- Buster projectile from `assets/effects.png` (8x6 shot, 3-frame fade on wall hit)
+- Projectile spawn from hand POI (`hx`/`hy` per animation frame)
+- Wall slide: sprite flipped for wall-facing, shoots away from wall
+- Dash-jump momentum: `isDashing` flag preserves 2x speed through jump/fall, clears on landing
+- Charged buster: hold shoot to charge (2 levels), release for bigger animated projectile
+- 8 charge particles orbit player while charging, character flashes white
+
+**Stage:**
+- Highway stage from MMX-Deathmatch PNG assets (parallax + backwall + background layers)
+- Collision rasterized from map.json polygon data onto 16x16 tile grid
+- Spawn points loaded from map.json instances
+
+**Engine:**
+- Fixed 60fps game loop, keyboard input with pressed/held/released edge detection
+- Tile-based AABB collision, camera viewport scrolling (256x224)
+- Asset loader for images + JSON, no ROM dependency
 
 ### Plan Items
 
@@ -86,11 +89,12 @@ All needed assets are copied into our `assets/` folder — nothing references th
 ### 1. Finish Player Sprites (DONE)
 
 **Completed:**
-- ~~`land`~~ — Landing squash animation wired into state machine
+- ~~`land`~~ — Landing squash animation wired into state machine (jump-cancellable)
 - ~~`warp_in`~~ — Level start teleport beam plays on spawn
 - ~~`die`~~ — Death animation on 0 HP
-- ~~`dash_end`~~ — Brief stand-up transition after ground dash
 - `crouch` — Crouching (1 frame, data exists, not wired — future if we add crouch mechanic)
+
+**Note:** `dash_end` was initially added but removed after research showed original MMX has no dash-end transition — X snaps directly to idle/run.
 
 ---
 
@@ -127,68 +131,99 @@ All shooting features are implemented:
 - Max 3 shots, 8-frame cooldown
 - 6 shoot animation overlays (idle, run, jump, fall, dash, wall_slide)
 
-**Future:**
-- Charged shot — Hold-to-charge buster mechanic (stretch goal)
+---
+
+### 4. Dash-Jump Momentum (DONE)
+
+- `isDashing` boolean flag preserves dash speed (2x multiplier) through jump/fall states
+- Set on dash entry, persists through jump-cancel and air states
+- Cleared on landing (land state), wall slide, hurt, or dash expiring on ground
+- Matches MMX-Online-Deathmatch behavior: speed recomputed per frame (not inertia), releasing direction = stop
+
+---
+
+### 5. Charged Buster Shot (DONE)
+
+Hold shoot to charge, release for bigger projectile:
+- **Charge Level 1** (0.75s / 45 frames): buster2 projectile, damage 2, speed 6.0
+- **Charge Level 2** (1.75s / 105 frames): buster3 projectile, damage 3, speed 7.0
+- Normal lemon fires on press, charge builds while holding, charged shot fires on release
+- 8 charge particles orbit player at 24px radius, converging toward center
+- Character flashes white while charging (lighter composite at 40% alpha)
+- Animated projectile sprites with startup → loop → fade phases
+- Charge cleared on hurt/die
+
+Sprite sources (all from effects.png):
+- buster2: 8 frames (5 startup, 3 loop), buster3: 5 frames (2 startup, 3 loop)
+- charge_part_1 (level 1): 2x2 → 1x1 pixels, charge_part_2 (level 2): 4x4 → 1x1 pixels
 
 ---
 
 ### Implementation Priority
 
-1. ~~**Shooting overlay animations**~~ — DONE
-2. ~~**Projectile spawn from POI**~~ — DONE
-3. ~~**Projectile sprites**~~ — DONE
+1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
+2. ~~**Projectile spawn from POI**~~ — DONE (hand position per frame)
+3. ~~**Projectile sprites**~~ — DONE (lemon + fade on wall hit)
 4. ~~**ROM removal + stage assets**~~ — DONE (highway stage PNG backgrounds + polygon collision)
-5. ~~**Player animation states**~~ — DONE (warp_in, land, die, dash_end)
-6. **Enemy characters** — Start with one Maverick as a test enemy **<-- NEXT**
-7. **Boss fights** — Multi-phase boss AI
-8. **Charged shot** — Hold-to-charge buster mechanic
+5. ~~**Player animation states**~~ — DONE (warp_in, land, die)
+6. ~~**Dash-jump momentum**~~ — DONE (isDashing flag, 2x speed through air)
+7. ~~**Charged buster shot**~~ — DONE (2 charge levels, particles, flash, animated projectiles)
+8. **Enemy characters** — Start with one Maverick as a test enemy **<-- NEXT**
+9. **Boss fights** — Multi-phase boss AI
+10. **Additional stages** — More MMX-Deathmatch stage assets
+11. **Health pickups / game over** — Item drops, respawn system
 
 ---
 
 ## Project Structure (Current)
 
 ```
-mega-port/
+mega-human/
 ├── index.html                    — Main game page (256×224 canvas, 3× scale)
-├── mega-game-raw.sfc             — Source ROM binary (1.5MB)
 ├── PLAN.md                       — This file
 ├── assets/
 │   ├── XDefault.png              — Player spritesheet (from MMX Deathmatch)
-│   ├── effects.png               — Projectile/VFX spritesheet (from MMX Deathmatch)
-│   ├── highway_background.png    — Highway stage background (from MMX Deathmatch)
+│   ├── effects.png               — Projectile/VFX spritesheet (buster shots, charge particles)
+│   ├── highway_background.png    — Highway stage background layer
 │   ├── highway_backwall.png      — Highway stage backwall layer
-│   ├── highway_parallax.png      — Highway stage parallax layer
-│   └── highway_map.json          — Highway stage collision/spawn data
+│   ├── highway_parallax.png      — Highway stage parallax layer (0.5x scroll)
+│   └── highway_map.json          — Highway stage collision polygons + spawn points
 ├── src/
-│   ├── engine/                   — Game loop, rendering, input, camera, collision
+│   ├── engine/
 │   │   ├── game.js               — Fixed 60fps game loop
 │   │   ├── input.js              — Keyboard input (pressed/held/released)
-│   │   ├── renderer.js           — (empty, ROM SpriteSheet removed)
 │   │   ├── camera.js             — Viewport scrolling (256×224)
-│   │   └── collision.js          — Tile-based AABB collision
+│   │   └── collision.js          — Tile-based AABB collision (isSolid, resolveH/V, checkWall)
 │   ├── entities/
 │   │   ├── entity.js             — Base entity class
-│   │   ├── player.js             — Player state machine + rendering (11 states)
-│   │   └── sprite-data.js        — Player animation frame data (20 anims)
+│   │   ├── player.js             — Player: 10-state machine, shooting, charge, dash-jump
+│   │   └── sprite-data.js        — Animation frames (19 anims) + projectile sprite data
 │   ├── states/
-│   │   └── gameplay.js           — Main gameplay state (PNG backgrounds, player, camera, HUD)
+│   │   └── gameplay.js           — Gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/
 │   │   └── level.js              — Level from map.json (polygon→tile-grid rasterizer)
 │   └── assets/
 │       └── asset-loader.js       — Image + JSON loading/caching
 ├── analysis/
-│   ├── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
-│   ├── disasm65816.py            — 65816 disassembler
-│   ├── decode_player_anims.py    — ROM animation decoder
-│   ├── generate_metasprite_data.py — CX4 sub-sprite reader
-│   ├── generate_sprite_data.py   — Old ROM-based sprite-frames.js generator
-│   └── find_legs.py              — DMA remap analysis
+│   └── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
 ├── tools/
-│   ├── tile-viewer.html          — ROM tile browser
-│   ├── sprite-assembler.html     — Manual sprite assembly tool
-│   └── sprite-finder.html        — Tile search tool
+│   ├── tile-viewer.html          — ROM tile browser (legacy)
+│   ├── sprite-assembler.html     — Manual sprite assembly tool (legacy)
+│   └── sprite-finder.html        — Tile search tool (legacy)
 └── MMX-Online-Deathmatch/        — Reference project (NOT used at runtime)
 ```
+
+---
+
+## Key Technical Notes
+
+**Grounded detection quirk:** `resolveVertical()` in `collision.js` only returns `grounded: true` when `dy > 0` (moving downward). If any ground state sets `this.vy = 0`, `dy` becomes 0, and `grounded` returns `false` — causing rapid state oscillation (e.g. idle → fall → land → idle) with visible shaking. **All ground states MUST apply gravity** (`this.vy += P.GRAVITY`) and let the collision system resolve the position. This was the root cause of multiple bugs during land/dash implementation.
+
+**Sprite alignment:** All player sprites are aligned bottom-center (feet anchor). The rendering offset `ox`/`oy` is per-frame. Flip axis is always at `feetX` (character center) for left-facing sprites. Wall slide sprites face toward the wall, so flip is inverted.
+
+**MMX dash behavior:** Original MMX has NO dash-end transition animation. X snaps directly from dash to idle/run. Early attempt to add a `dash_end` state was removed after verifying this against the MMX-Online-Deathmatch source (CharState.cs).
+
+**Charge composite rendering:** Canvas2D `globalCompositeOperation = 'lighter'` with `globalAlpha = 0.4` creates a convincing "charge flash" without shaders. The sprite is drawn twice — once normal, once with lighter blend mode.
 
 ---
 

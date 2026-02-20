@@ -8,7 +8,7 @@
 
 import { Entity } from './entity.js';
 import { resolveHorizontal, resolveVertical, checkWallContact, isSolid } from '../engine/collision.js';
-import { getAnim, BUSTER_FRAMES } from './sprite-data.js';
+import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, CHARGE_PARTICLES } from './sprite-data.js';
 
 // Physics constants (tuned to match Mega Man X feel)
 const P = {
@@ -30,6 +30,10 @@ const P = {
     SHOT_SPEED:       5.0,
     SHOT_COOLDOWN:    8,
     MAX_SHOTS:        3,
+    CHARGE_SPEED_2:   6.0,    // Level 1 charged shot speed
+    CHARGE_SPEED_3:   7.0,    // Level 2 charged shot speed
+    CHARGE1_TIME:     45,     // Frames to reach charge level 1 (0.75s at 60fps)
+    CHARGE2_TIME:     105,    // Frames to reach charge level 2 (1.75s at 60fps)
 
     HURT_VX:          2.0,
     HURT_VY:         -2.0,
@@ -62,11 +66,27 @@ export class Player extends Entity {
         // Timers
         this.dashTimer = 0;
         this.dashCooldown = 0;
+        this.isDashing = false; // Preserves dash speed through jump/fall
         this.wallJumpLock = 0;
         this.hurtTimer = 0;
         this.invincibleTimer = 0;
         this.shotCooldown = 0;
         this.shootAnimTimer = 0; // frames remaining for shoot sprite overlay
+
+        // Charge system
+        this.chargeTime = 0;     // Frames held
+        this.chargeLevel = 0;    // 0=none, 1=medium, 2=large
+        this.chargeFlashTimer = 0;
+
+        // Charge particle state (8 particles in a circle)
+        this.chargeParticles = [];
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            this.chargeParticles.push({
+                baseAngle: angle,
+                time: [0, 3, 0, 1.5, -1.5, -3, -1.5, -1.5][i],
+            });
+        }
 
         // Projectiles managed externally
         this.shots = [];
@@ -120,7 +140,7 @@ export class Player extends Entity {
         }
 
         // Shooting (available in most states)
-        const noShootStates = ['hurt', 'die', 'warp_in', 'land'];
+        const noShootStates = ['hurt', 'die', 'warp_in'];
         if (!noShootStates.includes(this.state)) {
             this._handleShooting(input);
         }
@@ -166,6 +186,7 @@ export class Player extends Entity {
         if (input.pressed('dash') && this.dashCooldown <= 0) {
             this.dashTimer = P.DASH_DURATION;
             this.vx = P.DASH_SPEED * this.facing;
+            this.isDashing = true;
             this.state = 'dash';
             return;
         }
@@ -181,18 +202,23 @@ export class Player extends Entity {
     }
 
     _airState(input, level) {
-        // Horizontal movement (reduced if wall-jump locked)
+        // Horizontal movement — use dash speed if dash-jumping
+        const moveSpeed = this.isDashing ? P.DASH_SPEED : P.RUN_SPEED;
         if (this.wallJumpLock <= 0) {
             if (input.held('left')) {
-                this.vx = -P.RUN_SPEED;
+                this.vx = -moveSpeed;
                 this.facing = -1;
             } else if (input.held('right')) {
-                this.vx = P.RUN_SPEED;
+                this.vx = moveSpeed;
                 this.facing = 1;
             } else {
-                // Air friction: slowly decelerate
-                this.vx *= 0.9;
-                if (Math.abs(this.vx) < 0.1) this.vx = 0;
+                // No direction held: stop if dash-jumping, decelerate otherwise
+                if (this.isDashing) {
+                    this.vx = 0;
+                } else {
+                    this.vx *= 0.9;
+                    if (Math.abs(this.vx) < 0.1) this.vx = 0;
+                }
             }
         }
 
@@ -211,6 +237,7 @@ export class Player extends Entity {
             this.dashTimer = P.DASH_DURATION;
             this.vx = P.DASH_SPEED * this.facing;
             this.vy = 0;
+            this.isDashing = true;
             this.state = 'dash';
             return;
         }
@@ -221,13 +248,15 @@ export class Player extends Entity {
             // Only wall-slide if pressing toward the wall
             if ((this.wallContact === 1 && input.held('right')) ||
                 (this.wallContact === -1 && input.held('left'))) {
+                this.isDashing = false;
                 this.state = 'wall_slide';
                 return;
             }
         }
 
-        // Landing — play land animation
+        // Landing — play land animation, clear dash momentum
         if (this.grounded) {
+            this.isDashing = false;
             this.state = 'land';
         }
     }
@@ -288,6 +317,7 @@ export class Player extends Entity {
             this.dashCooldown = P.DASH_COOLDOWN;
             if (this.grounded) {
                 // Original MMX: dash snaps directly to idle or run (no transition anim)
+                this.isDashing = false;
                 if (input.held('left') || input.held('right')) {
                     this.vx = P.RUN_SPEED * this.facing;
                     this.state = 'run';
@@ -296,7 +326,9 @@ export class Player extends Entity {
                     this.state = 'idle';
                 }
             } else {
-                this.vx = input.held('left') || input.held('right') ? P.RUN_SPEED * this.facing : 0;
+                // Air dash expired — keep isDashing for momentum through fall
+                const airSpeed = this.isDashing ? P.DASH_SPEED : P.RUN_SPEED;
+                this.vx = input.held('left') || input.held('right') ? airSpeed * this.facing : 0;
                 this.state = 'fall';
             }
             return;
@@ -393,43 +425,82 @@ export class Player extends Entity {
     // --- Shooting ---
 
     _handleShooting(input) {
+        // On press: fire normal lemon shot and start charging
         if (input.pressed('shoot') && this.shotCooldown <= 0 && this.shots.length < P.MAX_SHOTS) {
-            // Trigger shoot animation overlay
-            this.shootAnimTimer = 18; // 0.3 seconds at 60fps
-
-            // Get hand position from the shoot animation frame we just activated
-            const anim = getAnim(this.state, true);
-            const frameIdx = this.animFrame % anim.frames.length;
-            const frame = anim.frames[frameIdx];
-
-            // Spawn position: feet anchor + hand POI offset
-            const feetX = this.x + this.hitboxX + this.hitboxW / 2;
-            const feetY = this.y + this.hitboxY + this.hitboxH;
-
-            let spawnX, spawnY;
-            if (frame.hx !== undefined) {
-                // Hand POI: offset from feet-center, flip X for facing
-                // Wall slide: facing points away from wall, but hx is already negative
-                // (pointing away from wall in original coords), so negate it
-                const hx = this.state === 'wall_slide' ? -frame.hx : frame.hx;
-                spawnX = feetX + hx * this.facing;
-                spawnY = feetY + frame.hy;
-            } else {
-                // Fallback: spawn from hitbox edge
-                spawnX = feetX + (this.hitboxW / 2 + 4) * this.facing;
-                spawnY = feetY - this.hitboxH / 2;
-            }
-
-            this.shots.push({
-                x: spawnX,
-                y: spawnY,
-                vx: P.SHOT_SPEED * this.facing,
-                active: true,
-                damage: 1,
-                fading: false,
-            });
+            this._fireShot(P.SHOT_SPEED, 1, 'normal');
             this.shotCooldown = P.SHOT_COOLDOWN;
+            this.chargeTime = 0;
+            this.chargeLevel = 0;
         }
+
+        // While holding: build charge
+        if (input.held('shoot')) {
+            this.chargeTime++;
+            if (this.chargeTime >= P.CHARGE2_TIME) {
+                this.chargeLevel = 2;
+            } else if (this.chargeTime >= P.CHARGE1_TIME) {
+                this.chargeLevel = 1;
+            }
+            // Flash timer for visual effect
+            if (this.chargeLevel > 0) {
+                this.chargeFlashTimer++;
+            }
+        }
+
+        // On release: fire charged shot if charged
+        if (input.released('shoot') && this.chargeLevel > 0) {
+            this.shootAnimTimer = 18;
+            if (this.chargeLevel === 2) {
+                this._fireShot(P.CHARGE_SPEED_3, 3, 'charge2');
+            } else {
+                this._fireShot(P.CHARGE_SPEED_2, 2, 'charge1');
+            }
+            this.chargeTime = 0;
+            this.chargeLevel = 0;
+            this.chargeFlashTimer = 0;
+        }
+
+        // Clear charge on release without charge
+        if (input.released('shoot') && this.chargeLevel === 0) {
+            this.chargeTime = 0;
+            this.chargeFlashTimer = 0;
+        }
+    }
+
+    _fireShot(speed, damage, type) {
+        // Trigger shoot animation overlay
+        this.shootAnimTimer = 18;
+
+        // Get hand position from the shoot animation frame
+        const anim = getAnim(this.state, true);
+        const frameIdx = this.animFrame % anim.frames.length;
+        const frame = anim.frames[frameIdx];
+
+        const feetX = this.x + this.hitboxX + this.hitboxW / 2;
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+
+        let spawnX, spawnY;
+        if (frame.hx !== undefined) {
+            const hx = this.state === 'wall_slide' ? -frame.hx : frame.hx;
+            spawnX = feetX + hx * this.facing;
+            spawnY = feetY + frame.hy;
+        } else {
+            spawnX = feetX + (this.hitboxW / 2 + 4) * this.facing;
+            spawnY = feetY - this.hitboxH / 2;
+        }
+
+        this.shots.push({
+            x: spawnX,
+            y: spawnY,
+            vx: speed * this.facing,
+            active: true,
+            damage: damage,
+            type: type,       // 'normal', 'charge1', 'charge2'
+            fading: false,
+            animFrame: 0,
+            animTimer: 0,
+            startupDone: type === 'normal',
+        });
     }
 
     _updateShots(level) {
@@ -439,15 +510,35 @@ export class Player extends Entity {
             if (shot.fading) {
                 // Advance fade animation
                 shot.fadeTimer++;
-                const fadeFrame = BUSTER_FRAMES.fade[shot.fadeFrame];
+                const fadeFrames = this._getFadeFrames(shot.type);
+                const fadeFrame = fadeFrames[shot.fadeFrame];
                 if (fadeFrame && shot.fadeTimer >= fadeFrame.dur) {
                     shot.fadeTimer = 0;
                     shot.fadeFrame++;
-                    if (shot.fadeFrame >= BUSTER_FRAMES.fade.length) {
+                    if (shot.fadeFrame >= fadeFrames.length) {
                         shot.active = false;
                     }
                 }
                 continue;
+            }
+
+            // Advance charged shot animation
+            if (shot.type !== 'normal') {
+                shot.animTimer++;
+                const frames = this._getShotFrames(shot);
+                if (frames && shot.animTimer >= frames[shot.animFrame].dur) {
+                    shot.animTimer = 0;
+                    shot.animFrame++;
+                    if (shot.animFrame >= frames.length) {
+                        if (!shot.startupDone) {
+                            // Transition from startup to loop
+                            shot.startupDone = true;
+                            shot.animFrame = 0;
+                        } else {
+                            shot.animFrame = 0; // Loop
+                        }
+                    }
+                }
             }
 
             shot.x += shot.vx;
@@ -458,10 +549,10 @@ export class Player extends Entity {
                 continue;
             }
 
-            // Check wall collision (check from center of shot)
-            const checkX = shot.x + (shot.vx > 0 ? 4 : -4);
+            // Check wall collision
+            const checkDist = shot.type === 'normal' ? 4 : 8;
+            const checkX = shot.x + (shot.vx > 0 ? checkDist : -checkDist);
             if (isSolid(level, checkX, shot.y)) {
-                // Start fade animation instead of instant removal
                 shot.fading = true;
                 shot.fadeFrame = 0;
                 shot.fadeTimer = 0;
@@ -471,6 +562,17 @@ export class Player extends Entity {
 
         // Clean up inactive shots
         this.shots = this.shots.filter(s => s.active);
+    }
+
+    _getShotFrames(shot) {
+        const data = shot.type === 'charge2' ? BUSTER3_FRAMES : BUSTER2_FRAMES;
+        return shot.startupDone ? data.loop : data.startup;
+    }
+
+    _getFadeFrames(type) {
+        if (type === 'charge2') return BUSTER3_FRAMES.fade;
+        if (type === 'charge1') return BUSTER2_FRAMES.fade;
+        return BUSTER_FRAMES.fade;
     }
 
     // --- Movement & Collision ---
@@ -522,6 +624,10 @@ export class Player extends Entity {
         this.grounded = false;
         this.state = 'hurt';
         this.dashTimer = 0;
+        this.isDashing = false;
+        this.chargeTime = 0;
+        this.chargeLevel = 0;
+        this.chargeFlashTimer = 0;
 
         if (this.hp <= 0) {
             this.hp = 0;
@@ -577,6 +683,11 @@ export class Player extends Entity {
         // Flash when invincible
         if (this.invincibleTimer > 0 && this.invincibleTimer % 4 < 2) return;
 
+        // Render charge particles behind player
+        if (this.chargeLevel > 0) {
+            this._renderChargeParticles(ctx, camera);
+        }
+
         const shooting = this.shootAnimTimer > 0;
         const anim = getAnim(this.state, shooting);
         const frameIdx = this.animFrame % anim.frames.length;
@@ -590,6 +701,9 @@ export class Player extends Entity {
         const feetX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
         const feetY = Math.floor(this.y + this.hitboxY + this.hitboxH - camera.y);
 
+        // Charge flash: brighten sprite by drawing with lighter composite
+        const isChargeFlash = this.chargeLevel > 0 && this.chargeFlashTimer % 6 < 3;
+
         if (this.spriteImage) {
             const ox = frame.ox || 0;
             const oy = frame.oy || 0;
@@ -597,20 +711,36 @@ export class Player extends Entity {
 
             if (flipH) {
                 ctx.save();
-                // Flip axis is always at feetX (character center)
                 ctx.translate(feetX, 0);
                 ctx.scale(-1, 1);
-                // Keep ox sign — scale(-1) already mirrors the coordinate space
                 const drawX = -Math.floor(frame.sw / 2) + ox;
                 ctx.drawImage(this.spriteImage,
                     frame.sx, frame.sy, frame.sw, frame.sh,
                     drawX, drawY, frame.sw, frame.sh);
+                if (isChargeFlash) {
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.4;
+                    ctx.drawImage(this.spriteImage,
+                        frame.sx, frame.sy, frame.sw, frame.sh,
+                        drawX, drawY, frame.sw, frame.sh);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
                 ctx.restore();
             } else {
                 const drawX = feetX - Math.floor(frame.sw / 2) + ox;
                 ctx.drawImage(this.spriteImage,
                     frame.sx, frame.sy, frame.sw, frame.sh,
                     drawX, drawY, frame.sw, frame.sh);
+                if (isChargeFlash) {
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.4;
+                    ctx.drawImage(this.spriteImage,
+                        frame.sx, frame.sy, frame.sw, frame.sh,
+                        drawX, drawY, frame.sw, frame.sh);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
             }
         } else {
             // Fallback: colored rectangle
@@ -626,46 +756,92 @@ export class Player extends Entity {
         this._renderShots(ctx, camera);
     }
 
+    _renderChargeParticles(ctx, camera) {
+        if (!this.effectsImage || this.chargeLevel <= 0) return;
+
+        const particles = CHARGE_PARTICLES[this.chargeLevel];
+        if (!particles) return;
+
+        // Center point: 18px above feet
+        const centerX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
+        const centerY = Math.floor(this.y + this.hitboxY + this.hitboxH - 18 - camera.y);
+        const radius = 24;
+
+        for (const part of this.chargeParticles) {
+            // Advance particle time
+            part.time += 1 / 3; // ~20 units/sec at 60fps
+            if (part.time > 3) part.time = -3;
+            if (part.time <= 0) continue; // Invisible when time <= 0
+
+            // Converge toward center based on time (0→3 maps to full radius→0)
+            const progress = part.time / 3; // 0 to 1
+            const dist = radius * (1 - progress);
+
+            const px = centerX + Math.cos(part.baseAngle) * dist;
+            const py = centerY + Math.sin(part.baseAngle) * dist;
+
+            // Pick frame based on time (0-3 maps to frames 0-3)
+            const frameIdx = Math.min(Math.floor(part.time), particles.length - 1);
+            const frame = particles[frameIdx];
+
+            ctx.drawImage(this.effectsImage,
+                frame.sx, frame.sy, frame.sw, frame.sh,
+                Math.floor(px - frame.sw / 2), Math.floor(py - frame.sh / 2),
+                frame.sw, frame.sh);
+        }
+    }
+
     _renderShots(ctx, camera) {
         const ef = this.effectsImage;
-        const bf = BUSTER_FRAMES.shot;
 
         for (const shot of this.shots) {
             const sx = Math.floor(shot.x - camera.x);
             const sy = Math.floor(shot.y - camera.y);
 
-            if (ef) {
-                // Draw buster sprite centered on shot position
-                if (shot.fading) {
-                    // Fade/hit animation
-                    const fadeFrame = BUSTER_FRAMES.fade[shot.fadeFrame] || BUSTER_FRAMES.fade[0];
-                    ctx.drawImage(ef,
-                        fadeFrame.sx, fadeFrame.sy, fadeFrame.sw, fadeFrame.sh,
-                        sx - Math.floor(fadeFrame.sw / 2), sy - Math.floor(fadeFrame.sh / 2),
-                        fadeFrame.sw, fadeFrame.sh);
-                } else {
-                    // Normal buster shot — flip sprite based on direction
-                    if (shot.vx < 0) {
-                        ctx.save();
-                        ctx.translate(sx, 0);
-                        ctx.scale(-1, 1);
-                        ctx.drawImage(ef,
-                            bf.sx, bf.sy, bf.sw, bf.sh,
-                            -Math.floor(bf.sw / 2), sy - Math.floor(bf.sh / 2),
-                            bf.sw, bf.sh);
-                        ctx.restore();
-                    } else {
-                        ctx.drawImage(ef,
-                            bf.sx, bf.sy, bf.sw, bf.sh,
-                            sx - Math.floor(bf.sw / 2), sy - Math.floor(bf.sh / 2),
-                            bf.sw, bf.sh);
-                    }
-                }
-            } else {
-                // Fallback: colored rectangle
-                ctx.fillStyle = '#ffdd00';
-                ctx.fillRect(sx - 4, sy - 3, 8, 6);
+            if (!ef) {
+                // Fallback: colored rectangle (bigger for charged shots)
+                const size = shot.type === 'charge2' ? 12 : shot.type === 'charge1' ? 8 : 4;
+                ctx.fillStyle = shot.type !== 'normal' ? '#00ffff' : '#ffdd00';
+                ctx.fillRect(sx - size, sy - size / 2, size * 2, size);
+                continue;
             }
+
+            if (shot.fading) {
+                // Fade/hit animation
+                const fadeFrames = this._getFadeFrames(shot.type);
+                const fadeFrame = fadeFrames[shot.fadeFrame] || fadeFrames[0];
+                ctx.drawImage(ef,
+                    fadeFrame.sx, fadeFrame.sy, fadeFrame.sw, fadeFrame.sh,
+                    sx - Math.floor(fadeFrame.sw / 2), sy - Math.floor(fadeFrame.sh / 2),
+                    fadeFrame.sw, fadeFrame.sh);
+            } else if (shot.type === 'normal') {
+                // Normal lemon shot
+                const bf = BUSTER_FRAMES.shot;
+                this._drawShotSprite(ctx, ef, bf, sx, sy, shot.vx < 0);
+            } else {
+                // Charged shot — animated
+                const frames = this._getShotFrames(shot);
+                const frame = frames[shot.animFrame % frames.length];
+                this._drawShotSprite(ctx, ef, frame, sx, sy, shot.vx < 0);
+            }
+        }
+    }
+
+    _drawShotSprite(ctx, ef, frame, sx, sy, flipH) {
+        if (flipH) {
+            ctx.save();
+            ctx.translate(sx, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(ef,
+                frame.sx, frame.sy, frame.sw, frame.sh,
+                -Math.floor(frame.sw / 2), sy - Math.floor(frame.sh / 2),
+                frame.sw, frame.sh);
+            ctx.restore();
+        } else {
+            ctx.drawImage(ef,
+                frame.sx, frame.sy, frame.sw, frame.sh,
+                sx - Math.floor(frame.sw / 2), sy - Math.floor(frame.sh / 2),
+                frame.sw, frame.sh);
         }
     }
 
