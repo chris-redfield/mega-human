@@ -101,6 +101,12 @@ export class Player extends Entity {
         this.warpBeamY = this.y - 200;  // Beam starts 200px above spawn
         this.warpBeamActive = true;      // Beam descending phase
         this.warpVisible = false;        // Player invisible during beam descent
+
+        // Death effect state
+        this.dieTimer = 0;
+        this.diePhase = 0;         // 0=pose, 1=explode, 2=done
+        this.dieSparks = null;     // {timer, frame}
+        this.dieParticles = [];    // [{x, y, angle, time, frame, wave}]
     }
 
     update(game) {
@@ -369,6 +375,12 @@ export class Player extends Entity {
     _warpInState(input, level) {
         this.vx = 0;
 
+        // Waiting for beam to be activated (during respawn fade)
+        if (!this.warpBeamActive && !this.warpVisible) {
+            this.vy = 0;
+            return;
+        }
+
         // Phase 1: beam descent (player invisible, beam moves down)
         if (this.warpBeamActive) {
             this.vy = 0; // No gravity during beam phase
@@ -435,10 +447,132 @@ export class Player extends Entity {
     }
 
     _dieState(input, level) {
-        // Death animation — no input, no movement
         this.vx = 0;
         this.vy = 0;
-        // Animation plays once and holds on last frame
+        this.dieTimer++;
+
+        // Phase 0: die pose + spark flash (0.75s = 45 frames)
+        if (this.diePhase === 0) {
+            // Spark flash on first frame
+            if (this.dieTimer === 1) {
+                this.dieSparks = { timer: 0, frame: 0 };
+            }
+            // Advance spark animation (2 frames, 4 ticks each)
+            if (this.dieSparks && this.dieSparks.timer < 8) {
+                this.dieSparks.timer++;
+                this.dieSparks.frame = this.dieSparks.timer < 4 ? 0 : 1;
+            }
+            // After 45 frames → explode phase
+            if (this.dieTimer >= 45) {
+                this.diePhase = 1;
+                this.dieTimer = 0;
+                this._spawnDieParticles(0);
+            }
+        }
+
+        // Phase 1: particle bursts expanding outward
+        if (this.diePhase === 1) {
+            // Second burst at 30 frames (0.5s)
+            if (this.dieTimer === 30) {
+                this._spawnDieParticles(1);
+            }
+            // Update particles
+            for (const p of this.dieParticles) {
+                p.time += 1 / 60;
+                p.frameTimer++;
+                if (p.frameTimer >= 4) {
+                    p.frameTimer = 0;
+                    p.frame = (p.frame + 1) % 3;
+                }
+            }
+            // Done after 120 frames (2s)
+            if (this.dieTimer >= 120) {
+                this.diePhase = 2;
+                this.dieParticles = [];
+            }
+        }
+    }
+
+    _spawnDieParticles(wave) {
+        const cx = this.x + this.hitboxX + this.hitboxW / 2;
+        const cy = this.y + this.hitboxY + this.hitboxH / 2;
+        for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2;
+            this.dieParticles.push({
+                cx, cy, angle,
+                time: 0, frame: 0, frameTimer: 0, wave,
+            });
+        }
+    }
+
+    _renderDieEffect(ctx, camera) {
+        const ef = this.effectsImage;
+
+        // Die particle sprite frames (effects.png)
+        const DIE_PARTS = [
+            { sx: 486, sy: 386, sw: 9,  sh: 9 },
+            { sx: 486, sy: 373, sw: 11, sh: 11 },
+            { sx: 502, sy: 380, sw: 15, sh: 15 },
+        ];
+        // Die spark frames (effects.png)
+        const DIE_SPARKS = [
+            { sx: 622, sy: 489, sw: 15, sh: 14 },
+            { sx: 650, sy: 483, sw: 27, sh: 24 },
+        ];
+
+        const centerX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
+        const centerY = Math.floor(this.y + this.hitboxY + this.hitboxH / 2 - camera.y);
+
+        // Phase 0: draw die pose + sparks
+        if (this.diePhase === 0) {
+            // Draw the die sprite (from XDefault.png)
+            if (this.spriteImage) {
+                const anim = getAnim('die');
+                const frameIdx = this.animFrame % anim.frames.length;
+                const frame = anim.frames[frameIdx];
+                const feetX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
+                const feetY = Math.floor(this.y + this.hitboxY + this.hitboxH - camera.y);
+                const drawX = feetX - Math.floor(frame.sw / 2);
+                const drawY = feetY - frame.sh;
+                ctx.drawImage(this.spriteImage,
+                    frame.sx, frame.sy, frame.sw, frame.sh,
+                    drawX, drawY, frame.sw, frame.sh);
+            }
+
+            // Draw sparks
+            if (ef && this.dieSparks && this.dieSparks.timer < 8) {
+                const spark = DIE_SPARKS[this.dieSparks.frame];
+                ctx.drawImage(ef,
+                    spark.sx, spark.sy, spark.sw, spark.sh,
+                    centerX - Math.floor(spark.sw / 2),
+                    centerY - 12 - Math.floor(spark.sh / 2),
+                    spark.sw, spark.sh);
+            }
+            return;
+        }
+
+        // Phase 1: expanding particle rings (no player sprite)
+        if (this.diePhase === 1 && ef) {
+            const rotSpeed = 100 * (Math.PI / 180); // 100 deg/s in radians
+            for (const p of this.dieParticles) {
+                const alpha = Math.max(0, 1 - p.time * 0.5);
+                if (alpha <= 0) continue;
+
+                const dist = p.time * 150; // 150 px/s outward
+                const rot = p.time * rotSpeed;
+                const px = p.cx + Math.cos(p.angle + rot) * dist - camera.x;
+                const py = p.cy + Math.sin(p.angle + rot) * dist - camera.y;
+
+                const spr = DIE_PARTS[p.frame];
+                ctx.globalAlpha = alpha;
+                ctx.drawImage(ef,
+                    spr.sx, spr.sy, spr.sw, spr.sh,
+                    Math.floor(px - spr.sw / 2),
+                    Math.floor(py - spr.sh / 2),
+                    spr.sw, spr.sh);
+            }
+            ctx.globalAlpha = 1;
+        }
     }
 
     // --- Shooting ---
@@ -654,6 +788,10 @@ export class Player extends Entity {
             this.vx = 0;
             this.vy = 0;
             this.dead = true;
+            this.dieTimer = 0;
+            this.diePhase = 0;
+            this.dieSparks = null;
+            this.dieParticles = [];
         }
     }
 
@@ -712,6 +850,12 @@ export class Player extends Entity {
 
         // Player invisible during beam descent
         if (this.state === 'warp_in' && !this.warpVisible) return;
+
+        // Death effect rendering
+        if (this.state === 'die') {
+            this._renderDieEffect(ctx, camera);
+            return;
+        }
 
         // Flash when invincible
         if (this.invincibleTimer > 0 && this.invincibleTimer % 4 < 2) return;

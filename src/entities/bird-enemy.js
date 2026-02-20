@@ -80,7 +80,7 @@ export class BirdEnemy extends Entity {
         // Swoop state
         this.swoopTargetX = 0;
         this.swoopTargetY = 0;
-        this.swoopReturnTimer = 0;
+        this.swoopReturning = false;
 
         // Timers
         this.contactCooldown = 0;
@@ -154,24 +154,22 @@ export class BirdEnemy extends Entity {
                 // Swoop toward player
                 this.swoopTargetX = player.x + player.hitboxX + player.hitboxW / 2;
                 this.swoopTargetY = player.y + player.hitboxY + player.hitboxH / 2;
-                this.swoopReturnTimer = 0;
+                this.swoopReturning = false;
                 this.state = 'swoop';
             }
         }
     }
 
     _swoopState(player) {
-        // Dive toward target point
         const cx = this.x + this.hitboxX + this.hitboxW / 2;
         const cy = this.y + this.hitboxY + this.hitboxH / 2;
 
         let targetX, targetY;
 
-        if (this.swoopReturnTimer > 0) {
+        if (this.swoopReturning) {
             // Returning to patrol height
             targetX = this.spawnX;
             targetY = this.spawnY;
-            this.swoopReturnTimer--;
 
             // Close enough to spawn → resume patrol
             const dxToSpawn = targetX - cx;
@@ -193,7 +191,7 @@ export class BirdEnemy extends Entity {
             const dxToTarget = targetX - cx;
             const dyToTarget = targetY - cy;
             if (Math.sqrt(dxToTarget ** 2 + dyToTarget ** 2) < 16) {
-                this.swoopReturnTimer = 90; // frames to return
+                this.swoopReturning = true;
             }
         }
 

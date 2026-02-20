@@ -52,6 +52,13 @@ export class GameplayState {
         this._fpsFrames = 0;
         this._fpsTime = 0;
         this._fpsDisplay = 0;
+
+        // Respawn system
+        this.spawnX = 0;
+        this.spawnY = 0;
+        this.respawnState = null;  // null | 'fadeOut' | 'hold' | 'fadeIn'
+        this.respawnTimer = 0;
+        this.fadeAlpha = 0;        // 0 = clear, 1 = full black
     }
 
     init(game) {
@@ -86,6 +93,10 @@ export class GameplayState {
             spawnX = sp.x;
             spawnY = sp.y;
         }
+
+        // Store spawn point for respawning
+        this.spawnX = spawnX;
+        this.spawnY = spawnY;
 
         // Spawn player
         this.player = new Player(spawnX, spawnY);
@@ -219,6 +230,10 @@ export class GameplayState {
                 this.player.dead = true;
                 this.player.vx = 0;
                 this.player.vy = 0;
+                this.player.dieTimer = 0;
+                this.player.diePhase = 0;
+                this.player.dieSparks = null;
+                this.player.dieParticles = [];
             }
         }
 
@@ -285,7 +300,95 @@ export class GameplayState {
             this.healTickTimer = 0;
         }
 
+        // Respawn state machine
+        if (this.respawnState) {
+            this._updateRespawn();
+        } else if (this.player.dead && this.player.diePhase === 2) {
+            // Death effect finished — start fade out
+            this.respawnState = 'fadeOut';
+            this.respawnTimer = 0;
+        }
+
         this.camera.follow(this.player);
+    }
+
+    _updateRespawn() {
+        this.respawnTimer++;
+        const FADE_OUT_DUR = 40;   // Frames to fade to black
+        const HOLD_DUR = 30;       // Frames to hold black
+        const FADE_IN_DUR = 40;    // Frames to fade back in
+
+        switch (this.respawnState) {
+            case 'fadeOut':
+                this.fadeAlpha = Math.min(1, this.respawnTimer / FADE_OUT_DUR);
+                if (this.respawnTimer >= FADE_OUT_DUR) {
+                    this.respawnState = 'hold';
+                    this.respawnTimer = 0;
+                    this._resetPlayerAtSpawn();
+                }
+                break;
+
+            case 'hold':
+                this.fadeAlpha = 1;
+                if (this.respawnTimer >= HOLD_DUR) {
+                    this.respawnState = 'fadeIn';
+                    this.respawnTimer = 0;
+                }
+                break;
+
+            case 'fadeIn':
+                this.fadeAlpha = Math.max(0, 1 - this.respawnTimer / FADE_IN_DUR);
+                if (this.respawnTimer >= FADE_IN_DUR) {
+                    this.respawnState = null;
+                    this.fadeAlpha = 0;
+                    // Now start the warp beam after screen is visible
+                    this.player.warpBeamActive = true;
+                    this.player.warpBeamY = this.player.y - 200;
+                }
+                break;
+        }
+    }
+
+    _resetPlayerAtSpawn() {
+        const p = this.player;
+        p.x = this.spawnX;
+        p.y = this.spawnY;
+        p.vx = 0;
+        p.vy = 0;
+        p.hp = p.maxHp;
+        p.dead = false;
+        p.state = 'warp_in';
+        p.animFrame = 0;
+        p.animTimer = 0;
+        p._prevAnimState = 'warp_in';
+        p.invincibleTimer = 0;
+        p.hurtTimer = 0;
+        p.chargeTime = 0;
+        p.chargeLevel = 0;
+        p.chargeFlashTimer = 0;
+        p.healQueue = 0;
+        p.shots = [];
+        p.dieTimer = 0;
+        p.diePhase = 0;
+        p.dieSparks = null;
+        p.dieParticles = [];
+
+        // Warp beam — don't start yet, wait for fade-in to complete
+        p.warpBeamY = p.y - 200;
+        p.warpBeamActive = false;
+        p.warpVisible = false;
+
+        // Re-spawn enemies and pickups
+        this.enemies = [];
+        this.pickups = [];
+        this._spawnEnemies();
+        this._spawnMapPickups();
+        this.healTickTimer = 0;
+
+        // Reset camera to (0,0) so follow() recalculates from scratch (same as first load)
+        this.camera.x = 0;
+        this.camera.y = 0;
+        this.camera.follow(p);
     }
 
     _checkPlayerShotsVsEnemies() {
@@ -407,6 +510,14 @@ export class GameplayState {
             this._renderDebugCollision(ctx);
             this._renderDebugPlayerHitbox(ctx);
             this._renderDebugFPS(ctx, game);
+        }
+
+        // Fade overlay (respawn transitions)
+        if (this.fadeAlpha > 0) {
+            ctx.globalAlpha = this.fadeAlpha;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+            ctx.globalAlpha = 1;
         }
     }
 
