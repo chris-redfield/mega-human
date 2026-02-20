@@ -110,6 +110,9 @@ export class TankEnemy extends Entity {
         this.explosionFrame = 0;
         this.explosionTimer = 0;
 
+        // Hit flash (white flash on damage)
+        this.hitFlashTimer = 0;
+
         // Sprite images (set externally)
         this.spriteImage = null;   // sigma_viral.png
         this.effectsImage = null;  // effects.png
@@ -118,6 +121,7 @@ export class TankEnemy extends Entity {
     update(game) {
         if (this.attackCooldown > 0) this.attackCooldown--;
         if (this.contactCooldown > 0) this.contactCooldown--;
+        if (this.hitFlashTimer > 0) this.hitFlashTimer--;
 
         const player = game.state?.player;
         const level = game.level;
@@ -373,6 +377,8 @@ export class TankEnemy extends Entity {
         if (this.state === 'dying') return;
 
         this.hp -= damage;
+        this.hitFlashTimer = 6; // White flash for ~0.1s
+
         if (this.hp <= 0) {
             this.hp = 0;
             this.state = 'dying';
@@ -460,18 +466,40 @@ export class TankEnemy extends Entity {
         const flipH = this.facing < 0;
 
         if (this.spriteImage) {
+            const isFlash = this.hitFlashTimer > 0;
+
             if (flipH) {
                 ctx.save();
                 ctx.translate(feetX, 0);
                 ctx.scale(-1, 1);
+                const dx = -Math.floor(frame.sw / 2) + ox;
                 ctx.drawImage(this.spriteImage,
                     frame.sx, frame.sy, frame.sw, frame.sh,
-                    -Math.floor(frame.sw / 2) + ox, drawY, frame.sw, frame.sh);
+                    dx, drawY, frame.sw, frame.sh);
+                if (isFlash) {
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.7;
+                    ctx.drawImage(this.spriteImage,
+                        frame.sx, frame.sy, frame.sw, frame.sh,
+                        dx, drawY, frame.sw, frame.sh);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
                 ctx.restore();
             } else {
+                const dx = feetX - Math.floor(frame.sw / 2) + ox;
                 ctx.drawImage(this.spriteImage,
                     frame.sx, frame.sy, frame.sw, frame.sh,
-                    feetX - Math.floor(frame.sw / 2) + ox, drawY, frame.sw, frame.sh);
+                    dx, drawY, frame.sw, frame.sh);
+                if (isFlash) {
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.7;
+                    ctx.drawImage(this.spriteImage,
+                        frame.sx, frame.sy, frame.sw, frame.sh,
+                        dx, drawY, frame.sw, frame.sh);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
             }
         } else {
             // Fallback rectangle

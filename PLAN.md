@@ -225,6 +225,45 @@ First enemy implemented: **Tank Mechaniloid** from `sigma_viral.png`.
 
 ---
 
+### 10. Classic MMX HP Bar
+
+Replace the current simple rectangle health bar with the authentic MMX vertical segmented bar using sprites from `effects.png`.
+
+**Sprite assets (all from effects.png, alignment: botmid):**
+
+| Sprite | Source Rect (x,y → w×h) | Purpose |
+|--------|------------------------|---------|
+| Health base (X) | (2,55) → 14×16 | Bottom piece with character icon |
+| Health full | (2,51) → 14×2 | Filled cell (one per HP point) |
+| Health empty | (2,37) → 14×2 | Empty cell |
+| Health top cap | (34,13) → 14×4 | Top piece capping the bar |
+
+**Rendering approach (matches MMX-Online-Deathmatch `GameMode.renderHealth()`):**
+1. Draw base piece at bottom (left side of screen, y = screenH/2 + 25)
+2. Stack filled cells upward (one per current HP), each 14×2px, contiguous
+3. Stack empty cells for remaining HP
+4. Draw top cap piece above all cells
+5. No drain animation — bar updates instantly
+
+**Screen position:** Left edge, vertically centered (x=10, y=screenH/2).
+
+---
+
+### 11. Enemy Damage Flash + Shot Hit Effect
+
+**Enemy damage flash (white flash on hit):**
+- When an enemy takes damage, flash the sprite near-white for 6 frames (~0.1s)
+- Technique: draw sprite twice with `globalCompositeOperation = 'lighter'` at ~0.7 alpha (same approach as charge flash but stronger)
+- Add `hitFlashTimer` field to all enemy classes, set to 6 on `onHit()`, decrement each frame
+- Only visual — does not affect AI or movement
+
+**Shot hit effect (buster fade on enemy hit):**
+- When a buster shot hits an enemy, play the same 3-frame fade animation already used for wall hits
+- Currently shots are set to `active = false` on enemy hit — instead set `fading = true` (same as wall collision path)
+- No new sprites needed — reuses existing `BUSTER_FRAMES.fade` / `BUSTER2_FRAMES.fade` / `BUSTER3_FRAMES.fade`
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -236,9 +275,11 @@ First enemy implemented: **Tank Mechaniloid** from `sigma_viral.png`.
 7. ~~**Charged buster shot**~~ — DONE (2 charge levels, particles, flash, animated projectiles)
 8. ~~**Enemy characters**~~ — DONE (Tank Mechaniloid: patrol, chase, shoot, die)
 9. ~~**More enemy types**~~ — DONE (Hopper + Bird, see below)
-10. **Boss fights** — Multi-phase boss AI **<-- NEXT**
-11. **Additional stages** — More MMX-Deathmatch stage assets
-12. **Health pickups / game over** — Item drops, respawn system
+10. **Classic MMX HP bar** — Vertical segmented bar using sprites from effects.png **<-- NEXT**
+11. **Enemy damage flash + shot hit effect** — White flash on enemies when hit, buster fade anim on enemy hit
+12. **Boss fights** — Multi-phase boss AI
+13. **Additional stages** — More MMX-Deathmatch stage assets
+14. **Health pickups / game over** — Item drops, respawn system
 
 ---
 

@@ -162,7 +162,11 @@ export class GameplayState {
 
                 if (boxOverlap(shotBox, enemyBox)) {
                     enemy.onHit(shot.damage);
-                    shot.active = false;
+                    // Play fade/hit animation (same as wall hit)
+                    shot.fading = true;
+                    shot.fadeFrame = 0;
+                    shot.fadeTimer = 0;
+                    shot.vx = 0;
                     break; // Each shot only hits one enemy
                 }
             }
@@ -204,25 +208,49 @@ export class GameplayState {
 
     _renderHUD(ctx) {
         const player = this.player;
+        const ef = this.assets.getImage('effectsSprite');
 
-        // Health bar background
-        ctx.fillStyle = '#000';
-        ctx.fillRect(8, 8, 52, 10);
+        if (ef) {
+            this._renderHealthBar(ctx, ef, player);
+        }
+    }
 
-        // Health bar fill
-        const hpPercent = player.hp / player.maxHp;
-        const hpColor = hpPercent > 0.5 ? '#00cc44' : hpPercent > 0.25 ? '#cccc00' : '#cc0000';
-        ctx.fillStyle = hpColor;
-        ctx.fillRect(9, 9, Math.floor(50 * hpPercent), 8);
+    /**
+     * Classic MMX vertical segmented health bar.
+     * Sprites from effects.png: base (14x16), full cell (14x2), empty cell (14x2), top cap (14x4).
+     * Drawn bottom-to-top on the left side of the screen.
+     */
+    _renderHealthBar(ctx, ef, player) {
+        // HP bar sprite rects from effects.png
+        const BASE  = { sx: 2,  sy: 55, sw: 14, sh: 16 }; // X character base piece
+        const FULL  = { sx: 2,  sy: 51, sw: 14, sh: 2 };  // Filled cell
+        const EMPTY = { sx: 2,  sy: 37, sw: 14, sh: 2 };  // Empty cell
+        const CAP   = { sx: 34, sy: 13, sw: 14, sh: 4 };  // Top cap
 
-        // Health bar border
-        ctx.strokeStyle = '#aaa';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(8.5, 8.5, 51, 9);
+        const barX = 10;
+        const maxHp = player.maxHp;
+        const curHp = Math.ceil(player.hp);
 
-        // State debug text
-        ctx.fillStyle = '#fff';
-        ctx.font = '8px monospace';
-        ctx.fillText(`${player.state} vx:${player.vx.toFixed(1)} vy:${player.vy.toFixed(1)}`, 8, SCREEN_H - 8);
+        // Start from bottom: base piece at vertical center + offset
+        let y = Math.floor(SCREEN_H / 2) + 25;
+
+        // Draw base piece (bottom, contains character icon)
+        ctx.drawImage(ef, BASE.sx, BASE.sy, BASE.sw, BASE.sh,
+            barX, y - BASE.sh, BASE.sw, BASE.sh);
+
+        // Move up past base
+        y -= BASE.sh;
+
+        // Draw cells bottom-to-top (cell 0 = bottom, cell maxHp-1 = top)
+        for (let i = 0; i < maxHp; i++) {
+            const cell = i < curHp ? FULL : EMPTY;
+            ctx.drawImage(ef, cell.sx, cell.sy, cell.sw, cell.sh,
+                barX, y - cell.sh, cell.sw, cell.sh);
+            y -= cell.sh;
+        }
+
+        // Draw top cap
+        ctx.drawImage(ef, CAP.sx, CAP.sy, CAP.sw, CAP.sh,
+            barX, y - CAP.sh, CAP.sw, CAP.sh);
     }
 }
