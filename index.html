@@ -64,8 +64,11 @@
                 loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
                 // Build background tile spritesheet from ROM
                 assets.getSpriteSheet('bg_terrain', 'sprites', 0, false);
-                // Load player spritesheet PNG
-                await assets.loadImage('playerSprite', './assets/XDefault.png');
+                // Load player spritesheet PNG and effects spritesheet
+                await Promise.all([
+                    assets.loadImage('playerSprite', './assets/XDefault.png'),
+                    assets.loadImage('effectsSprite', './assets/effects.png'),
+                ]);
 
                 // Start game
                 loading.style.display = 'none';

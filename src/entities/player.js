@@ -8,7 +8,7 @@
 
 import { Entity } from './entity.js';
 import { resolveHorizontal, resolveVertical, checkWallContact, isSolid } from '../engine/collision.js';
-import { getAnim } from './sprite-data.js';
+import { getAnim, BUSTER_FRAMES } from './sprite-data.js';
 
 // Physics constants (tuned to match Mega Man X feel)
 const P = {
@@ -314,9 +314,11 @@ export class Player extends Entity {
 
     _handleShooting(input) {
         if (input.pressed('shoot') && this.shotCooldown <= 0 && this.shots.length < P.MAX_SHOTS) {
-            // Get hand position from current animation frame
-            const shooting = this.shootAnimTimer > 0;
-            const anim = getAnim(this.state, shooting);
+            // Trigger shoot animation overlay
+            this.shootAnimTimer = 18; // 0.3 seconds at 60fps
+
+            // Get hand position from the shoot animation frame we just activated
+            const anim = getAnim(this.state, true);
             const frameIdx = this.animFrame % anim.frames.length;
             const frame = anim.frames[frameIdx];
 
@@ -326,43 +328,64 @@ export class Player extends Entity {
 
             let spawnX, spawnY;
             if (frame.hx !== undefined) {
-                // Hand POI: offset from sprite center-bottom
-                spawnX = feetX + (this.facing > 0 ? frame.hx : -frame.hx);
-                spawnY = feetY + (frame.hy || 0);
+                // Hand POI: offset from feet-center, flip X for facing
+                // Wall slide: facing points away from wall, but hx is already negative
+                // (pointing away from wall in original coords), so negate it
+                const hx = this.state === 'wall_slide' ? -frame.hx : frame.hx;
+                spawnX = feetX + hx * this.facing;
+                spawnY = feetY + frame.hy;
             } else {
                 // Fallback: spawn from hitbox edge
-                spawnX = this.x + (this.facing > 0 ? this.hitboxW + this.hitboxX : this.hitboxX - 4);
-                spawnY = this.y + this.hitboxY + this.hitboxH / 2 - 2;
+                spawnX = feetX + (this.hitboxW / 2 + 4) * this.facing;
+                spawnY = feetY - this.hitboxH / 2;
             }
 
             this.shots.push({
                 x: spawnX,
                 y: spawnY,
                 vx: P.SHOT_SPEED * this.facing,
-                w: 8,
-                h: 4,
                 active: true,
                 damage: 1,
+                fading: false,
             });
             this.shotCooldown = P.SHOT_COOLDOWN;
-            this.shootAnimTimer = 18; // 0.3 seconds at 60fps
         }
     }
 
     _updateShots(level) {
         for (const shot of this.shots) {
             if (!shot.active) continue;
+
+            if (shot.fading) {
+                // Advance fade animation
+                shot.fadeTimer++;
+                const fadeFrame = BUSTER_FRAMES.fade[shot.fadeFrame];
+                if (fadeFrame && shot.fadeTimer >= fadeFrame.dur) {
+                    shot.fadeTimer = 0;
+                    shot.fadeFrame++;
+                    if (shot.fadeFrame >= BUSTER_FRAMES.fade.length) {
+                        shot.active = false;
+                    }
+                }
+                continue;
+            }
+
             shot.x += shot.vx;
 
-            // Remove if off-screen (rough check)
+            // Remove if off-screen
             if (shot.x < this.x - 300 || shot.x > this.x + 300) {
                 shot.active = false;
                 continue;
             }
 
-            // Remove if hitting a wall
-            if (isSolid(level, shot.x + (shot.vx > 0 ? shot.w : 0), shot.y + shot.h / 2)) {
-                shot.active = false;
+            // Check wall collision (check from center of shot)
+            const checkX = shot.x + (shot.vx > 0 ? 4 : -4);
+            if (isSolid(level, checkX, shot.y)) {
+                // Start fade animation instead of instant removal
+                shot.fading = true;
+                shot.fadeFrame = 0;
+                shot.fadeTimer = 0;
+                shot.vx = 0;
             }
         }
 
@@ -481,28 +504,27 @@ export class Player extends Entity {
         if (this.state === 'wall_slide') flipH = !flipH;
 
         // Sprite anchor = bottom-center of hitbox
-        // Entity position + hitbox gives the character's feet
         const feetX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
         const feetY = Math.floor(this.y + this.hitboxY + this.hitboxH - camera.y);
 
         if (this.spriteImage) {
             const ox = frame.ox || 0;
             const oy = frame.oy || 0;
-
-            // Bottom-center alignment: sprite draws from (feetX - sw/2, feetY - sh)
-            let drawX = feetX - Math.floor(frame.sw / 2) + ox;
             const drawY = feetY - frame.sh + oy;
 
             if (flipH) {
                 ctx.save();
-                ctx.translate(feetX + ox, 0);
+                // Flip axis is always at feetX (character center)
+                ctx.translate(feetX, 0);
                 ctx.scale(-1, 1);
-                drawX = -Math.floor(frame.sw / 2);
+                // Keep ox sign — scale(-1) already mirrors the coordinate space
+                const drawX = -Math.floor(frame.sw / 2) + ox;
                 ctx.drawImage(this.spriteImage,
                     frame.sx, frame.sy, frame.sw, frame.sh,
                     drawX, drawY, frame.sw, frame.sh);
                 ctx.restore();
             } else {
+                const drawX = feetX - Math.floor(frame.sw / 2) + ox;
                 ctx.drawImage(this.spriteImage,
                     frame.sx, frame.sy, frame.sw, frame.sh,
                     drawX, drawY, frame.sw, frame.sh);
@@ -518,11 +540,49 @@ export class Player extends Entity {
         }
 
         // Render projectiles
+        this._renderShots(ctx, camera);
+    }
+
+    _renderShots(ctx, camera) {
+        const ef = this.effectsImage;
+        const bf = BUSTER_FRAMES.shot;
+
         for (const shot of this.shots) {
-            const shotX = Math.floor(shot.x - camera.x);
-            const shotY = Math.floor(shot.y - camera.y);
-            ctx.fillStyle = '#00d4ff';
-            ctx.fillRect(shotX, shotY, shot.w, shot.h);
+            const sx = Math.floor(shot.x - camera.x);
+            const sy = Math.floor(shot.y - camera.y);
+
+            if (ef) {
+                // Draw buster sprite centered on shot position
+                if (shot.fading) {
+                    // Fade/hit animation
+                    const fadeFrame = BUSTER_FRAMES.fade[shot.fadeFrame] || BUSTER_FRAMES.fade[0];
+                    ctx.drawImage(ef,
+                        fadeFrame.sx, fadeFrame.sy, fadeFrame.sw, fadeFrame.sh,
+                        sx - Math.floor(fadeFrame.sw / 2), sy - Math.floor(fadeFrame.sh / 2),
+                        fadeFrame.sw, fadeFrame.sh);
+                } else {
+                    // Normal buster shot — flip sprite based on direction
+                    if (shot.vx < 0) {
+                        ctx.save();
+                        ctx.translate(sx, 0);
+                        ctx.scale(-1, 1);
+                        ctx.drawImage(ef,
+                            bf.sx, bf.sy, bf.sw, bf.sh,
+                            -Math.floor(bf.sw / 2), sy - Math.floor(bf.sh / 2),
+                            bf.sw, bf.sh);
+                        ctx.restore();
+                    } else {
+                        ctx.drawImage(ef,
+                            bf.sx, bf.sy, bf.sw, bf.sh,
+                            sx - Math.floor(bf.sw / 2), sy - Math.floor(bf.sh / 2),
+                            bf.sw, bf.sh);
+                    }
+                }
+            } else {
+                // Fallback: colored rectangle
+                ctx.fillStyle = '#ffdd00';
+                ctx.fillRect(sx - 4, sy - 3, 8, 6);
+            }
         }
     }
 

@@ -34,6 +34,7 @@ export class GameplayState {
         // Spawn player
         this.player = new Player(48, this.level.height - 80);
         this.player.spriteImage = this.spriteImage;
+        this.player.effectsImage = this.assets.getImage('effectsSprite');
 
         // Expose on game object
         game.level = this.level;

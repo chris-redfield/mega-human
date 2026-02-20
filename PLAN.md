@@ -66,10 +66,15 @@ All needed assets are copied into our `assets/` folder — nothing references th
 
 **Working:**
 - Player spritesheet (`assets/XDefault.png`) loaded and rendering correctly
-- 18 animations in `src/entities/sprite-data.js` (auto-generated from MMX Deathmatch JSONs)
-- States confirmed working in-game: idle, run, jump, fall, wall_slide, dash, hurt
-- Wall slide flip fix applied (sprite inverted for correct wall-facing)
-- Background tiles still render from ROM data
+- 18 animations in `src/entities/sprite-data.js` (generated from MMX Deathmatch JSONs)
+- All movement states confirmed: idle, run, jump, fall, wall_slide, dash, hurt
+- Shooting animation overlay: 6 shoot variants (idle, run, jump, fall, dash, wall_slide)
+- Buster projectile sprites from `assets/effects.png` (8x6 shot + 3-frame fade on wall hit)
+- Projectile spawn from hand POI (`hx`/`hy` buster position per animation frame)
+- Wall slide flip fix (sprite inverted for correct wall-facing)
+- Wall slide shooting fires in correct direction (away from wall)
+- Left-facing sprite rendering stable (flip axis fixed at character center)
+- Background tiles render from ROM data
 - Full movement state machine (run, jump, wall-jump, dash, shoot mechanics)
 
 ### Plan Items
@@ -78,39 +83,7 @@ All needed assets are copied into our `assets/` folder — nothing references th
 
 ### 1. Finish Player Sprites
 
-The basic movement animations are working. What's missing is the **shooting animation overlay system**.
-
-#### What exists in sprite-data.js (already generated):
-| Animation | Frames | Loop | Description |
-|-----------|--------|------|-------------|
-| `shoot` | 2 | no | Shooting while idle/stationary |
-| `run_shoot` | 10 | yes | Shooting while running |
-| `jump_shoot` | 3 | no | Shooting while jumping/rising |
-| `fall_shoot` | 2 | no | Shooting while falling |
-| `dash_shoot` | 2 | no | Shooting while dashing |
-| `wall_slide_shoot` | 1 | no | Shooting while wall sliding |
-
-#### What needs to be implemented in player.js:
-
-**Shoot animation overlay system** (based on MMX Deathmatch logic):
-
-1. **`shootAnimTimer`** — When the player fires, set a timer (0.3 seconds = 18 frames at 60fps). While this timer is active, use the `_shoot` variant of the current state's animation instead of the normal one.
-
-2. **State-to-shoot-animation mapping:**
-   ```
-   idle       → shoot
-   run        → run_shoot
-   jump       → jump_shoot
-   fall       → fall_shoot
-   dash       → dash_shoot
-   wall_slide → wall_slide_shoot
-   ```
-
-3. **Shoot animation carries across state transitions** — If the player fires while idle then starts running, the shoot timer persists and `run_shoot` is used instead of `run`. The timer counts down regardless of state changes.
-
-4. **Projectile spawn position** — Each frame in sprite-data.js has `hx` and `hy` values (hand/buster position relative to sprite anchor). Projectiles should spawn at these coordinates, adjusted for facing direction.
-
-#### Other player animations to wire up later:
+**Remaining:**
 - `land` — Brief landing squash animation (2 frames)
 - `warp_in` — Level start teleport beam (6 frames)
 - `die` — Death animation (2 frames)
