@@ -90,13 +90,13 @@ export class GameplayState {
         // Per-stage enemy layouts
         const layouts = {
             highway: {
-                tanks:   [{ x: 500, y: 100 }, { x: 900, y: 100 }, { x: 1300, y: 100 }],
+                tanks:   [{ x: 500, y: 100 }, { x: 900, y: 50 }, { x: 1300, y: 100 }],
                 hoppers: [{ x: 650, y: 100 }, { x: 1100, y: 100 }],
                 birds:   [{ x: 400, y: 60 },  { x: 800, y: 50 },  { x: 1200, y: 55 }],
             },
             frozentown: {
                 tanks:   [{ x: 500, y: 150 }, { x: 900, y: 150 }, { x: 1400, y: 150 }],
-                hoppers: [{ x: 350, y: 350 }, { x: 700, y: 350 }, { x: 1100, y: 330 }],
+                hoppers: [{ x: 340, y: 350 }, { x: 700, y: 350 }, { x: 1100, y: 330 }],
                 birds:   [{ x: 600, y: 120 }, { x: 1000, y: 100 }, { x: 1500, y: 130 }],
             },
         };
