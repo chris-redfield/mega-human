@@ -34,10 +34,10 @@ export class AssetLoader {
     /** Load all assets for a stage (background PNGs + map.json). */
     async loadStage(name) {
         await Promise.all([
-            this.loadImage(`${name}_background`, `./assets/${name}_background.png`),
-            this.loadImage(`${name}_backwall`, `./assets/${name}_backwall.png`),
-            this.loadImage(`${name}_parallax`, `./assets/${name}_parallax.png`),
-            this.loadJSON(`${name}_map`, `./assets/${name}_map.json`),
+            this.loadImage(`${name}_background`, `./assets/levels/${name}_background.png`),
+            this.loadImage(`${name}_backwall`, `./assets/levels/${name}_backwall.png`),
+            this.loadImage(`${name}_parallax`, `./assets/levels/${name}_parallax.png`),
+            this.loadJSON(`${name}_map`, `./assets/levels/${name}_map.json`),
         ]);
     }
 
