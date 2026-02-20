@@ -2,7 +2,7 @@
  * player.js
  * Mega Man X-style player character with full movement state machine.
  *
- * States: idle, run, jump, fall, wall_slide, dash, hurt
+ * States: warp_in, idle, run, jump, fall, land, wall_slide, dash, hurt, die
  * Actions: run, jump, wall-jump, dash, shoot
  */
 
@@ -55,7 +55,7 @@ export class Player extends Entity {
         this.hitboxH = P.HEIGHT;
 
         this.facing = 1; // 1 = right, -1 = left
-        this.state = 'idle';
+        this.state = 'warp_in';
         this.grounded = false;
         this.wallContact = 0; // -1 left, 0 none, 1 right
 
@@ -74,7 +74,8 @@ export class Player extends Entity {
         // Animation
         this.animFrame = 0;
         this.animTimer = 0;
-        this._prevAnimState = 'idle';
+        this._prevAnimState = 'warp_in';
+        this.dead = false;
     }
 
     update(game) {
@@ -90,6 +91,9 @@ export class Player extends Entity {
 
         // State machine
         switch (this.state) {
+            case 'warp_in':
+                this._warpInState(input, level);
+                break;
             case 'idle':
             case 'run':
                 this._groundState(input, level);
@@ -97,6 +101,9 @@ export class Player extends Entity {
             case 'jump':
             case 'fall':
                 this._airState(input, level);
+                break;
+            case 'land':
+                this._landState(input, level);
                 break;
             case 'wall_slide':
                 this._wallSlideState(input, level);
@@ -107,10 +114,14 @@ export class Player extends Entity {
             case 'hurt':
                 this._hurtState(input, level);
                 break;
+            case 'die':
+                this._dieState(input, level);
+                break;
         }
 
-        // Shooting (available in most states, including dash)
-        if (this.state !== 'hurt') {
+        // Shooting (available in most states)
+        const noShootStates = ['hurt', 'die', 'warp_in', 'land'];
+        if (!noShootStates.includes(this.state)) {
             this._handleShooting(input);
         }
 
@@ -155,7 +166,6 @@ export class Player extends Entity {
         if (input.pressed('dash') && this.dashCooldown <= 0) {
             this.dashTimer = P.DASH_DURATION;
             this.vx = P.DASH_SPEED * this.facing;
-            this.vy = 0;
             this.state = 'dash';
             return;
         }
@@ -216,9 +226,9 @@ export class Player extends Entity {
             }
         }
 
-        // Landing
+        // Landing — play land animation
         if (this.grounded) {
-            this.state = this.vx !== 0 ? 'run' : 'idle';
+            this.state = 'land';
         }
     }
 
@@ -267,13 +277,28 @@ export class Player extends Entity {
 
     _dashState(input, level) {
         this.dashTimer--;
-        this.vy = 0; // Ground dash stays flat
         this.vx = P.DASH_SPEED * this.facing;
+
+        // Apply gravity always — collision keeps player on ground,
+        // and this ensures grounded detection works (dy must be > 0)
+        this.vy += P.GRAVITY;
+        if (this.vy > P.MAX_FALL_SPEED) this.vy = P.MAX_FALL_SPEED;
 
         if (this.dashTimer <= 0) {
             this.dashCooldown = P.DASH_COOLDOWN;
-            this.vx = input.held('left') || input.held('right') ? P.RUN_SPEED * this.facing : 0;
-            this.state = this.grounded ? (this.vx !== 0 ? 'run' : 'idle') : 'fall';
+            if (this.grounded) {
+                // Original MMX: dash snaps directly to idle or run (no transition anim)
+                if (input.held('left') || input.held('right')) {
+                    this.vx = P.RUN_SPEED * this.facing;
+                    this.state = 'run';
+                } else {
+                    this.vx = 0;
+                    this.state = 'idle';
+                }
+            } else {
+                this.vx = input.held('left') || input.held('right') ? P.RUN_SPEED * this.facing : 0;
+                this.state = 'fall';
+            }
             return;
         }
 
@@ -285,12 +310,6 @@ export class Player extends Entity {
             this.state = 'jump';
             // Keep dash speed for dash-jump momentum
             return;
-        }
-
-        // Apply gravity if in air
-        if (!this.grounded) {
-            this.vy += P.GRAVITY;
-            if (this.vy > P.MAX_FALL_SPEED) this.vy = P.MAX_FALL_SPEED;
         }
     }
 
@@ -308,6 +327,67 @@ export class Player extends Entity {
             this.vx = 0;
             this.state = 'idle';
         }
+    }
+
+    _warpInState(input, level) {
+        // Locked during warp-in — no input, just gravity + animation
+        this.vx = 0;
+        this.vy += P.GRAVITY;
+        if (this.vy > P.MAX_FALL_SPEED) this.vy = P.MAX_FALL_SPEED;
+
+        // Check if warp_in animation has finished
+        const anim = getAnim('warp_in');
+        if (this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1 &&
+            this.animFrame >= anim.frames.length - 1) {
+            this.state = 'idle';
+        }
+    }
+
+    _landState(input, level) {
+        // Apply gravity to maintain grounded detection (vy=0 causes grounded=false)
+        this.vy += P.GRAVITY;
+        if (this.vy > P.MAX_FALL_SPEED) this.vy = P.MAX_FALL_SPEED;
+
+        // Jump cancel
+        if (input.pressed('jump')) {
+            this.vy = P.JUMP_VELOCITY;
+            this.grounded = false;
+            this.state = 'jump';
+            return;
+        }
+
+        // Animation finished → exit to idle/run
+        const anim = getAnim('land');
+        if (this.animFrame >= anim.frames.length - 1 &&
+            this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1) {
+            if (input.held('left') || input.held('right')) {
+                this.facing = input.held('left') ? -1 : 1;
+                this.vx = P.RUN_SPEED * this.facing;
+                this.state = 'run';
+            } else {
+                this.vx = 0;
+                this.state = 'idle';
+            }
+            return;
+        }
+
+        // Slow movement during land
+        if (input.held('left')) {
+            this.facing = -1;
+            this.vx = -P.RUN_SPEED * 0.5;
+        } else if (input.held('right')) {
+            this.facing = 1;
+            this.vx = P.RUN_SPEED * 0.5;
+        } else {
+            this.vx = 0;
+        }
+    }
+
+    _dieState(input, level) {
+        // Death animation — no input, no movement
+        this.vx = 0;
+        this.vy = 0;
+        // Animation plays once and holds on last frame
     }
 
     // --- Shooting ---
@@ -445,7 +525,10 @@ export class Player extends Entity {
 
         if (this.hp <= 0) {
             this.hp = 0;
-            this.destroy();
+            this.state = 'die';
+            this.vx = 0;
+            this.vy = 0;
+            this.dead = true;
         }
     }
 

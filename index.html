@@ -39,7 +39,7 @@
     </style>
 </head>
 <body>
-    <div id="loading">MEGAGAME 2026 — Loading ROM...</div>
+    <div id="loading">MEGAGAME 2026 — Loading...</div>
     <canvas id="game" style="display:none"></canvas>
     <div id="controls" style="display:none">
         Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash
@@ -56,15 +56,14 @@
 
         async function init() {
             try {
-                // Load ROM and decode assets
-                loading.textContent = 'MEGAGAME 2026 — Loading ROM...';
+                loading.textContent = 'MEGAGAME 2026 — Loading stage...';
                 const assets = new AssetLoader();
-                await assets.loadRom('./mega-game-raw.sfc');
+
+                // Load stage assets (background PNGs + map.json)
+                await assets.loadStage('highway');
 
                 loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
-                // Build background tile spritesheet from ROM
-                assets.getSpriteSheet('bg_terrain', 'sprites', 0, false);
-                // Load player spritesheet PNG and effects spritesheet
+                // Load player spritesheet and effects
                 await Promise.all([
                     assets.loadImage('playerSprite', './assets/XDefault.png'),
                     assets.loadImage('effectsSprite', './assets/effects.png'),
@@ -76,7 +75,7 @@
                 controls.style.display = 'block';
 
                 const game = new Game(canvas);
-                game.setState(new GameplayState(assets));
+                game.setState(new GameplayState(assets, 'highway'));
                 game.start();
             } catch (e) {
                 loading.textContent = `Error: ${e.message}`;

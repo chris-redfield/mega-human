@@ -38,12 +38,7 @@ Our original approach was to extract all sprite graphics directly from the SNES 
 
 ### What Was Preserved
 
-The ROM parsing pipeline (Phase 1) still works and is used for background tiles:
-- `src/rom/hex-parser.js` — ROM binary loading
-- `src/rom/lorom.js` — SNES address mapping
-- `src/rom/tile-decoder.js` — 4bpp tile decoding
-- `src/rom/palette-decoder.js` — SNES palette decoding
-- Background terrain tiles render correctly from ROM data (tileset at `0x158000`, palette at `0x2BE00`)
+The ROM parsing pipeline was fully removed in Plan 2.1. All `src/rom/` files, `sprite-frames.js`, and `asset-map.json` have been deleted. Background rendering now uses pre-rendered PNG images from MMX-Online-Deathmatch stage assets.
 
 All reverse engineering findings are preserved below in the **Appendix** for reference.
 
@@ -66,28 +61,36 @@ All needed assets are copied into our `assets/` folder — nothing references th
 
 **Working:**
 - Player spritesheet (`assets/XDefault.png`) loaded and rendering correctly
-- 18 animations in `src/entities/sprite-data.js` (generated from MMX Deathmatch JSONs)
-- All movement states confirmed: idle, run, jump, fall, wall_slide, dash, hurt
+- 20 animations in `src/entities/sprite-data.js` (generated from MMX Deathmatch JSONs)
+- Full state machine: warp_in, idle, run, jump, fall, land, wall_slide, dash, dash_end, hurt, die
+- Warp-in animation plays at level start (input locked during animation)
+- Land animation plays on landing from air (2-frame squash, jump-cancellable)
+- Dash-end animation plays after ground dash ends (brief stand-up transition)
+- Die state on 0 HP (animation plays, player stops)
 - Shooting animation overlay: 6 shoot variants (idle, run, jump, fall, dash, wall_slide)
 - Buster projectile sprites from `assets/effects.png` (8x6 shot + 3-frame fade on wall hit)
 - Projectile spawn from hand POI (`hx`/`hy` buster position per animation frame)
 - Wall slide flip fix (sprite inverted for correct wall-facing)
 - Wall slide shooting fires in correct direction (away from wall)
 - Left-facing sprite rendering stable (flip axis fixed at character center)
-- Background tiles render from ROM data
+- **Highway stage** background from MMX-Deathmatch PNG assets (parallax + backwall + background layers)
+- Stage collision rasterized from map.json polygon data onto 16x16 tile grid
+- Spawn points loaded from map.json
 - Full movement state machine (run, jump, wall-jump, dash, shoot mechanics)
+- **ROM dependency fully removed** — no .sfc file needed, all `src/rom/` deleted
 
 ### Plan Items
 
 ---
 
-### 1. Finish Player Sprites
+### 1. Finish Player Sprites (DONE)
 
-**Remaining:**
-- `land` — Brief landing squash animation (2 frames)
-- `warp_in` — Level start teleport beam (6 frames)
-- `die` — Death animation (2 frames)
-- `crouch` — Crouching (1 frame, if we add crouch mechanic)
+**Completed:**
+- ~~`land`~~ — Landing squash animation wired into state machine
+- ~~`warp_in`~~ — Level start teleport beam plays on spawn
+- ~~`die`~~ — Death animation on 0 HP
+- ~~`dash_end`~~ — Brief stand-up transition after ground dash
+- `crouch` — Crouching (1 frame, data exists, not wired — future if we add crouch mechanic)
 
 ---
 
@@ -115,47 +118,30 @@ The MMX Deathmatch project contains spritesheets for many characters. Available 
 
 ---
 
-### 3. Shooting & Projectile System
+### 3. Shooting & Projectile System (DONE)
 
-#### Current state:
-- Player can shoot (basic projectile rectangles, cyan colored)
-- Max 3 shots on screen, 8-frame cooldown
-- Projectiles collide with walls and despawn off-screen
-- Projectile spawn position uses hitbox center (not hand POI)
+All shooting features are implemented:
+- Buster shot sprites from `effects.png` (8x6 sprite, direction-aware rendering)
+- 3-frame fade/hit animation on wall collision
+- Hand POI-based spawn position (`hx`/`hy` per animation frame)
+- Max 3 shots, 8-frame cooldown
+- 6 shoot animation overlays (idle, run, jump, fall, dash, wall_slide)
 
-#### What needs to change:
-
-**a) Visual projectile sprites** from `assets/effects.png`:
-- Normal buster shot: `effects.png` rect (123, 253) to (131, 259) — 8×6 pixels
-- Buster fade/hit: `effects.png` from `buster1_fade.json` frames
-- Need to extract frame rects from effects JSON files
-
-**b) Projectile spawn from hand POI:**
-- Use `hx`, `hy` from current animation frame in sprite-data.js
-- Adjust for facing direction (flip hx when facing left)
-- Currently spawns from hitbox edge — should spawn from hand position
-
-**c) Charged shot (future):**
-- MMX Deathmatch has charge levels 1-4 with different projectile sizes/damage
-- Charge animations: `shoot_charge1`, `shoot_charge2`, etc.
-- Visual charge glow effect on character while charging
-- This is a stretch goal — normal buster first
-
-**d) Projectile rendering:**
-- Replace solid cyan rectangles with actual sprite frames from effects.png
-- Add projectile hit/fade animation when hitting walls or enemies
-- Different projectile types could use different effect sprites
+**Future:**
+- Charged shot — Hold-to-charge buster mechanic (stretch goal)
 
 ---
 
 ### Implementation Priority
 
-1. **Shooting overlay animations** — Wire `shootAnimTimer` into player.js, use `_shoot` animation variants
-2. **Projectile spawn from POI** — Use `hx`/`hy` from sprite frame data
-3. **Projectile sprites** — Load effects.png, render actual buster shot sprites
-4. **Enemy characters** — Start with one Maverick as a test enemy
-5. **Boss fights** — Multi-phase boss AI
-6. **Charged shot** — Hold-to-charge buster mechanic
+1. ~~**Shooting overlay animations**~~ — DONE
+2. ~~**Projectile spawn from POI**~~ — DONE
+3. ~~**Projectile sprites**~~ — DONE
+4. ~~**ROM removal + stage assets**~~ — DONE (highway stage PNG backgrounds + polygon collision)
+5. ~~**Player animation states**~~ — DONE (warp_in, land, die, dash_end)
+6. **Enemy characters** — Start with one Maverick as a test enemy **<-- NEXT**
+7. **Boss fights** — Multi-phase boss AI
+8. **Charged shot** — Hold-to-charge buster mechanic
 
 ---
 
@@ -168,25 +154,28 @@ mega-port/
 ├── PLAN.md                       — This file
 ├── assets/
 │   ├── XDefault.png              — Player spritesheet (from MMX Deathmatch)
-│   └── effects.png               — Projectile/VFX spritesheet (from MMX Deathmatch)
+│   ├── effects.png               — Projectile/VFX spritesheet (from MMX Deathmatch)
+│   ├── highway_background.png    — Highway stage background (from MMX Deathmatch)
+│   ├── highway_backwall.png      — Highway stage backwall layer
+│   ├── highway_parallax.png      — Highway stage parallax layer
+│   └── highway_map.json          — Highway stage collision/spawn data
 ├── src/
-│   ├── rom/                      — ROM parsing (hex-parser, lorom, tile-decoder, palette-decoder)
 │   ├── engine/                   — Game loop, rendering, input, camera, collision
 │   │   ├── game.js               — Fixed 60fps game loop
 │   │   ├── input.js              — Keyboard input (pressed/held/released)
-│   │   ├── renderer.js           — SpriteSheet class (tile→canvas rendering)
+│   │   ├── renderer.js           — (empty, ROM SpriteSheet removed)
 │   │   ├── camera.js             — Viewport scrolling (256×224)
 │   │   └── collision.js          — Tile-based AABB collision
 │   ├── entities/
 │   │   ├── entity.js             — Base entity class
-│   │   ├── player.js             — Player state machine + rendering
-│   │   └── sprite-data.js        — Player animation frame data (auto-generated)
+│   │   ├── player.js             — Player state machine + rendering (11 states)
+│   │   └── sprite-data.js        — Player animation frame data (20 anims)
 │   ├── states/
-│   │   └── gameplay.js           — Main gameplay state (level, player, camera, HUD)
+│   │   └── gameplay.js           — Main gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/
-│   │   └── level.js              — Test level (collision grid + visual tiles)
+│   │   └── level.js              — Level from map.json (polygon→tile-grid rasterizer)
 │   └── assets/
-│       └── asset-loader.js       — ROM + image loading/caching
+│       └── asset-loader.js       — Image + JSON loading/caching
 ├── analysis/
 │   ├── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
 │   ├── disasm65816.py            — 65816 disassembler
