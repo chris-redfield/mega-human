@@ -72,6 +72,11 @@ All needed assets are copied into our `assets/` folder — nothing references th
 - Charged buster: hold shoot to charge (2 levels), release for bigger animated projectile
 - 8 charge particles orbit player while charging, character flashes white
 
+**Enemies:**
+- Tank Mechaniloid: patrol/turn/chase/attack/dying AI, 8 HP, fires projectiles
+- Sprites from `assets/sigma_viral.png`, death explosion from `assets/effects.png`
+- Full collision system: player shots hit enemies, enemy shots/body hit player
+
 **Stage:**
 - Highway stage from MMX-Deathmatch PNG assets (parallax + backwall + background layers)
 - Collision rasterized from map.json polygon data onto 16x16 tile grid
@@ -159,6 +164,33 @@ Sprite sources (all from effects.png):
 
 ---
 
+### 6. Enemy Characters (DONE — Tank Mechaniloid)
+
+First enemy implemented: **Tank Mechaniloid** from `sigma_viral.png`.
+
+**AI State Machine (5 states):**
+- `patrol` — Walk left/right within 150px of spawn, turn at ledges/walls
+- `turn` — Play 1-frame turn animation (10 frames), then flip direction
+- `chase` — Move toward player when spotted within 130px sight range
+- `attack` — Stop and fire projectile when player is within 125px horizontal, 30px vertical
+- `dying` — Play 8-frame explosion animation from effects.png, then remove
+
+**Combat:**
+- 8 HP, takes damage from player buster shots (normal and charged)
+- Fires 8x7 pixel projectile (damage 2, speed 3.0, 30-frame lifetime)
+- Contact damage: 3 damage on body touch (60-frame cooldown)
+- Projectile spawn from POI offset (20px forward, 15px up from feet)
+
+**Collision System (in gameplay.js):**
+- Player shots vs enemies: AABB overlap check, shot destroyed on hit
+- Charged shots use larger hitboxes (20x16 for level 1, 32x28 for level 2)
+- Enemy shots vs player: triggers `player.takeDamage()` with knockback direction
+- Enemy body vs player: contact damage with cooldown
+
+**Sprites:** 4 animations (walk: 2 frames, turn: 1 frame, shoot: 2 frames, proj: 1 frame), all from `sigma_viral.png` row y=991-1023. Death explosion: 8 frames from `effects.png`.
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -168,10 +200,11 @@ Sprite sources (all from effects.png):
 5. ~~**Player animation states**~~ — DONE (warp_in, land, die)
 6. ~~**Dash-jump momentum**~~ — DONE (isDashing flag, 2x speed through air)
 7. ~~**Charged buster shot**~~ — DONE (2 charge levels, particles, flash, animated projectiles)
-8. **Enemy characters** — Start with one Maverick as a test enemy **<-- NEXT**
-9. **Boss fights** — Multi-phase boss AI
-10. **Additional stages** — More MMX-Deathmatch stage assets
-11. **Health pickups / game over** — Item drops, respawn system
+8. ~~**Enemy characters**~~ — DONE (Tank Mechaniloid: patrol, chase, shoot, die)
+9. **More enemy types** — Hopper (jump + melee), Bird (flying) **<-- NEXT**
+10. **Boss fights** — Multi-phase boss AI
+11. **Additional stages** — More MMX-Deathmatch stage assets
+12. **Health pickups / game over** — Item drops, respawn system
 
 ---
 
@@ -183,7 +216,8 @@ mega-human/
 ├── PLAN.md                       — This file
 ├── assets/
 │   ├── XDefault.png              — Player spritesheet (from MMX Deathmatch)
-│   ├── effects.png               — Projectile/VFX spritesheet (buster shots, charge particles)
+│   ├── effects.png               — Projectile/VFX spritesheet (buster shots, charge particles, explosions)
+│   ├── sigma_viral.png           — Tank Mechaniloid spritesheet (enemy sprites + projectile)
 │   ├── highway_background.png    — Highway stage background layer
 │   ├── highway_backwall.png      — Highway stage backwall layer
 │   ├── highway_parallax.png      — Highway stage parallax layer (0.5x scroll)
@@ -195,9 +229,10 @@ mega-human/
 │   │   ├── camera.js             — Viewport scrolling (256×224)
 │   │   └── collision.js          — Tile-based AABB collision (isSolid, resolveH/V, checkWall)
 │   ├── entities/
-│   │   ├── entity.js             — Base entity class
+│   │   ├── entity.js             — Base entity class + AABB overlap
 │   │   ├── player.js             — Player: 10-state machine, shooting, charge, dash-jump
-│   │   └── sprite-data.js        — Animation frames (19 anims) + projectile sprite data
+│   │   ├── sprite-data.js        — Player animation frames (19 anims) + projectile sprite data
+│   │   └── tank-enemy.js         — Tank Mechaniloid: 5-state AI, patrol/shoot enemy
 │   ├── states/
 │   │   └── gameplay.js           — Gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/

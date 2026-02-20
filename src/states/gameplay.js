@@ -1,11 +1,13 @@
 /**
  * gameplay.js
- * Main gameplay state — handles player, level, camera, and rendering.
+ * Main gameplay state — handles player, enemies, level, camera, and rendering.
  * Uses pre-rendered PNG backgrounds from MMX-Deathmatch stage assets.
  */
 
 import { Camera, SCREEN_W, SCREEN_H } from '../engine/camera.js';
 import { Player } from '../entities/player.js';
+import { TankEnemy } from '../entities/tank-enemy.js';
+import { boxOverlap } from '../entities/entity.js';
 import { createLevelFromMap } from '../levels/level.js';
 
 export class GameplayState {
@@ -20,6 +22,9 @@ export class GameplayState {
         this.backgroundImg = null;
         this.backwallImg = null;
         this.parallaxImg = null;
+
+        // Enemies
+        this.enemies = [];
 
         // Background fill color from map data
         this.bgColor = '#000';
@@ -55,14 +60,85 @@ export class GameplayState {
         this.player.spriteImage = this.assets.getImage('playerSprite');
         this.player.effectsImage = this.assets.getImage('effectsSprite');
 
+        // Spawn enemies — place a few tanks along the stage
+        this._spawnEnemies();
+
         // Expose on game object
         game.level = this.level;
         game.camera = this.camera;
+        game.state = this; // So enemies can access player via game.state.player
+    }
+
+    _spawnEnemies() {
+        const tankSprite = this.assets.getImage('tankSprite');
+        const effectsSprite = this.assets.getImage('effectsSprite');
+
+        // Place tanks at fixed positions along the highway stage
+        // These positions are on solid ground platforms in the highway map
+        const tankPositions = [
+            { x: 500, y: 100 },
+            { x: 900, y: 100 },
+            { x: 1300, y: 100 },
+        ];
+
+        for (const pos of tankPositions) {
+            const tank = new TankEnemy(pos.x, pos.y);
+            tank.spriteImage = tankSprite;
+            tank.effectsImage = effectsSprite;
+            this.enemies.push(tank);
+        }
     }
 
     update(game) {
         this.player.update(game);
+
+        // Update enemies
+        for (const enemy of this.enemies) {
+            if (!enemy.active) continue;
+            enemy.update(game);
+
+            // Enemy ↔ player collision (contact + projectile damage)
+            enemy.checkPlayerCollision(this.player);
+        }
+
+        // Player shots ↔ enemies collision
+        this._checkPlayerShotsVsEnemies();
+
+        // Remove dead enemies
+        this.enemies = this.enemies.filter(e => e.active);
+
         this.camera.follow(this.player);
+    }
+
+    _checkPlayerShotsVsEnemies() {
+        for (const shot of this.player.shots) {
+            if (!shot.active || shot.fading) continue;
+
+            for (const enemy of this.enemies) {
+                if (!enemy.active || enemy.state === 'dying') continue;
+
+                const enemyBox = enemy.getHitbox();
+                const shotBox = {
+                    x: shot.x - 4, y: shot.y - 3,
+                    w: 8, h: 6,
+                };
+
+                // Use larger hitbox for charged shots
+                if (shot.type === 'charge1') {
+                    shotBox.x = shot.x - 10; shotBox.y = shot.y - 8;
+                    shotBox.w = 20; shotBox.h = 16;
+                } else if (shot.type === 'charge2') {
+                    shotBox.x = shot.x - 16; shotBox.y = shot.y - 14;
+                    shotBox.w = 32; shotBox.h = 28;
+                }
+
+                if (boxOverlap(shotBox, enemyBox)) {
+                    enemy.onHit(shot.damage);
+                    shot.active = false;
+                    break; // Each shot only hits one enemy
+                }
+            }
+        }
     }
 
     render(ctx, game) {
@@ -86,7 +162,12 @@ export class GameplayState {
             ctx.drawImage(this.backgroundImg, Math.floor(-this.camera.x), Math.floor(-this.camera.y));
         }
 
-        // Render player
+        // Render enemies
+        for (const enemy of this.enemies) {
+            if (enemy.active) enemy.render(ctx, this.camera);
+        }
+
+        // Render player (on top of enemies)
         this.player.render(ctx, this.camera);
 
         // Render HUD

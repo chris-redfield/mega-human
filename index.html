@@ -63,10 +63,11 @@
                 await assets.loadStage('highway');
 
                 loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
-                // Load player spritesheet and effects
+                // Load player spritesheet, effects, and enemy sprites
                 await Promise.all([
                     assets.loadImage('playerSprite', './assets/XDefault.png'),
                     assets.loadImage('effectsSprite', './assets/effects.png'),
+                    assets.loadImage('tankSprite', './assets/sigma_viral.png'),
                 ]);
 
                 // Start game
