@@ -96,6 +96,11 @@ export class Player extends Entity {
         this.animTimer = 0;
         this._prevAnimState = 'warp_in';
         this.dead = false;
+
+        // Warp beam state
+        this.warpBeamY = this.y - 200;  // Beam starts 200px above spawn
+        this.warpBeamActive = true;      // Beam descending phase
+        this.warpVisible = false;        // Player invisible during beam descent
     }
 
     update(game) {
@@ -362,12 +367,26 @@ export class Player extends Entity {
     }
 
     _warpInState(input, level) {
-        // Locked during warp-in — no input, just gravity + animation
         this.vx = 0;
+
+        // Phase 1: beam descent (player invisible, beam moves down)
+        if (this.warpBeamActive) {
+            this.vy = 0; // No gravity during beam phase
+            this.warpBeamY += 7.5; // 450 px/s at 60fps
+            if (this.warpBeamY >= this.y) {
+                // Beam reached landing point — switch to materialize phase
+                this.warpBeamActive = false;
+                this.warpVisible = true;
+                this.animFrame = 0;
+                this.animTimer = 0;
+            }
+            return;
+        }
+
+        // Phase 2: materialize animation (gravity + warp_in anim)
         this.vy += P.GRAVITY;
         if (this.vy > P.MAX_FALL_SPEED) this.vy = P.MAX_FALL_SPEED;
 
-        // Check if warp_in animation has finished
         const anim = getAnim('warp_in');
         if (this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1 &&
             this.animFrame >= anim.frames.length - 1) {
@@ -680,6 +699,20 @@ export class Player extends Entity {
     // --- Rendering ---
 
     render(ctx, camera) {
+        // Warp beam: draw blue beam during descent phase
+        if (this.state === 'warp_in' && this.warpBeamActive && this.spriteImage) {
+            const beamX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
+            const beamY = Math.floor(this.warpBeamY - camera.y);
+            // Beam sprite: 8x48 from XDefault.png at (455, 106)
+            ctx.drawImage(this.spriteImage,
+                455, 106, 8, 48,
+                beamX - 4, beamY - 48, 8, 48);
+            return; // Don't draw player sprite during beam phase
+        }
+
+        // Player invisible during beam descent
+        if (this.state === 'warp_in' && !this.warpVisible) return;
+
         // Flash when invincible
         if (this.invincibleTimer > 0 && this.invincibleTimer % 4 < 2) return;
 
