@@ -45,6 +45,13 @@ export class GameplayState {
 
         // HP bar layout: 'vertical' (classic MMX) or 'horizontal' (rotated 90° CW, top-left)
         this.hpBarLayout = 'vertical';
+
+        // Debug overlay (toggled with P key)
+        this.debugMode = false;
+        this._prevKeyP = false;
+        this._fpsFrames = 0;
+        this._fpsTime = 0;
+        this._fpsDisplay = 0;
     }
 
     init(game) {
@@ -184,6 +191,12 @@ export class GameplayState {
             this.hpBarLayout = this.hpBarLayout === 'vertical' ? 'horizontal' : 'vertical';
         }
         this._prevKeyL = !!game.input.rawKeys['KeyL'];
+
+        // Toggle debug overlay with P key
+        if (game.input.rawKeys['KeyP'] && !this._prevKeyP) {
+            this.debugMode = !this.debugMode;
+        }
+        this._prevKeyP = !!game.input.rawKeys['KeyP'];
 
         this.player.update(game);
 
@@ -388,6 +401,13 @@ export class GameplayState {
 
         // Render HUD
         this._renderHUD(ctx);
+
+        // Debug overlay (P key toggle)
+        if (this.debugMode) {
+            this._renderDebugCollision(ctx);
+            this._renderDebugPlayerHitbox(ctx);
+            this._renderDebugFPS(ctx, game);
+        }
     }
 
     _renderHUD(ctx) {
@@ -507,6 +527,75 @@ export class GameplayState {
         const by = this.boss.y - this.camera.y;
         return bx > -margin && bx < SCREEN_W + margin &&
                by > -margin && by < SCREEN_H + margin;
+    }
+
+    /**
+     * Debug: draw collision tile boundaries for all solid tiles visible on screen.
+     * Green outlines = solid tiles, semi-transparent fill.
+     */
+    _renderDebugCollision(ctx) {
+        const ts = 16; // TILE_SIZE
+        const cam = this.camera;
+        const level = this.level;
+
+        // Calculate visible tile range
+        const startCol = Math.max(0, Math.floor(cam.x / ts));
+        const endCol = Math.min(level.widthInTiles - 1, Math.floor((cam.x + SCREEN_W) / ts));
+        const startRow = Math.max(0, Math.floor(cam.y / ts));
+        const endRow = Math.min(level.heightInTiles - 1, Math.floor((cam.y + SCREEN_H) / ts));
+
+        ctx.strokeStyle = 'rgba(0, 255, 80, 0.7)';
+        ctx.fillStyle = 'rgba(0, 255, 80, 0.15)';
+        ctx.lineWidth = 1;
+
+        for (let row = startRow; row <= endRow; row++) {
+            for (let col = startCol; col <= endCol; col++) {
+                if (level.getTile(col, row) === 1) {
+                    const sx = Math.floor(col * ts - cam.x);
+                    const sy = Math.floor(row * ts - cam.y);
+                    ctx.fillRect(sx, sy, ts, ts);
+                    ctx.strokeRect(sx + 0.5, sy + 0.5, ts - 1, ts - 1);
+                }
+            }
+        }
+    }
+
+    /**
+     * Debug: draw player hitbox in magenta so we can see alignment.
+     */
+    _renderDebugPlayerHitbox(ctx) {
+        const p = this.player;
+        const cam = this.camera;
+        const hx = Math.floor(p.x + p.hitboxX - cam.x);
+        const hy = Math.floor(p.y + p.hitboxY - cam.y);
+
+        ctx.strokeStyle = 'rgba(255, 0, 255, 0.9)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hx + 0.5, hy + 0.5, p.hitboxW - 1, p.hitboxH - 1);
+
+        // Draw feet point
+        const fx = Math.floor(p.x + p.hitboxX + p.hitboxW / 2 - cam.x);
+        const fy = Math.floor(p.y + p.hitboxY + p.hitboxH - cam.y);
+        ctx.fillStyle = 'rgba(255, 0, 255, 1)';
+        ctx.fillRect(fx - 1, fy - 1, 3, 3);
+    }
+
+    /**
+     * Debug: FPS counter, updated once per second.
+     */
+    _renderDebugFPS(ctx, game) {
+        this._fpsFrames++;
+        const now = performance.now();
+        if (now - this._fpsTime >= 1000) {
+            this._fpsDisplay = this._fpsFrames;
+            this._fpsFrames = 0;
+            this._fpsTime = now;
+        }
+
+        ctx.fillStyle = '#0f0';
+        ctx.font = '8px monospace';
+        ctx.fillText(`FPS: ${this._fpsDisplay}`, SCREEN_W - 44, 10);
+        ctx.fillText(`X:${Math.floor(this.player.x)} Y:${Math.floor(this.player.y)}`, SCREEN_W - 70, 20);
     }
 
     /**
