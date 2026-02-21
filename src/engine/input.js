@@ -16,12 +16,12 @@ const DEFAULT_BINDINGS = {
     select: ['Backspace'],
 };
 
-// Gamepad mapping from tools/controller-map.json
-// 8BitDo Ultimate 2C Wireless Controller
+// Gamepad button indices — Linux reports differently from Windows/Mac
+const IS_LINUX = /Linux/.test(navigator.userAgent);
 const GAMEPAD_MAP = {
-    shoot: 3,   // X button (browser index differs from SDL)
-    jump:  0,   // A button
-    dash:  1,   // B button
+    shoot: IS_LINUX ? 3 : 2,   // Square / X
+    jump:  0,                   // Cross / A
+    dash:  1,                   // Circle / B
 };
 
 // Browser Gamepad API standard d-pad button indices
