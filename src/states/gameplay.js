@@ -368,6 +368,7 @@ export class GameplayState {
         p.chargeFlashTimer = 0;
         p.healQueue = 0;
         p.shots = [];
+        p.dashEffects = [];
         p.dieTimer = 0;
         p.diePhase = 0;
         p.dieSparks = null;

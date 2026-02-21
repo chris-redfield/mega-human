@@ -409,11 +409,13 @@ First Maverick boss fight in the frozentown stage.
 19. ~~**Collision system fix**~~ — DONE (switched from mergedWalls to Collision Shape instances from map.json; updated player hitbox to 18x34 matching original MMX)
 20. ~~**Debug overlay**~~ — DONE (P key toggles: green collision tiles, magenta player hitbox, cyan enemy hitboxes, yellow boss hitbox, FPS + coordinates)
 21. ~~**Wider viewport**~~ — DONE (internal resolution 307x224, 3x CSS scale to 921x672, ~20% more level visible horizontally)
-22. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss **<-- NEXT**
-23. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
+22. **Dash smoke effects** — Dash sparks puff on dash start + trailing dust during dash (sprites from effects.png) **<-- NEXT**
+23. **Playable Zero** — Second playable character with sword-based moveset (ZeroDefault.png spritesheet, new state machine)
 24. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
-25. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
-26. **Score / lives system** — Lives counter, game over screen, score tracking
+25. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
+26. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
+27. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
+28. **Score / lives system** — Lives counter, game over screen, score tracking
 
 ---
 

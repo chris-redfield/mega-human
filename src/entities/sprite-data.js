@@ -91,6 +91,24 @@ export const CHARGE_PARTICLES = {
     ],
 };
 
+// Dash sparks — 4-frame puff at dash start (effects.png, alignment: botmid)
+export const DASH_SPARK_FRAMES = [
+    { sx: 657, sy: 275, sw: 19, sh: 15, dur: 4 },
+    { sx: 679, sy: 266, sw: 23, sh: 24, dur: 4 },
+    { sx: 706, sy: 265, sw: 23, sh: 25, dur: 4 },
+    { sx: 734, sy: 264, sw: 27, sh: 26, dur: 4 },
+];
+
+// Dash dust — 6-frame trailing puff while dashing (effects.png, alignment: center)
+export const DASH_DUST_FRAMES = [
+    { sx: 798, sy: 256, sw: 8,  sh: 7,  dur: 4 },
+    { sx: 808, sy: 253, sw: 10, sh: 11, dur: 4 },
+    { sx: 820, sy: 251, sw: 13, sh: 13, dur: 4 },
+    { sx: 837, sy: 250, sw: 14, sh: 14, dur: 4 },
+    { sx: 854, sy: 250, sw: 14, sh: 14, dur: 4 },
+    { sx: 870, sy: 258, sw: 12, sh: 6,  dur: 4 },
+];
+
 export const ANIMATIONS = {
     idle: { loop: true, frames: [
         {sx:226, sy:29, sw:30, sh:34, dur:60},

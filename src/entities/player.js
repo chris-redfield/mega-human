@@ -8,7 +8,7 @@
 
 import { Entity } from './entity.js';
 import { resolveHorizontal, resolveVertical, checkWallContact, isSolid } from '../engine/collision.js';
-import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, CHARGE_PARTICLES } from './sprite-data.js';
+import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, CHARGE_PARTICLES, DASH_SPARK_FRAMES, DASH_DUST_FRAMES } from './sprite-data.js';
 
 // Physics constants (tuned to match Mega Man X feel)
 const P = {
@@ -88,6 +88,10 @@ export class Player extends Entity {
             });
         }
 
+        // Dash smoke effects (fire-and-forget animations in world space)
+        this.dashEffects = [];
+        this.dashDustTimer = 0;
+
         // Projectiles managed externally
         this.shots = [];
 
@@ -162,6 +166,9 @@ export class Player extends Entity {
         // Update projectiles
         this._updateShots(level);
 
+        // Update dash smoke effects
+        this._updateDashEffects();
+
         // Update animation
         this._updateAnimation();
     }
@@ -198,6 +205,8 @@ export class Player extends Entity {
             this.dashTimer = P.DASH_DURATION;
             this.vx = P.DASH_SPEED * this.facing;
             this.isDashing = true;
+            this.dashDustTimer = 0;
+            this._spawnDashSparks();
             this.state = 'dash';
             return;
         }
@@ -249,6 +258,8 @@ export class Player extends Entity {
             this.vx = P.DASH_SPEED * this.facing;
             this.vy = 0;
             this.isDashing = true;
+            this.dashDustTimer = 0;
+            this._spawnDashSparks();
             this.state = 'dash';
             return;
         }
@@ -318,6 +329,13 @@ export class Player extends Entity {
     _dashState(input, level) {
         this.dashTimer--;
         this.vx = P.DASH_SPEED * this.facing;
+
+        // Spawn trailing dust every 6 frames
+        this.dashDustTimer++;
+        if (this.dashDustTimer >= 6) {
+            this.dashDustTimer = 0;
+            this._spawnDashDust();
+        }
 
         // Apply gravity always — collision keeps player on ground,
         // and this ensures grounded detection works (dy must be > 0)
@@ -728,6 +746,92 @@ export class Player extends Entity {
         return BUSTER_FRAMES.fade;
     }
 
+    // --- Dash Smoke Effects ---
+
+    _spawnDashSparks() {
+        const feetX = this.x + this.hitboxX + this.hitboxW / 2;
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+        this.dashEffects.push({
+            type: 'spark',
+            x: feetX - 18 * this.facing,
+            y: feetY,
+            dir: this.facing,
+            frame: 0,
+            timer: 0,
+        });
+    }
+
+    _spawnDashDust() {
+        const feetX = this.x + this.hitboxX + this.hitboxW / 2;
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+        this.dashEffects.push({
+            type: 'dust',
+            x: feetX - 24 * this.facing,
+            y: feetY - 4,
+            dir: this.facing,
+            frame: 0,
+            timer: 0,
+        });
+    }
+
+    _updateDashEffects() {
+        for (const fx of this.dashEffects) {
+            const frames = fx.type === 'spark' ? DASH_SPARK_FRAMES : DASH_DUST_FRAMES;
+            fx.timer++;
+            if (fx.timer >= frames[fx.frame].dur) {
+                fx.timer = 0;
+                fx.frame++;
+            }
+        }
+        // Remove finished effects
+        this.dashEffects = this.dashEffects.filter(fx => {
+            const frames = fx.type === 'spark' ? DASH_SPARK_FRAMES : DASH_DUST_FRAMES;
+            return fx.frame < frames.length;
+        });
+    }
+
+    _renderDashEffects(ctx, camera) {
+        const ef = this.effectsImage;
+        if (!ef) return;
+
+        for (const fx of this.dashEffects) {
+            const frames = fx.type === 'spark' ? DASH_SPARK_FRAMES : DASH_DUST_FRAMES;
+            if (fx.frame >= frames.length) continue;
+            const spr = frames[fx.frame];
+
+            const screenX = Math.floor(fx.x - camera.x);
+            const screenY = Math.floor(fx.y - camera.y);
+
+            if (fx.type === 'spark') {
+                // Botmid alignment: anchor at bottom-center, flip based on dash dir
+                if (fx.dir < 0) {
+                    ctx.save();
+                    ctx.translate(screenX, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(ef, spr.sx, spr.sy, spr.sw, spr.sh,
+                        -Math.floor(spr.sw / 2), screenY - spr.sh, spr.sw, spr.sh);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(ef, spr.sx, spr.sy, spr.sw, spr.sh,
+                        screenX - Math.floor(spr.sw / 2), screenY - spr.sh, spr.sw, spr.sh);
+                }
+            } else {
+                // Center alignment: anchor at center, flip based on dash dir
+                if (fx.dir < 0) {
+                    ctx.save();
+                    ctx.translate(screenX, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(ef, spr.sx, spr.sy, spr.sw, spr.sh,
+                        -Math.floor(spr.sw / 2), screenY - Math.floor(spr.sh / 2), spr.sw, spr.sh);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(ef, spr.sx, spr.sy, spr.sw, spr.sh,
+                        screenX - Math.floor(spr.sw / 2), screenY - Math.floor(spr.sh / 2), spr.sw, spr.sh);
+                }
+            }
+        }
+    }
+
     // --- Movement & Collision ---
 
     _moveAndCollide(level) {
@@ -859,6 +963,9 @@ export class Player extends Entity {
 
         // Flash when invincible
         if (this.invincibleTimer > 0 && this.invincibleTimer % 4 < 2) return;
+
+        // Render dash smoke effects behind player
+        this._renderDashEffects(ctx, camera);
 
         // Render charge particles behind player
         if (this.chargeLevel > 0) {
