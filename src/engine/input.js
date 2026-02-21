@@ -48,7 +48,7 @@ export class Input {
 
         window.addEventListener('keydown', (e) => {
             this.rawKeys[e.code] = true;
-            if (this._isGameKey(e.code)) e.preventDefault();
+            if (this._isGameKey(e.code) || e.code === 'Tab') e.preventDefault();
         });
 
         window.addEventListener('keyup', (e) => {

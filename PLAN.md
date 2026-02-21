@@ -386,6 +386,73 @@ First Maverick boss fight in the frozentown stage.
 
 ---
 
+### 23. Playable Zero (DONE)
+
+Second playable character with sword-based combat. Tab key switches between X and Zero.
+
+**Entity:** `src/entities/zero.js` — `Zero` class extending `Player`.
+**Sprites:** All from `assets/zero.png` (botmid alignment), 21 animations in `zero-sprite-data.js`.
+
+**Architecture:**
+- `Player` class refactored for subclassing: `_getAnim()` method (overridable), configurable `warpBeamRect`, exported physics constants `P`
+- `Zero` extends `Player`, overrides `_getAnim()` to use `getZeroAnim()` from `zero-sprite-data.js`
+- Shared state machine: warp_in, idle, run, jump, fall, land, wall_slide, dash, hurt, die
+- New state: `attack` — sword combo (Zero only)
+
+**Movement (same as X):**
+- Run speed 1.5, dash speed 3.0, jump velocity -4.5, gravity 0.25
+- Hitbox: 18×40 (taller than X's 18×34 due to hair)
+- Warp beam: 7×55 from zero.png at (34, 1185)
+
+**Z-Saber Combo System (shoot button):**
+- Ground: 3-hit combo — `attack` → `attack2` → `attack3`
+- Each swing has `atkBox` hitbox data per frame (from sprite JSON)
+- Chain to next hit by pressing shoot after 40% of current swing
+- Can turn between combo hits
+- Air: single `attack_air` slash (no combo chain)
+- Damage: slash 1-2 = 2, slash 3 = 4
+- Each swing tracks which enemies were hit (no repeated damage per swing)
+
+**Sword hitbox collision (gameplay.js):**
+- `_checkSwordVsEnemies()` checks `player.swordHitbox` vs enemy/boss AABBs
+- Uses same `boxOverlap()` as projectile collision
+- `swordHitEnemies` Set prevents multi-hit per swing
+- Debug overlay: green-yellow rect for active sword hitbox
+- Hitbox uses **botmid alignment** (same as original game): box positioned with bottom-center at feet, then shifted by atkBox offset. Formula: `x = feetX - w/2 + ox*facing`, `y = feetY - h + oy`
+
+**Character selection:**
+- Tab key toggles between X and Zero (respawns with warp beam)
+- `_createPlayer()` factory creates correct class + spritesheet
+- `_resetPlayerAtSpawn()` creates fresh player instance
+
+**Sprite data (auto-generated from MMX-Deathmatch JSONs via `analysis/build_zero_sprites.py`):**
+
+| Animation | Frames | Notes |
+|-----------|--------|-------|
+| idle | 12, loop | ~2.5s cycle with blink pauses |
+| run | 12, loop from 2 | ~0.4s per cycle |
+| jump | 4, loop from 2 | Ascending pose |
+| fall | 4, loop | Hair streaming up, tall frames (67h) |
+| land | 2, once | 0.06s transition |
+| dash | 6, loop from 2 | Wide, low profile frames |
+| wall_slide | 3, once | Facing wall |
+| hurt | 4, once | Recoil |
+| die | 3, once | Reuses hurt frames |
+| warp_in | 10, once | Materialize, 0.3s |
+| warp_beam | 1 | 7×55 thin beam |
+| shoot | 2, once | Buster pose |
+| run_shoot | 12, loop from 2 | Run + buster arm |
+| jump_shoot | 3, once | Jump + buster |
+| fall_shoot | 3, loop | Fall + buster |
+| dash_shoot | 6, loop from 2 | Dash + buster |
+| wall_slide_shoot | 1, once | Wall + buster |
+| attack | 12, once | Ground slash 1 (hitbox frames 4-7) |
+| attack2 | 11, once | Ground slash 2 (hitbox frames 2-4) |
+| attack3 | 15, once | Ground slash 3 (hitbox frames 4-7, massive) |
+| attack_air | 9, once | Air slash (hitbox frames 4-6) |
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -409,9 +476,9 @@ First Maverick boss fight in the frozentown stage.
 19. ~~**Collision system fix**~~ — DONE (switched from mergedWalls to Collision Shape instances from map.json; updated player hitbox to 18x34 matching original MMX)
 20. ~~**Debug overlay**~~ — DONE (P key toggles: green collision tiles, magenta player hitbox, cyan enemy hitboxes, yellow boss hitbox, FPS + coordinates)
 21. ~~**Wider viewport**~~ — DONE (internal resolution 307x224, 3x CSS scale to 921x672, ~20% more level visible horizontally)
-22. **Dash smoke effects** — Dash sparks puff on dash start + trailing dust during dash (sprites from effects.png) **<-- NEXT**
-23. **Playable Zero** — Second playable character with sword-based moveset (ZeroDefault.png spritesheet, new state machine)
-24. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
+22. ~~**Dash smoke effects**~~ — DONE (dash_sparks 4-frame puff on dash start + dust 6-frame trail during dash, from effects.png)
+23. ~~**Playable Zero**~~ — DONE (see details below)
+24. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo) **<-- NEXT**
 25. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
 26. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
 27. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
@@ -426,7 +493,8 @@ mega-human/
 ├── index.html                    — Main game page (256×224 canvas, 3× scale)
 ├── PLAN.md                       — This file
 ├── assets/
-│   ├── XDefault.png              — Player spritesheet (from MMX Deathmatch)
+│   ├── XDefault.png              — X player spritesheet (from MMX Deathmatch)
+│   ├── zero.png                  — Zero player spritesheet (from MMX Deathmatch)
 │   ├── effects.png               — Projectile/VFX/HUD spritesheet (buster shots, charge particles, explosions, HP bar)
 │   ├── sigma_viral.png           — Enemy spritesheet (Tank, Hopper, Bird mechaniloids)
 │   ├── mavericks.png             — Maverick boss spritesheet (Chill Penguin + others)
@@ -448,7 +516,9 @@ mega-human/
 │   ├── entities/
 │   │   ├── entity.js             — Base entity class + AABB overlap
 │   │   ├── player.js             — Player: 10-state machine, shooting, charge, dash-jump
-│   │   ├── sprite-data.js        — Player animation frames (19 anims) + projectile sprite data
+│   │   ├── sprite-data.js        — X animation frames (19 anims) + projectile sprite data
+│   │   ├── zero-sprite-data.js   — Zero animation frames (21 anims) + sword hitbox data
+│   │   ├── zero.js               — Zero: extends Player, Z-Saber 3-hit combo, air slash
 │   │   ├── tank-enemy.js         — Tank Mechaniloid: 5-state AI, patrol/shoot enemy
 │   │   ├── hopper-enemy.js       — Hopper Mechaniloid: 4-state AI, jump/melee enemy
 │   │   ├── bird-enemy.js         — Bird Mechaniloid: 3-state AI, flying/swoop enemy
@@ -486,6 +556,10 @@ mega-human/
 **Collision data source:** Map JSON contains both `mergedWalls` and `Collision Shape` instances. `mergedWalls` is for **AI pathfinding only** (6 rough polygons in frozentown). `Collision Shape` instances are the **actual collision boundaries** (43 precise rectangles in frozentown, 12 in highway). Always use `Collision Shape` instances for tile-grid rasterization.
 
 **Player hitbox (original MMX):** The original game uses `Rect(0, 0, 18, 34)` with `botmid` alignment, meaning the hitbox is 18×34 centered horizontally on the character's feet position. Our implementation matches: `WIDTH=18, HEIGHT=34, HITBOX_X=0, HITBOX_Y=0`.
+
+**Animation loopStart:** Some animations (dash, jump, run) have startup frames that should only play once, then loop from a later frame. The `loopStart` property on animation data specifies which frame to loop back to (default 0). The `_updateAnimation()` method in `player.js` uses `anim.loopStart || 0` when wrapping. The `build_zero_sprites.py` script reads `loopStartFrame` from the original JSONs and outputs it when > 0.
+
+**Sword hitbox alignment (botmid):** The original MMX-Deathmatch positions sword hitboxes using botmid alignment: the box's bottom-center is placed at the character's feet, then shifted by the hitbox offset. The correct formula is `x = feetX - w/2 + ox*facing`, `y = feetY - h + oy`. An earlier bug had `y = feetY + oy` (missing the `-h` term), which placed hitboxes below the player's feet instead of at body level.
 
 **External forces on player:** Any code that pushes the player (e.g. boss blow attack) MUST use `resolveHorizontal`/`resolveVertical` from `collision.js` — never modify `player.x`/`player.y` directly, or the player can clip through walls.
 

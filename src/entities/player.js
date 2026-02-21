@@ -47,16 +47,23 @@ const P = {
     HITBOX_Y:         0,
 };
 
+// Export physics for subclasses
+export { P };
+
 export class Player extends Entity {
     constructor(x, y) {
         super(x, y);
         this.maxHp = 16;
         this.hp = 16;
+        this.characterId = 'x';
 
         this.hitboxX = P.HITBOX_X;
         this.hitboxY = P.HITBOX_Y;
         this.hitboxW = P.WIDTH;
         this.hitboxH = P.HEIGHT;
+
+        // Warp beam sprite (overridable per character)
+        this.warpBeamRect = { sx: 455, sy: 106, sw: 8, sh: 48 };
 
         this.facing = 1; // 1 = right, -1 = left
         this.state = 'warp_in';
@@ -146,6 +153,9 @@ export class Player extends Entity {
             case 'dash':
                 this._dashState(input, level);
                 break;
+            case 'attack':
+                this._attackState(input, level);
+                break;
             case 'hurt':
                 this._hurtState(input, level);
                 break;
@@ -155,7 +165,7 @@ export class Player extends Entity {
         }
 
         // Shooting (available in most states)
-        const noShootStates = ['hurt', 'die', 'warp_in'];
+        const noShootStates = ['hurt', 'die', 'warp_in', 'attack'];
         if (!noShootStates.includes(this.state)) {
             this._handleShooting(input);
         }
@@ -171,6 +181,11 @@ export class Player extends Entity {
 
         // Update animation
         this._updateAnimation();
+    }
+
+    /** Override in subclasses for different sprite data. */
+    _getAnim(state, shooting = false) {
+        return getAnim(state, shooting);
     }
 
     // --- State handlers ---
@@ -374,6 +389,12 @@ export class Player extends Entity {
         }
     }
 
+    /** Override in subclasses for melee attack. */
+    _attackState(input, level) {
+        // No-op for X (buster only). Zero overrides this.
+        this.state = 'idle';
+    }
+
     _hurtState(input, level) {
         this.hurtTimer--;
 
@@ -417,7 +438,7 @@ export class Player extends Entity {
         this.vy += P.GRAVITY;
         if (this.vy > P.MAX_FALL_SPEED) this.vy = P.MAX_FALL_SPEED;
 
-        const anim = getAnim('warp_in');
+        const anim = this._getAnim('warp_in');
         if (this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1 &&
             this.animFrame >= anim.frames.length - 1) {
             this.state = 'idle';
@@ -438,7 +459,7 @@ export class Player extends Entity {
         }
 
         // Animation finished → exit to idle/run
-        const anim = getAnim('land');
+        const anim = this._getAnim('land');
         if (this.animFrame >= anim.frames.length - 1 &&
             this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1) {
             if (input.held('left') || input.held('right')) {
@@ -545,7 +566,7 @@ export class Player extends Entity {
         if (this.diePhase === 0) {
             // Draw the die sprite (from XDefault.png)
             if (this.spriteImage) {
-                const anim = getAnim('die');
+                const anim = this._getAnim('die');
                 const frameIdx = this.animFrame % anim.frames.length;
                 const frame = anim.frames[frameIdx];
                 const feetX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
@@ -643,7 +664,7 @@ export class Player extends Entity {
         this.shootAnimTimer = 18;
 
         // Get hand position from the shoot animation frame
-        const anim = getAnim(this.state, true);
+        const anim = this._getAnim(this.state, true);
         const frameIdx = this.animFrame % anim.frames.length;
         const frame = anim.frames[frameIdx];
 
@@ -903,7 +924,7 @@ export class Player extends Entity {
 
     _updateAnimation() {
         const shooting = this.shootAnimTimer > 0;
-        const anim = getAnim(this.state, shooting);
+        const anim = this._getAnim(this.state, shooting);
         const frames = anim.frames;
         if (!frames.length) return;
 
@@ -919,7 +940,7 @@ export class Player extends Entity {
 
         // Clamp frame index to current animation length
         if (this.animFrame >= frames.length) {
-            this.animFrame = anim.loop ? this.animFrame % frames.length : frames.length - 1;
+            this.animFrame = anim.loop ? (anim.loopStart || 0) + (this.animFrame - (anim.loopStart || 0)) % (frames.length - (anim.loopStart || 0)) : frames.length - 1;
         }
 
         // Advance frame timer
@@ -930,7 +951,7 @@ export class Player extends Entity {
             this.animFrame++;
             if (this.animFrame >= frames.length) {
                 if (anim.loop) {
-                    this.animFrame = 0;
+                    this.animFrame = anim.loopStart || 0;
                 } else {
                     this.animFrame = frames.length - 1;
                 }
@@ -945,10 +966,10 @@ export class Player extends Entity {
         if (this.state === 'warp_in' && this.warpBeamActive && this.spriteImage) {
             const beamX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
             const beamY = Math.floor(this.warpBeamY - camera.y);
-            // Beam sprite: 8x48 from XDefault.png at (455, 106)
+            const br = this.warpBeamRect;
             ctx.drawImage(this.spriteImage,
-                455, 106, 8, 48,
-                beamX - 4, beamY - 48, 8, 48);
+                br.sx, br.sy, br.sw, br.sh,
+                beamX - Math.floor(br.sw / 2), beamY - br.sh, br.sw, br.sh);
             return; // Don't draw player sprite during beam phase
         }
 
@@ -973,7 +994,7 @@ export class Player extends Entity {
         }
 
         const shooting = this.shootAnimTimer > 0;
-        const anim = getAnim(this.state, shooting);
+        const anim = this._getAnim(this.state, shooting);
         const frameIdx = this.animFrame % anim.frames.length;
         const frame = anim.frames[frameIdx];
 

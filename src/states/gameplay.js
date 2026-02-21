@@ -6,6 +6,7 @@
 
 import { Camera, SCREEN_W, SCREEN_H } from '../engine/camera.js';
 import { Player } from '../entities/player.js';
+import { Zero } from '../entities/zero.js';
 import { TankEnemy } from '../entities/tank-enemy.js';
 import { HopperEnemy } from '../entities/hopper-enemy.js';
 import { BirdEnemy } from '../entities/bird-enemy.js';
@@ -42,6 +43,10 @@ export class GameplayState {
 
         // Background fill color from map data
         this.bgColor = '#000';
+
+        // Character selection: 'x' or 'zero'
+        this.characterId = 'x';
+        this._prevKeyTab = false;
 
         // HP bar layout: 'vertical' (classic MMX) or 'horizontal' (rotated 90° CW, top-left)
         this.hpBarLayout = 'vertical';
@@ -98,10 +103,8 @@ export class GameplayState {
         this.spawnX = spawnX;
         this.spawnY = spawnY;
 
-        // Spawn player
-        this.player = new Player(spawnX, spawnY);
-        this.player.spriteImage = this.assets.getImage('playerSprite');
-        this.player.effectsImage = this.assets.getImage('effectsSprite');
+        // Spawn player (character based on selection)
+        this.player = this._createPlayer(spawnX, spawnY);
 
         // Spawn enemies — place a few tanks along the stage
         this._spawnEnemies();
@@ -116,6 +119,19 @@ export class GameplayState {
         game.level = this.level;
         game.camera = this.camera;
         game.state = this; // So enemies can access player via game.state.player
+    }
+
+    _createPlayer(x, y) {
+        let player;
+        if (this.characterId === 'zero') {
+            player = new Zero(x, y);
+            player.spriteImage = this.assets.getImage('zeroSprite');
+        } else {
+            player = new Player(x, y);
+            player.spriteImage = this.assets.getImage('playerSprite');
+        }
+        player.effectsImage = this.assets.getImage('effectsSprite');
+        return player;
     }
 
     _spawnEnemies() {
@@ -203,6 +219,16 @@ export class GameplayState {
         }
         this._prevKeyL = !!game.input.rawKeys['KeyL'];
 
+        // Toggle character with Tab key (respawns as new character)
+        if (game.input.rawKeys['Tab'] && !this._prevKeyTab) {
+            this.characterId = this.characterId === 'x' ? 'zero' : 'x';
+            this._resetPlayerAtSpawn();
+            this.player.warpBeamActive = true;
+            this.player.warpBeamY = this.player.y - 200;
+            this.camera.follow(this.player);
+        }
+        this._prevKeyTab = !!game.input.rawKeys['Tab'];
+
         // Toggle debug overlay with P key
         if (game.input.rawKeys['KeyP'] && !this._prevKeyP) {
             this.debugMode = !this.debugMode;
@@ -248,6 +274,9 @@ export class GameplayState {
 
         // Player shots ↔ enemies collision
         this._checkPlayerShotsVsEnemies();
+
+        // Sword hitbox ↔ enemies collision (Zero only)
+        this._checkSwordVsEnemies();
 
         // Remove dead enemies, spawn drops
         for (const enemy of this.enemies) {
@@ -350,29 +379,10 @@ export class GameplayState {
     }
 
     _resetPlayerAtSpawn() {
+        // Create fresh player of the selected character
+        this.player = this._createPlayer(this.spawnX, this.spawnY);
         const p = this.player;
-        p.x = this.spawnX;
-        p.y = this.spawnY;
-        p.vx = 0;
-        p.vy = 0;
-        p.hp = p.maxHp;
-        p.dead = false;
-        p.state = 'warp_in';
-        p.animFrame = 0;
-        p.animTimer = 0;
-        p._prevAnimState = 'warp_in';
-        p.invincibleTimer = 0;
-        p.hurtTimer = 0;
-        p.chargeTime = 0;
-        p.chargeLevel = 0;
-        p.chargeFlashTimer = 0;
         p.healQueue = 0;
-        p.shots = [];
-        p.dashEffects = [];
-        p.dieTimer = 0;
-        p.diePhase = 0;
-        p.dieSparks = null;
-        p.dieParticles = [];
 
         // Warp beam — don't start yet, wait for fade-in to complete
         p.warpBeamY = p.y - 200;
@@ -454,6 +464,36 @@ export class GameplayState {
                 shot.fadeTimer = 0;
                 shot.vx = 0;
                 break;
+            }
+        }
+    }
+
+    _checkSwordVsEnemies() {
+        const player = this.player;
+        if (!player.swordHitbox) return;
+
+        const sBox = player.swordHitbox;
+
+        // Check enemies
+        for (const enemy of this.enemies) {
+            if (!enemy.active || enemy.state === 'dying') continue;
+            if (player.swordHitEnemies && player.swordHitEnemies.has(enemy)) continue;
+
+            const eBox = enemy.getHitbox();
+            if (boxOverlap(sBox, eBox)) {
+                enemy.onHit(player.swordDamage);
+                if (player.swordHitEnemies) player.swordHitEnemies.add(enemy);
+            }
+        }
+
+        // Check boss
+        if (this.boss && this.boss.active && this.boss.state !== 'dying') {
+            if (!(player.swordHitEnemies && player.swordHitEnemies.has(this.boss))) {
+                const bBox = this.boss.getHitbox();
+                if (boxOverlap(sBox, bBox)) {
+                    this.boss.onHit(player.swordDamage);
+                    if (player.swordHitEnemies) player.swordHitEnemies.add(this.boss);
+                }
             }
         }
     }
@@ -700,6 +740,16 @@ export class GameplayState {
                 Math.floor(box.x - cam.x) + 0.5,
                 Math.floor(box.y - cam.y) + 0.5,
                 box.w - 1, box.h - 1);
+        }
+
+        // Sword hitbox (green-yellow)
+        if (this.player.swordHitbox) {
+            ctx.strokeStyle = 'rgba(200, 255, 0, 0.9)';
+            const sb = this.player.swordHitbox;
+            ctx.strokeRect(
+                Math.floor(sb.x - cam.x) + 0.5,
+                Math.floor(sb.y - cam.y) + 0.5,
+                sb.w - 1, sb.h - 1);
         }
 
         // Boss hitbox (yellow)

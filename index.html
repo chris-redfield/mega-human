@@ -42,7 +42,7 @@
     <div id="loading">MEGAGAME 2026 — Loading...</div>
     <canvas id="game" style="display:none"></canvas>
     <div id="controls" style="display:none">
-        Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash &nbsp;|&nbsp; F1/F2: Stage Select
+        Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash &nbsp;|&nbsp; Tab: Switch Character &nbsp;|&nbsp; F1/F2: Stage
     </div>
 
     <script type="module">
@@ -69,6 +69,7 @@
                 // Load player spritesheet, effects, and enemy sprites
                 await Promise.all([
                     assets.loadImage('playerSprite', './assets/XDefault.png'),
+                    assets.loadImage('zeroSprite', './assets/zero.png'),
                     assets.loadImage('effectsSprite', './assets/effects.png'),
                     assets.loadImage('tankSprite', './assets/sigma_viral.png'),
                     assets.loadImage('mavericksSprite', './assets/mavericks.png'),
