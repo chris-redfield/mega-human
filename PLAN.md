@@ -478,7 +478,7 @@ Second playable character with sword-based combat. Tab key switches between X an
 21. ~~**Wider viewport**~~ — DONE (internal resolution 307x224, 3x CSS scale to 921x672, ~20% more level visible horizontally)
 22. ~~**Dash smoke effects**~~ — DONE (dash_sparks 4-frame puff on dash start + dust 6-frame trail during dash, from effects.png)
 23. ~~**Playable Zero**~~ — DONE (see details below)
-24. ~~**Collision edge-case fix**~~ — DONE (horizontal collision checked only 2 points, missing middle tile rows for 34-40px tall characters; tile rasterization only checked center point, missing edge tiles on thin shapes)
+24. ~~**Collision edge-case fix**~~ — DONE (collision checks now sample every TILE_SIZE along entity height/width instead of just 2 endpoints, fixing clipping through single-row solid tiles for 34-40px tall characters; tile rasterization unchanged — center-point only)
 25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
 26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
 27. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
@@ -578,6 +578,12 @@ mega-human/
 **External forces on player:** Any code that pushes the player (e.g. boss blow attack) MUST use `resolveHorizontal`/`resolveVertical` from `collision.js` — never modify `player.x`/`player.y` directly, or the player can clip through walls.
 
 **Original MMX screen width:** The original game uses 298×224, not 256×224. Our viewport is 307×224 (~20% wider than SNES 256, slightly wider than original MMX).
+
+**Collision check density:** `resolveHorizontal` and `checkWallContact` now check every TILE_SIZE (16px) along the entity's height, not just top+bottom endpoints. This prevents tall entities (X=34px, Zero=40px) from clipping through single-row solid tiles that fall in the middle of their hitbox. **Do NOT add extra collision tiles** to fix clipping — fix the check logic instead.
+
+**Tile rasterization precision limit:** Collision shapes are rasterized onto a 16px grid using center-point checks only. Characters land on tile boundaries (multiples of 16), so there can be up to ~8px visual gap between the tile edge and the actual art. Shrinking a collision shape below ~12px tall risks it falling between tile centers and generating zero tiles. Do not attempt to fix small visual float by adjusting collision shapes.
+
+**Audio system:** `AudioManager` in `src/engine/audio.js` uses Web Audio API. AudioContext is created lazily on first user gesture (keydown/mousedown), NOT during page load. Audio files are fetched as raw ArrayBuffers during loading and decoded once the context exists. Music loop points are parsed from filenames (e.g. `highway.44,44.87,463.ogg`). Gamepad API is poll-based and cannot trigger AudioContext resume — only keyboard/mouse events work.
 
 ---
 
