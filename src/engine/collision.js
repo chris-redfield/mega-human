@@ -24,21 +24,27 @@ export function isSolid(level, x, y) {
 /**
  * Resolve horizontal movement with tile collision.
  * Returns the corrected X position.
+ * Checks every tile row the entity overlaps (not just top/bottom).
  */
 export function resolveHorizontal(level, x, y, w, h, dx) {
     const newX = x + dx;
+    if (dx === 0) return newX;
 
-    if (dx > 0) {
-        // Moving right — check right edge
-        const right = newX + w;
-        if (isSolid(level, right, y + 1) || isSolid(level, right, y + h - 1)) {
-            return Math.floor(right / TILE_SIZE) * TILE_SIZE - w - 0.01;
+    const checkX = dx > 0 ? newX + w : newX;
+
+    // Check at every tile row the entity spans
+    for (let cy = y + 1; cy < y + h - 1; cy += TILE_SIZE) {
+        if (isSolid(level, checkX, cy)) {
+            return dx > 0
+                ? Math.floor(checkX / TILE_SIZE) * TILE_SIZE - w - 0.01
+                : (Math.floor(checkX / TILE_SIZE) + 1) * TILE_SIZE + 0.01;
         }
-    } else if (dx < 0) {
-        // Moving left — check left edge
-        if (isSolid(level, newX, y + 1) || isSolid(level, newX, y + h - 1)) {
-            return (Math.floor(newX / TILE_SIZE) + 1) * TILE_SIZE + 0.01;
-        }
+    }
+    // Always check bottom edge
+    if (isSolid(level, checkX, y + h - 1)) {
+        return dx > 0
+            ? Math.floor(checkX / TILE_SIZE) * TILE_SIZE - w - 0.01
+            : (Math.floor(checkX / TILE_SIZE) + 1) * TILE_SIZE + 0.01;
     }
 
     return newX;
@@ -47,22 +53,39 @@ export function resolveHorizontal(level, x, y, w, h, dx) {
 /**
  * Resolve vertical movement with tile collision.
  * Returns { y, grounded }.
+ * Checks every tile column the entity overlaps (not just left/right).
  */
 export function resolveVertical(level, x, y, w, h, dy) {
     const newY = y + dy;
 
     if (dy > 0) {
-        // Moving down — check bottom edge
+        // Moving down — check bottom edge at every tile column
         const bottom = newY + h;
-        if (isSolid(level, x + 1, bottom) || isSolid(level, x + w - 1, bottom)) {
+        for (let cx = x + 1; cx < x + w - 1; cx += TILE_SIZE) {
+            if (isSolid(level, cx, bottom)) {
+                return {
+                    y: Math.floor(bottom / TILE_SIZE) * TILE_SIZE - h - 0.01,
+                    grounded: true,
+                };
+            }
+        }
+        if (isSolid(level, x + w - 1, bottom)) {
             return {
                 y: Math.floor(bottom / TILE_SIZE) * TILE_SIZE - h - 0.01,
                 grounded: true,
             };
         }
     } else if (dy < 0) {
-        // Moving up — check top edge
-        if (isSolid(level, x + 1, newY) || isSolid(level, x + w - 1, newY)) {
+        // Moving up — check top edge at every tile column
+        for (let cx = x + 1; cx < x + w - 1; cx += TILE_SIZE) {
+            if (isSolid(level, cx, newY)) {
+                return {
+                    y: (Math.floor(newY / TILE_SIZE) + 1) * TILE_SIZE + 0.01,
+                    grounded: false,
+                };
+            }
+        }
+        if (isSolid(level, x + w - 1, newY)) {
             return {
                 y: (Math.floor(newY / TILE_SIZE) + 1) * TILE_SIZE + 0.01,
                 grounded: false,
@@ -76,15 +99,16 @@ export function resolveVertical(level, x, y, w, h, dy) {
 /**
  * Check for wall contact (for wall sliding/jumping).
  * Returns -1 (wall on left), 0 (no wall), or 1 (wall on right).
+ * Checks every tile row the entity overlaps.
  */
 export function checkWallContact(level, x, y, w, h) {
-    const midY = y + h / 2;
-
-    // Check right side
-    if (isSolid(level, x + w + 1, midY)) return 1;
-
-    // Check left side
-    if (isSolid(level, x - 1, midY)) return -1;
+    for (let cy = y + 1; cy < y + h - 1; cy += TILE_SIZE) {
+        if (isSolid(level, x + w + 1, cy)) return 1;
+        if (isSolid(level, x - 1, cy)) return -1;
+    }
+    // Always check bottom edge
+    if (isSolid(level, x + w + 1, y + h - 1)) return 1;
+    if (isSolid(level, x - 1, y + h - 1)) return -1;
 
     return 0;
 }

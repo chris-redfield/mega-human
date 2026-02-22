@@ -120,6 +120,7 @@ export function createLevelFromMap(mapData) {
 
 /**
  * Rasterize a polygon onto the tile grid, marking covered tiles as solid.
+ * Checks center + 4 near-corners so edge tiles aren't missed on thin shapes.
  */
 function _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles) {
     let minX = Infinity, minY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
@@ -135,11 +136,16 @@ function _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles
     const startRow = Math.max(0, Math.floor(minY / tileSize));
     const endRow = Math.min(heightInTiles - 1, Math.floor(maxPY / tileSize));
 
+    const m = 2; // inset margin from tile edges
     for (let row = startRow; row <= endRow; row++) {
         for (let col = startCol; col <= endCol; col++) {
-            const cx = col * tileSize + tileSize / 2;
-            const cy = row * tileSize + tileSize / 2;
-            if (pointInPolygon(cx, cy, polygon)) {
+            const tx = col * tileSize;
+            const ty = row * tileSize;
+            if (pointInPolygon(tx + tileSize / 2, ty + tileSize / 2, polygon) ||
+                pointInPolygon(tx + m, ty + m, polygon) ||
+                pointInPolygon(tx + tileSize - m, ty + m, polygon) ||
+                pointInPolygon(tx + m, ty + tileSize - m, polygon) ||
+                pointInPolygon(tx + tileSize - m, ty + tileSize - m, polygon)) {
                 level.setTile(col, row, 1);
             }
         }
