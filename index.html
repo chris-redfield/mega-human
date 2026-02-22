@@ -42,7 +42,7 @@
     <div id="loading">MEGAGAME 2026 — Loading...</div>
     <canvas id="game" style="display:none"></canvas>
     <div id="controls" style="display:none">
-        Arrows/WASD: Move &nbsp;|&nbsp; Z/Space: Jump &nbsp;|&nbsp; X: Shoot &nbsp;|&nbsp; C/Shift: Dash &nbsp;|&nbsp; Tab: Switch Character &nbsp;|&nbsp; F1/F2: Stage
+        Arrows/WASD: Move &nbsp;|&nbsp; Num5/Space: Jump &nbsp;|&nbsp; Num4: Shoot &nbsp;|&nbsp; Num6/Shift: Dash &nbsp;|&nbsp; Tab: Switch Character &nbsp;|&nbsp; F1/F2/F4: Stage
     </div>
 
     <script type="module">
@@ -63,6 +63,7 @@
                 await Promise.all([
                     assets.loadStage('highway'),
                     assets.loadStage('frozentown'),
+                    assets.loadStage('aircraftcarrier'),
                 ]);
 
                 loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
@@ -120,17 +121,18 @@
                 canvas.style.display = 'block';
                 controls.style.display = 'block';
 
-                const stages = ['highway', 'frozentown'];
+                const stages = ['highway', 'frozentown', 'aircraftcarrier'];
                 let currentStageIdx = 0;
 
                 game.setState(new GameplayState(assets, stages[currentStageIdx]));
                 game.start();
 
-                // Stage switching with F1/F2
+                // Stage switching with F1/F2/F3
                 window.addEventListener('keydown', (e) => {
                     let newIdx = -1;
                     if (e.code === 'F1') newIdx = 0;
                     if (e.code === 'F2') newIdx = 1;
+                    if (e.code === 'F4') newIdx = 2;
                     if (newIdx >= 0 && newIdx !== currentStageIdx) {
                         e.preventDefault();
                         currentStageIdx = newIdx;

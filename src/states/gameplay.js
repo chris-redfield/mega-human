@@ -87,6 +87,7 @@ export class GameplayState {
         // Per-stage spawn overrides (deathmatch spawn points don't always suit platformer start)
         const stageSpawns = {
             frozentown: { x: 133, y: 640 },
+            aircraftcarrier: { x: 221, y: 1019 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -153,6 +154,11 @@ export class GameplayState {
                 tanks:   [{ x: 500, y: 150 }, { x: 900, y: 150 }, { x: 1400, y: 150 }],
                 hoppers: [{ x: 340, y: 350 }, { x: 700, y: 350 }, { x: 1100, y: 330 }],
                 birds:   [{ x: 600, y: 120 }, { x: 1000, y: 100 }, { x: 1500, y: 130 }],
+            },
+            aircraftcarrier: {
+                tanks:   [{ x: 350, y: 1000 }, { x: 800, y: 1000 }, { x: 1400, y: 1060 }],
+                hoppers: [{ x: 530, y: 980 }, { x: 1200, y: 1000 }, { x: 1900, y: 480 }],
+                birds:   [{ x: 700, y: 700 }, { x: 1300, y: 650 }, { x: 2100, y: 400 }],
             },
         };
 

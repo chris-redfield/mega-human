@@ -480,7 +480,8 @@ Second playable character with sword-based combat. Tab key switches between X an
 23. ~~**Playable Zero**~~ — DONE (see details below)
 24. ~~**Collision edge-case fix**~~ — DONE (collision checks now sample every TILE_SIZE along entity height/width instead of just 2 endpoints, fixing clipping through single-row solid tiles for 34-40px tall characters; tile rasterization unchanged — center-point only)
 25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
-26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
+26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo). Aircraft carrier (Storm Eagle) imported but has collision/rendering issues — invisible collision blocks in the air and broken background in some areas. Needs investigation and fix.
+26b. **Fix aircraft carrier stage** — Debug and fix collision rasterization and background rendering issues on the aircraftcarrier stage (invisible solid tiles in mid-air, broken background art in places)
 27. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
 28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
 29. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
