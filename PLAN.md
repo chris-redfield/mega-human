@@ -478,11 +478,18 @@ Second playable character with sword-based combat. Tab key switches between X an
 21. ~~**Wider viewport**~~ — DONE (internal resolution 307x224, 3x CSS scale to 921x672, ~20% more level visible horizontally)
 22. ~~**Dash smoke effects**~~ — DONE (dash_sparks 4-frame puff on dash start + dust 6-frame trail during dash, from effects.png)
 23. ~~**Playable Zero**~~ — DONE (see details below)
-24. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo) **<-- NEXT**
-25. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
-26. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
-27. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
-28. **Score / lives system** — Lives counter, game over screen, score tracking
+24. ~~**Collision edge-case fix**~~ — DONE (horizontal collision checked only 2 points, missing middle tile rows for 34-40px tall characters; tile rasterization only checked center point, missing edge tiles on thin shapes)
+25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
+26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo)
+27. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
+28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
+29. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
+30. **Score / lives system** — Lives counter, game over screen, score tracking
+31. **Ladder climbing** — Ladder state for player (map.json already has Ladder instances), climb up/down, jump off
+32. **Subtank / E-tank system** — Collectible energy tanks, use from pause menu to restore HP
+33. **Boss defeat cutscene** — Boss explosion sequence, stage clear fanfare, weapon get screen
+34. **Crouch** — Crouching state (sprite data exists in XDefault.png, not wired into state machine)
+35. **Pause menu** — Pause screen with weapon select, subtank use, options
 
 ---
 
@@ -498,6 +505,12 @@ mega-human/
 │   ├── effects.png               — Projectile/VFX/HUD spritesheet (buster shots, charge particles, explosions, HP bar)
 │   ├── sigma_viral.png           — Enemy spritesheet (Tank, Hopper, Bird mechaniloids)
 │   ├── mavericks.png             — Maverick boss spritesheet (Chill Penguin + others)
+│   ├── sounds/
+│   │   ├── common/                   — Shared SFX (jump, dash, land, hurt, die, hit, explosion, etc.)
+│   │   ├── mmx/                      — X buster SFX (buster.ogg, buster2-4.ogg)
+│   │   ├── zero/                     — Zero saber SFX (saber1-3.ogg)
+│   │   └── sigma/                    — Boss SFX (chillpBlizzard, chillpSlide, maverickDie)
+│   ├── music/                        — Stage BGM with loop metadata in filenames (highway, frozentown, bossroom, win)
 │   └── levels/
 │       ├── highway_background.png    — Highway stage background layer
 │       ├── highway_backwall.png      — Highway stage backwall layer
@@ -512,7 +525,8 @@ mega-human/
 │   │   ├── game.js               — Fixed 60fps game loop
 │   │   ├── input.js              — Keyboard input (pressed/held/released)
 │   │   ├── camera.js             — Viewport scrolling (256×224)
-│   │   └── collision.js          — Tile-based AABB collision (isSolid, resolveH/V, checkWall)
+│   │   ├── collision.js          — Tile-based AABB collision (isSolid, resolveH/V, checkWall)
+│   │   └── audio.js              — Web Audio API sound manager (SFX + Music, loop points, charge loop)
 │   ├── entities/
 │   │   ├── entity.js             — Base entity class + AABB overlap
 │   │   ├── player.js             — Player: 10-state machine, shooting, charge, dash-jump

@@ -102,6 +102,7 @@ export class BirdEnemy extends Entity {
     }
 
     update(game) {
+        this.audio = game.audio;
         if (this.contactCooldown > 0) this.contactCooldown--;
         if (this.hitFlashTimer > 0) this.hitFlashTimer--;
 
@@ -246,6 +247,7 @@ export class BirdEnemy extends Entity {
             this.state = 'dying';
             this.explosionFrame = 0;
             this.explosionTimer = 0;
+            if (this.audio) this.audio.play('explosion');
         }
     }
 

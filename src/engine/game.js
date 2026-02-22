@@ -5,6 +5,7 @@
  */
 
 import { Input } from './input.js';
+import { AudioManager } from './audio.js';
 import { SCREEN_W, SCREEN_H } from './camera.js';
 
 const TIMESTEP = 1000 / 60;
@@ -21,8 +22,14 @@ export class Game {
         this.canvas.height = SCREEN_H;
 
         this.input = new Input();
+        this.audio = new AudioManager();
         this.camera = null;
         this.state = null;
+
+        // AudioContext must be created/resumed inside a user gesture handler.
+        const resumeAudio = () => { this.audio.resume(); };
+        window.addEventListener('keydown', resumeAudio);
+        window.addEventListener('mousedown', resumeAudio);
 
         this.accumulator = 0;
         this.lastTime = 0;

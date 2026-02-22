@@ -76,12 +76,15 @@ export class Zero extends Player {
         if (step === 1) {
             this.attackAnimName = 'attack';
             this.swordDamage = 2;
+            if (this.audio) this.audio.play('saber1');
         } else if (step === 2) {
             this.attackAnimName = 'attack2';
             this.swordDamage = 2;
+            if (this.audio) this.audio.play('saber2');
         } else {
             this.attackAnimName = 'attack3';
             this.swordDamage = 4;
+            if (this.audio) this.audio.play('saber3');
         }
 
         // Slow forward movement during attack
@@ -98,6 +101,7 @@ export class Zero extends Player {
         this.attackAnimName = 'attack_air';
         this.swordDamage = 2;
         this.swordHitEnemies = new Set();
+        if (this.audio) this.audio.play('saber1');
     }
 
     _attackState(input, level) {

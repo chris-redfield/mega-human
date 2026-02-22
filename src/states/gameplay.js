@@ -119,6 +119,10 @@ export class GameplayState {
         game.level = this.level;
         game.camera = this.camera;
         game.state = this; // So enemies can access player via game.state.player
+        this.audio = game.audio;
+
+        // Start stage music
+        if (this.audio) this.audio.playMusic(this.stageName);
     }
 
     _createPlayer(x, y) {
@@ -312,6 +316,7 @@ export class GameplayState {
                 if (boxOverlap(pBox, pickBox)) {
                     pickup.active = false;
                     this.player.healQueue = (this.player.healQueue || 0) + pickup.healAmount;
+                    if (this.audio) this.audio.play('heal');
                 }
             }
         }
@@ -350,6 +355,9 @@ export class GameplayState {
         switch (this.respawnState) {
             case 'fadeOut':
                 this.fadeAlpha = Math.min(1, this.respawnTimer / FADE_OUT_DUR);
+                if (this.respawnTimer === 1 && this.audio) {
+                    this.audio.stopMusic(600);
+                }
                 if (this.respawnTimer >= FADE_OUT_DUR) {
                     this.respawnState = 'hold';
                     this.respawnTimer = 0;
@@ -367,6 +375,9 @@ export class GameplayState {
 
             case 'fadeIn':
                 this.fadeAlpha = Math.max(0, 1 - this.respawnTimer / FADE_IN_DUR);
+                if (this.respawnTimer === 1 && this.audio) {
+                    this.audio.playMusic(this.stageName);
+                }
                 if (this.respawnTimer >= FADE_IN_DUR) {
                     this.respawnState = null;
                     this.fadeAlpha = 0;
@@ -426,6 +437,7 @@ export class GameplayState {
 
                 if (boxOverlap(shotBox, enemyBox)) {
                     enemy.onHit(shot.damage);
+                    if (this.audio) this.audio.play('hit');
                     // Play fade/hit animation (same as wall hit)
                     shot.fading = true;
                     shot.fadeFrame = 0;
@@ -459,6 +471,7 @@ export class GameplayState {
 
             if (boxOverlap(shotBox, bossBox)) {
                 this.boss.onHit(shot.damage);
+                if (this.audio) this.audio.play('hit');
                 shot.fading = true;
                 shot.fadeFrame = 0;
                 shot.fadeTimer = 0;
@@ -482,6 +495,7 @@ export class GameplayState {
             const eBox = enemy.getHitbox();
             if (boxOverlap(sBox, eBox)) {
                 enemy.onHit(player.swordDamage);
+                if (this.audio) this.audio.play('hit');
                 if (player.swordHitEnemies) player.swordHitEnemies.add(enemy);
             }
         }
@@ -492,6 +506,7 @@ export class GameplayState {
                 const bBox = this.boss.getHitbox();
                 if (boxOverlap(sBox, bBox)) {
                     this.boss.onHit(player.swordDamage);
+                    if (this.audio) this.audio.play('hit');
                     if (player.swordHitEnemies) player.swordHitEnemies.add(this.boss);
                 }
             }

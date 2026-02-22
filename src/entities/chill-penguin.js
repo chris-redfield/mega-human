@@ -177,6 +177,7 @@ export class ChillPenguin extends Entity {
     }
 
     update(game) {
+        this.audio = game.audio;
         if (this.contactCooldown > 0) this.contactCooldown--;
         if (this.hitFlashTimer > 0) this.hitFlashTimer--;
         if (this.invincibleTimer > 0) this.invincibleTimer--;
@@ -249,6 +250,7 @@ export class ChillPenguin extends Entity {
                 this.slideSpeed = CP.SLIDE_SPEED;
                 this._setAnim('slide');
                 this._setSlideHitbox();
+                if (this.audio) this.audio.play('chillpSlide');
                 break;
             case 'blow':
                 this.state = 'blow';
@@ -378,6 +380,7 @@ export class ChillPenguin extends Entity {
             active: true,
             life: CP.ICE_LIFETIME,
         });
+        if (this.audio) this.audio.play('chillpBlizzard');
     }
 
     _setSlideHitbox() {
@@ -445,6 +448,7 @@ export class ChillPenguin extends Entity {
             this._setNormalHitbox();
             this.explosionFrame = 0;
             this.explosionTimer = 0;
+            if (this.audio) this.audio.play('maverickDie');
             return;
         }
 

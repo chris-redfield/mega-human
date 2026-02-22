@@ -75,6 +75,46 @@
                     assets.loadImage('mavericksSprite', './assets/mavericks.png'),
                 ]);
 
+                // Create game early so audio system is available for loading
+                const game = new Game(canvas);
+
+                // Load audio assets
+                loading.textContent = 'MEGAGAME 2026 — Loading audio...';
+                await game.audio.loadAll({
+                    // Common SFX
+                    jump:        './assets/sounds/common/jump.wav',
+                    dash:        './assets/sounds/common/dash.wav',
+                    land:        './assets/sounds/common/land.wav',
+                    hurt:        './assets/sounds/common/hurt.wav',
+                    die:         './assets/sounds/common/die.wav',
+                    hit:         './assets/sounds/common/hit.wav',
+                    explosion:   './assets/sounds/common/explosion.wav',
+                    wallkick:    './assets/sounds/common/wallkick.wav',
+                    wallslide:   './assets/sounds/common/wallslide.wav',
+                    warpIn:      './assets/sounds/common/warpIn.ogg',
+                    heal:        './assets/sounds/common/heal.wav',
+                    chargeStart: './assets/sounds/mmx/chargeStart.ogg',
+                    chargeLoop:  './assets/sounds/mmx/chargeLoop.ogg',
+                    // X buster
+                    buster:  './assets/sounds/mmx/buster.ogg',
+                    buster2: './assets/sounds/mmx/buster2.ogg',
+                    buster3: './assets/sounds/mmx/buster3.ogg',
+                    buster4: './assets/sounds/mmx/buster4.ogg',
+                    // Zero saber
+                    saber1: './assets/sounds/zero/saber1.ogg',
+                    saber2: './assets/sounds/zero/saber2.ogg',
+                    saber3: './assets/sounds/zero/saber3.ogg',
+                    // Boss
+                    chillpBlizzard: './assets/sounds/sigma/chillpBlizzard.ogg',
+                    chillpSlide:    './assets/sounds/sigma/chillpSlide.ogg',
+                    maverickDie:    './assets/sounds/sigma/maverickDie.ogg',
+                    // Music (loop points encoded in filenames)
+                    highway:   './assets/music/highway.44,44.87,463.ogg',
+                    frozentown:'./assets/music/frozentown.0.40,531.ogg',
+                    bossroom:  './assets/music/bossroom.1,5.29,664.ogg',
+                    win:       './assets/music/win.ogg',
+                });
+
                 // Start game with highway
                 loading.style.display = 'none';
                 canvas.style.display = 'block';
@@ -83,7 +123,6 @@
                 const stages = ['highway', 'frozentown'];
                 let currentStageIdx = 0;
 
-                const game = new Game(canvas);
                 game.setState(new GameplayState(assets, stages[currentStageIdx]));
                 game.start();
 

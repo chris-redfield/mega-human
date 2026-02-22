@@ -123,6 +123,7 @@ export class Player extends Entity {
     update(game) {
         const input = game.input;
         const level = game.level;
+        this.audio = game.audio;
 
         // Decrement timers
         if (this.dashCooldown > 0) this.dashCooldown--;
@@ -212,6 +213,7 @@ export class Player extends Entity {
             this.vy = P.JUMP_VELOCITY;
             this.grounded = false;
             this.state = 'jump';
+            if (this.audio) this.audio.play('jump');
             return;
         }
 
@@ -223,6 +225,7 @@ export class Player extends Entity {
             this.dashDustTimer = 0;
             this._spawnDashSparks();
             this.state = 'dash';
+            if (this.audio) this.audio.play('dash');
             return;
         }
 
@@ -276,6 +279,7 @@ export class Player extends Entity {
             this.dashDustTimer = 0;
             this._spawnDashSparks();
             this.state = 'dash';
+            if (this.audio) this.audio.play('dash');
             return;
         }
 
@@ -287,6 +291,7 @@ export class Player extends Entity {
                 (this.wallContact === -1 && input.held('left'))) {
                 this.isDashing = false;
                 this.state = 'wall_slide';
+                if (this.audio) this.audio.play('wallslide');
                 return;
             }
         }
@@ -295,6 +300,7 @@ export class Player extends Entity {
         if (this.grounded) {
             this.isDashing = false;
             this.state = 'land';
+            if (this.audio) this.audio.play('land');
         }
     }
 
@@ -314,6 +320,7 @@ export class Player extends Entity {
             this.wallJumpLock = P.WALL_JUMP_LOCK;
             this.wallContact = 0;
             this.state = 'jump';
+            if (this.audio) this.audio.play('wallkick');
             return;
         }
 
@@ -430,6 +437,7 @@ export class Player extends Entity {
                 this.warpVisible = true;
                 this.animFrame = 0;
                 this.animTimer = 0;
+                if (this.audio) this.audio.play('warpIn');
             }
             return;
         }
@@ -623,10 +631,12 @@ export class Player extends Entity {
             this.shotCooldown = P.SHOT_COOLDOWN;
             this.chargeTime = 0;
             this.chargeLevel = 0;
+            if (this.audio) this.audio.play('buster');
         }
 
         // While holding: build charge
         if (input.held('shoot')) {
+            const prevLevel = this.chargeLevel;
             this.chargeTime++;
             if (this.chargeTime >= P.CHARGE2_TIME) {
                 this.chargeLevel = 2;
@@ -637,6 +647,11 @@ export class Player extends Entity {
             if (this.chargeLevel > 0) {
                 this.chargeFlashTimer++;
             }
+            // Start charge sounds on level transition
+            if (this.audio && this.chargeLevel > 0 && prevLevel === 0) {
+                this.audio.play('chargeStart');
+                this.audio.playLoop('chargeLoop');
+            }
         }
 
         // On release: fire charged shot if charged
@@ -644,18 +659,22 @@ export class Player extends Entity {
             this.shootAnimTimer = 18;
             if (this.chargeLevel === 2) {
                 this._fireShot(P.CHARGE_SPEED_3, 3, 'charge2');
+                if (this.audio) this.audio.play('buster3');
             } else {
                 this._fireShot(P.CHARGE_SPEED_2, 2, 'charge1');
+                if (this.audio) this.audio.play('buster2');
             }
             this.chargeTime = 0;
             this.chargeLevel = 0;
             this.chargeFlashTimer = 0;
+            if (this.audio) this.audio.stopLoop('chargeLoop');
         }
 
         // Clear charge on release without charge
         if (input.released('shoot') && this.chargeLevel === 0) {
             this.chargeTime = 0;
             this.chargeFlashTimer = 0;
+            if (this.audio) this.audio.stopLoop('chargeLoop');
         }
     }
 
@@ -906,6 +925,7 @@ export class Player extends Entity {
         this.chargeTime = 0;
         this.chargeLevel = 0;
         this.chargeFlashTimer = 0;
+        if (this.audio) this.audio.stopAllLoops();
 
         if (this.hp <= 0) {
             this.hp = 0;
@@ -917,6 +937,9 @@ export class Player extends Entity {
             this.diePhase = 0;
             this.dieSparks = null;
             this.dieParticles = [];
+            if (this.audio) this.audio.play('die');
+        } else {
+            if (this.audio) this.audio.play('hurt');
         }
     }
 
