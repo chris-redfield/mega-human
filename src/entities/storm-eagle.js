@@ -63,6 +63,10 @@ const SE = {
     HP:                32,
     INVINCIBLE_TIME:   45,
 
+    // Recovery (when fallen below platform)
+    RECOVER_SPEED:    -4.0,       // Upward speed when recovering
+    RECOVER_MARGIN:    30,        // How far below groundY triggers recovery
+
     // AI timing
     IDLE_MIN:          40,
     IDLE_MAX:          80,
@@ -147,16 +151,6 @@ const EAGLE_ANIMS = {
     ]},
 };
 
-// Tornado projectile sprites (from effects.png, center alignment)
-const TORNADO_FRAMES = [
-    { sx: 798, sy: 256, sw: 8,  sh: 7,  dur: 2 },
-    { sx: 808, sy: 253, sw: 10, sh: 11, dur: 2 },
-    { sx: 820, sy: 251, sw: 13, sh: 13, dur: 2 },
-    { sx: 837, sy: 250, sw: 14, sh: 14, dur: 2 },
-    { sx: 854, sy: 250, sw: 14, sh: 14, dur: 2 },
-    { sx: 870, sy: 258, sw: 12, sh: 6,  dur: 2 },
-];
-
 // Egg projectile sprite (from mavericks.png, center alignment)
 const EGG_SPRITE = { sx: 802, sy: 978, sw: 16, sh: 16 };
 
@@ -166,6 +160,14 @@ const BIRD_FRAMES = [
     { sx: 851, sy: 960, sw: 19, sh: 15, dur: 3 },
     { sx: 826, sy: 983, sw: 18, sh: 13, dur: 3 },
     { sx: 849, sy: 984, sw: 19, sh: 12, dur: 3 },
+];
+
+// Tornado projectile sprites (from effects.png, center alignment — tornado_mid frames)
+const TORNADO_FRAMES = [
+    { sx: 334, sy: 904, sw: 16, sh: 17, dur: 2 },
+    { sx: 409, sy: 898, sw: 16, sh: 28, dur: 2 },
+    { sx: 477, sy: 897, sw: 16, sh: 31, dur: 2 },
+    { sx: 563, sy: 903, sw: 16, sh: 16, dur: 2 },
 ];
 
 // Explosion frames (from effects.png, same as all enemies)
@@ -201,8 +203,9 @@ export class StormEagle extends Entity {
         this.activated = false;
         this.activationX = 0;    // Set externally (0 = always active)
 
-        // Track ground Y for fly targeting
+        // Track ground Y for fly targeting (only valid after first landing)
         this.groundY = y;
+        this.hasLanded = false;
 
         // Timers
         this.idleTimer = SE.IDLE_MIN + Math.floor(Math.random() * (SE.IDLE_MAX - SE.IDLE_MIN));
@@ -268,6 +271,7 @@ export class StormEagle extends Entity {
             case 'air_shoot': this._airShootState(player, level);  break;
             case 'dive':      this._diveState(player, level);      break;
             case 'egg':       this._eggState(player, level);       break;
+            case 'recover':   this._recoverState(player, level);   break;
             case 'hurt':      this._hurtState(player, level);      break;
             case 'dying':     this._dyingState(); return;
         }
@@ -290,6 +294,22 @@ export class StormEagle extends Entity {
         // Track ground level when grounded
         if (this.grounded) {
             this.groundY = this.y + this.hitboxY + this.hitboxH;
+            this.hasLanded = true;
+        }
+
+        // Recovery: if fallen far below the platform, fly back up
+        // Only after first landing so groundY is valid (prevents flying off during initial fall)
+        if (this.hasLanded && this.state !== 'recover' && this.state !== 'dying' && this.state !== 'fly_up') {
+            const feetY = this.y + this.hitboxY + this.hitboxH;
+            if (feetY > this.groundY + SE.RECOVER_MARGIN) {
+                this.state = 'recover';
+                this.useGravity = false;
+                this.grounded = false;
+                this.vx = 0;
+                this.vy = SE.RECOVER_SPEED;
+                this._setNormalHitbox();
+                this._setAnim('jump_start');
+            }
         }
 
         this._updateAnimation();
@@ -426,6 +446,24 @@ export class StormEagle extends Entity {
 
         if (feetY <= targetY) {
             // Reached target altitude
+            this.vy = 0;
+            this.state = 'fly';
+            this.flyTimer = SE.FLY_ATTACK_MIN + Math.floor(Math.random() * (SE.FLY_ATTACK_MAX - SE.FLY_ATTACK_MIN));
+            this.flyBobPhase = 0;
+            this._setAnim('fly');
+        }
+    }
+
+    _recoverState(player, level) {
+        // Fly upward, clipping through ground, until above the platform
+        this.vx = 0;
+        this.vy = SE.RECOVER_SPEED;
+
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+        const targetY = this.groundY - SE.FLY_TARGET_ALT;
+
+        if (feetY <= targetY) {
+            // Recovered — transition to normal fly state
             this.vy = 0;
             this.state = 'fly';
             this.flyTimer = SE.FLY_ATTACK_MIN + Math.floor(Math.random() * (SE.FLY_ATTACK_MAX - SE.FLY_ATTACK_MIN));
