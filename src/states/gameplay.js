@@ -175,9 +175,9 @@ export class GameplayState {
                 birds:   [{ x: 700, y: 700 }, { x: 1300, y: 650 }, { x: 2100, y: 400 }],
             },
             crystalmine: {
-                tanks:   [{ x: 400, y: 470 }, { x: 800, y: 300 }, { x: 1100, y: 400 }],
-                hoppers: [{ x: 600, y: 370 }, { x: 950, y: 700 }, { x: 1500, y: 320 }],
-                birds:   [{ x: 350, y: 250 }, { x: 750, y: 200 }, { x: 1600, y: 100 }],
+                tanks:   [{ x: 400, y: 470 }, { x: 800, y: 400 }, { x: 1100, y: 400 }],
+                hoppers: [{ x: 600, y: 370 }, { x: 950, y: 700 }, { x: 1520, y: 430 }],
+                birds:   [{ x: 617, y: 480 }, { x: 920, y: 650 }, { x: 1740, y: 240 }],
             },
         };
 
@@ -875,7 +875,9 @@ export class GameplayState {
         ctx.fillStyle = '#0f0';
         ctx.font = '8px monospace';
         ctx.fillText(`FPS: ${this._fpsDisplay}`, SCREEN_W - 44, 10);
-        ctx.fillText(`X:${Math.floor(this.player.x)} Y:${Math.floor(this.player.y)}`, SCREEN_W - 70, 20);
+        const feetX = Math.floor(this.player.x + this.player.hitboxX + this.player.hitboxW / 2);
+        const feetY = Math.floor(this.player.y + this.player.hitboxY + this.player.hitboxH);
+        ctx.fillText(`X:${feetX} Y:${feetY}`, SCREEN_W - 70, 20);
         if (this.player.onSlope) {
             ctx.fillStyle = '#ffa000';
             ctx.fillText('[SLOPE]', SCREEN_W - 44, 30);
