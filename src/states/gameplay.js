@@ -16,6 +16,10 @@ import { ChillPenguin } from '../entities/chill-penguin.js';
 import { createLevelFromMap } from '../levels/level.js';
 
 export class GameplayState {
+    // Canvas resolution — tells Game to resize to gameplay dimensions
+    screenWidth = SCREEN_W;
+    screenHeight = SCREEN_H;
+
     constructor(assets, stageName) {
         this.assets = assets;
         this.stageName = stageName;
@@ -64,6 +68,11 @@ export class GameplayState {
         this.respawnState = null;  // null | 'fadeOut' | 'hold' | 'fadeIn'
         this.respawnTimer = 0;
         this.fadeAlpha = 0;        // 0 = clear, 1 = full black
+
+        // Stage select return context (set by StageSelectState before transition)
+        this._stageSelectLocations = null;
+        this._stageSelectIndex = 0;
+        this._prevKeyEsc = false;
     }
 
     init(game) {
@@ -223,6 +232,23 @@ export class GameplayState {
     }
 
     update(game) {
+        // Return to stage select with Escape or gamepad Select button
+        if ((game.input.rawKeys['Escape'] && !this._prevKeyEsc) || game.input.pressed('select')) {
+            if (this._stageSelectLocations) {
+                if (this.audio) this.audio.stopMusic();
+                // Dynamic import to avoid circular dependency
+                import('./stage-select.js').then(({ StageSelectState }) => {
+                    game.setState(new StageSelectState(
+                        this.assets,
+                        this._stageSelectLocations,
+                        this._stageSelectIndex
+                    ));
+                });
+                return;
+            }
+        }
+        this._prevKeyEsc = !!game.input.rawKeys['Escape'];
+
         // Toggle HP bar layout with L key
         if (game.input.rawKeys['KeyL'] && !this._prevKeyL) {
             this.hpBarLayout = this.hpBarLayout === 'vertical' ? 'horizontal' : 'vertical';

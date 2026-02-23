@@ -1,0 +1,20 @@
+[
+  {
+    "x": 796,
+    "y": 625,
+    "stage": "highway",
+    "name": "Highway"
+  },
+  {
+    "x": 879,
+    "y": 622,
+    "stage": "aircraftcarrier",
+    "name": "Aircraft Carrier"
+  },
+  {
+    "x": 973,
+    "y": 211,
+    "stage": "frozentown",
+    "name": "Frozen Town"
+  }
+]

@@ -42,12 +42,13 @@
     <div id="loading">MEGAGAME 2026 — Loading...</div>
     <canvas id="game" style="display:none"></canvas>
     <div id="controls" style="display:none">
-        Arrows/WASD: Move &nbsp;|&nbsp; Num5/Space: Jump &nbsp;|&nbsp; Num4: Shoot &nbsp;|&nbsp; Num6/Shift: Dash &nbsp;|&nbsp; Tab: Switch Character &nbsp;|&nbsp; F1/F2/F4: Stage
+        Arrows/WASD: Move &nbsp;|&nbsp; Num5/Space: Jump &nbsp;|&nbsp; Num4: Shoot &nbsp;|&nbsp; Num6/Shift: Dash &nbsp;|&nbsp; Tab: Switch Character &nbsp;|&nbsp; Esc: Stage Select
     </div>
 
     <script type="module">
         import { Game } from './src/engine/game.js';
         import { GameplayState } from './src/states/gameplay.js';
+        import { StageSelectState } from './src/states/stage-select.js';
         import { AssetLoader } from './src/assets/asset-loader.js';
 
         const loading = document.getElementById('loading');
@@ -67,13 +68,15 @@
                 ]);
 
                 loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
-                // Load player spritesheet, effects, and enemy sprites
+                // Load player spritesheet, effects, enemy sprites, and stage select assets
                 await Promise.all([
                     assets.loadImage('playerSprite', './assets/XDefault.png'),
                     assets.loadImage('zeroSprite', './assets/zero.png'),
                     assets.loadImage('effectsSprite', './assets/effects.png'),
                     assets.loadImage('tankSprite', './assets/sigma_viral.png'),
                     assets.loadImage('mavericksSprite', './assets/mavericks.png'),
+                    assets.loadImage('stageSelect', './assets/stage-select.png'),
+                    assets.loadJSON('stageLocations', './assets/stage-locations.json'),
                 ]);
 
                 // Create game early so audio system is available for loading
@@ -116,29 +119,14 @@
                     win:       './assets/music/win.ogg',
                 });
 
-                // Start game with highway
+                // Start game with stage select screen
                 loading.style.display = 'none';
                 canvas.style.display = 'block';
                 controls.style.display = 'block';
 
-                const stages = ['highway', 'frozentown', 'aircraftcarrier'];
-                let currentStageIdx = 0;
-
-                game.setState(new GameplayState(assets, stages[currentStageIdx]));
+                const locations = assets.getJSON('stageLocations');
+                game.setState(new StageSelectState(assets, locations));
                 game.start();
-
-                // Stage switching with F1/F2/F3
-                window.addEventListener('keydown', (e) => {
-                    let newIdx = -1;
-                    if (e.code === 'F1') newIdx = 0;
-                    if (e.code === 'F2') newIdx = 1;
-                    if (e.code === 'F4') newIdx = 2;
-                    if (newIdx >= 0 && newIdx !== currentStageIdx) {
-                        e.preventDefault();
-                        currentStageIdx = newIdx;
-                        game.setState(new GameplayState(assets, stages[currentStageIdx]));
-                    }
-                });
             } catch (e) {
                 loading.textContent = `Error: ${e.message}`;
                 console.error(e);

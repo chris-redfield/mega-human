@@ -453,6 +453,40 @@ Second playable character with sword-based combat. Tab key switches between X an
 
 ---
 
+### 27. Stage Select Screen (DONE)
+
+Full-screen world map stage select, replacing the F1/F2/F4 hotkey system.
+
+**Architecture: Dual Resolution Canvas**
+- Stage select runs at **1536×1024** (native image resolution), CSS fills viewport via `object-fit: contain`
+- Gameplay runs at 307×224 (unchanged), CSS fixed at 921×672
+- `Game.setState()` reads `state.screenWidth`/`state.screenHeight` and resizes canvas + CSS on each state transition
+
+**Visual:**
+- Background: AI-generated pixel art world map (`assets/stage-select.png`, 1536×1024)
+- Location dots: red circles on the map, selected dot turns yellow with pulse/glow animation
+- Bottom banner: dark overlay over "STAGE SELECT" text, shows selected stage name in gold (`#c8a840`) with shadow
+- Corner labels: "HERO" (top-left) and "EQUIP" (bottom-left) overlaid on existing panel art — decorative only for now
+
+**Navigation:**
+- D-pad/analog moves between dots using directional nearest-neighbor search (finds closest dot primarily in the pressed direction)
+- Jump or Start confirms selection → transitions to GameplayState
+- Escape or gamepad Select during gameplay → returns to stage select (cursor remembers last selection)
+
+**Location Picker Tool** (`tools/stage-select-editor.html`):
+- Click to place dots on the map, right-click to delete
+- Edit stage key + display name per dot
+- Export/import JSON — output saved to `assets/stage-locations.json`
+
+**Files:**
+- `src/states/stage-select.js` — StageSelectState class
+- `tools/stage-select-editor.html` — location picker tool
+- `assets/stage-select.png` — world map background
+- `assets/stage-locations.json` — dot positions (3 stages: highway, frozentown, aircraftcarrier)
+- Modified: `src/engine/game.js` (dual resolution), `src/states/gameplay.js` (Escape to return), `index.html` (boot into stage select)
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -482,7 +516,7 @@ Second playable character with sword-based combat. Tab key switches between X an
 25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
 26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo). Aircraft carrier (Storm Eagle) imported but has collision/rendering issues — invisible collision blocks in the air and broken background in some areas. Needs investigation and fix.
 26b. **Fix aircraft carrier stage** — Debug and fix collision rasterization and background rendering issues on the aircraftcarrier stage (invisible solid tiles in mid-air, broken background art in places)
-27. **Stage select screen** — Visual stage select menu (instead of F1/F2 hotkeys)
+27. ~~**Stage select screen**~~ — DONE (full-screen world map with location dots, see details below)
 28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
 29. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
 30. **Score / lives system** — Lives counter, game over screen, score tracking
@@ -498,7 +532,7 @@ Second playable character with sword-based combat. Tab key switches between X an
 
 ```
 mega-human/
-├── index.html                    — Main game page (256×224 canvas, 3× scale)
+├── index.html                    — Main game page (dual resolution: 1536×1024 stage select / 307×224 gameplay)
 ├── PLAN.md                       — This file
 ├── assets/
 │   ├── XDefault.png              — X player spritesheet (from MMX Deathmatch)
@@ -506,6 +540,8 @@ mega-human/
 │   ├── effects.png               — Projectile/VFX/HUD spritesheet (buster shots, charge particles, explosions, HP bar)
 │   ├── sigma_viral.png           — Enemy spritesheet (Tank, Hopper, Bird mechaniloids)
 │   ├── mavericks.png             — Maverick boss spritesheet (Chill Penguin + others)
+│   ├── stage-select.png          — Stage select world map background (1536×1024)
+│   ├── stage-locations.json      — Stage dot positions on world map (from picker tool)
 │   ├── sounds/
 │   │   ├── common/                   — Shared SFX (jump, dash, land, hurt, die, hit, explosion, etc.)
 │   │   ├── mmx/                      — X buster SFX (buster.ogg, buster2-4.ogg)
@@ -523,7 +559,7 @@ mega-human/
 │       └── frozentown_map.json       — Frozen Town collision polygons + spawn points
 ├── src/
 │   ├── engine/
-│   │   ├── game.js               — Fixed 60fps game loop
+│   │   ├── game.js               — Fixed 60fps game loop, dual resolution canvas switching
 │   │   ├── input.js              — Keyboard input (pressed/held/released)
 │   │   ├── camera.js             — Viewport scrolling (256×224)
 │   │   ├── collision.js          — Tile-based AABB collision (isSolid, resolveH/V, checkWall)
@@ -540,6 +576,7 @@ mega-human/
 │   │   ├── health-pickup.js      — Health pickup: small (4 HP) / large (8 HP), shimmer animation
 │   │   └── chill-penguin.js      — Chill Penguin boss: 6-state AI, ice shot/slide/blow attacks
 │   ├── states/
+│   │   ├── stage-select.js      — Stage select screen (world map, location dots, navigation)
 │   │   └── gameplay.js           — Gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/
 │   │   └── level.js              — Level from map.json (polygon→tile-grid rasterizer)
@@ -550,6 +587,7 @@ mega-human/
 ├── tools/
 │   ├── map-controller.py         — Gamepad mapping tool (pygame, outputs controller-map.json)
 │   ├── controller-map.json       — Last generated controller mapping (8BitDo Ultimate 2C)
+│   ├── stage-select-editor.html  — Location picker for stage select dots (click to place, export JSON)
 │   ├── tile-viewer.html          — ROM tile browser (legacy)
 │   ├── sprite-assembler.html     — Manual sprite assembly tool (legacy)
 │   └── sprite-finder.html        — Tile search tool (legacy)

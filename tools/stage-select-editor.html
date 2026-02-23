@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stage Select Editor — Location Picker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px;
+        }
+        h1 { color: #00d4ff; margin-bottom: 8px; font-size: 18px; }
+        .instructions {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        button {
+            background: #2a2a4a;
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+            padding: 6px 14px;
+            font-family: monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover { background: #3a3a6a; }
+        .canvas-wrap {
+            position: relative;
+            border: 2px solid #333;
+            display: inline-block;
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        .sidebar {
+            position: fixed;
+            right: 12px;
+            top: 12px;
+            width: 260px;
+            background: #12122a;
+            border: 1px solid #444;
+            padding: 12px;
+            font-size: 13px;
+        }
+        .sidebar h3 { color: #00d4ff; margin-bottom: 8px; }
+        .sidebar label { display: block; margin-top: 6px; color: #aaa; }
+        .sidebar input, .sidebar select {
+            width: 100%;
+            background: #1a1a3e;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 4px 6px;
+            font-family: monospace;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+        .sidebar .coords { color: #888; margin-top: 8px; }
+        textarea {
+            width: 100%;
+            max-width: 800px;
+            height: 120px;
+            background: #12122a;
+            color: #0f0;
+            border: 1px solid #555;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .dot-list {
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .dot-item {
+            padding: 4px 6px;
+            margin: 2px 0;
+            background: #1a1a3e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dot-item:hover { background: #2a2a5e; }
+        .dot-item.selected { border-left: 3px solid #ff0; }
+        .dot-item .delete-btn {
+            color: #f44;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 4px;
+        }
+        .scale-info { color: #666; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>Stage Select Editor</h1>
+    <div class="instructions">
+        Click to add location dot | Click dot to select | Right-click dot to delete
+    </div>
+    <div class="toolbar">
+        <button id="exportBtn">Export JSON</button>
+        <button id="importBtn">Import JSON</button>
+        <button id="clearBtn">Clear All</button>
+        <span class="scale-info">Coordinates are in native 1536×1024 space</span>
+    </div>
+    <div class="canvas-wrap">
+        <canvas id="editor"></canvas>
+    </div>
+    <textarea id="jsonOutput" placeholder="JSON output will appear here. Paste JSON here and click Import to load."></textarea>
+
+    <div class="sidebar">
+        <h3>Selected Dot</h3>
+        <div id="editPanel" style="display:none">
+            <div class="coords" id="coordsDisplay">x: 0, y: 0</div>
+            <label>Stage Key:
+                <select id="stageKey">
+                    <option value="highway">highway</option>
+                    <option value="frozentown">frozentown</option>
+                    <option value="aircraftcarrier">aircraftcarrier</option>
+                </select>
+            </label>
+            <label>Display Name:
+                <input type="text" id="stageName" placeholder="e.g. HIGHWAY">
+            </label>
+            <button id="updateDotBtn" style="margin-top:8px;width:100%">Update Dot</button>
+        </div>
+        <div id="noSelection" style="color:#666">No dot selected</div>
+
+        <h3 style="margin-top:16px">All Dots</h3>
+        <div class="dot-list" id="dotList"></div>
+    </div>
+
+    <script>
+        const IMG_PATH = '../assets/stage-select.png';
+        const DOT_RADIUS = 12;
+        const DOT_HIT_RADIUS = 18;
+
+        const canvas = document.getElementById('editor');
+        const ctx = canvas.getContext('2d');
+
+        let bgImage = null;
+        let dots = [];
+        let selectedIdx = -1;
+        let scale = 1; // display scale factor
+
+        // Load image
+        const img = new Image();
+        img.onload = () => {
+            bgImage = img;
+            // Fit to viewport width, leaving room for sidebar
+            const maxW = window.innerWidth - 300;
+            const maxH = window.innerHeight - 200;
+            scale = Math.min(maxW / img.width, maxH / img.height, 1);
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            render();
+        };
+        img.src = IMG_PATH;
+
+        function render() {
+            if (!bgImage) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+
+            // Draw dots
+            for (let i = 0; i < dots.length; i++) {
+                const dot = dots[i];
+                const dx = dot.x * scale;
+                const dy = dot.y * scale;
+                const r = DOT_RADIUS * scale;
+
+                const isSelected = i === selectedIdx;
+
+                // Outer ring
+                ctx.beginPath();
+                ctx.arc(dx, dy, r + 2 * scale, 0, Math.PI * 2);
+                ctx.fillStyle = '#000';
+                ctx.fill();
+
+                // Main dot
+                ctx.beginPath();
+                ctx.arc(dx, dy, r, 0, Math.PI * 2);
+                ctx.fillStyle = isSelected ? '#ffdd00' : '#ff2222';
+                ctx.fill();
+
+                // Inner highlight
+                ctx.beginPath();
+                ctx.arc(dx - r * 0.25, dy - r * 0.25, r * 0.35, 0, Math.PI * 2);
+                ctx.fillStyle = isSelected ? 'rgba(255,255,255,0.5)' : 'rgba(255,180,180,0.4)';
+                ctx.fill();
+
+                // Label
+                ctx.fillStyle = '#fff';
+                ctx.font = `${Math.round(11 * scale)}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(dot.name || dot.stage, dx, dy + r + 14 * scale);
+            }
+        }
+
+        // Canvas click — add dot or select existing
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) / scale;
+            const my = (e.clientY - rect.top) / scale;
+
+            // Check if clicking an existing dot
+            for (let i = 0; i < dots.length; i++) {
+                const d = dots[i];
+                const dist = Math.hypot(mx - d.x, my - d.y);
+                if (dist < DOT_HIT_RADIUS) {
+                    selectDot(i);
+                    return;
+                }
+            }
+
+            // Add new dot
+            const newDot = {
+                x: Math.round(mx),
+                y: Math.round(my),
+                stage: 'highway',
+                name: 'NEW STAGE'
+            };
+            dots.push(newDot);
+            selectDot(dots.length - 1);
+        });
+
+        // Right-click — delete dot
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) / scale;
+            const my = (e.clientY - rect.top) / scale;
+
+            for (let i = 0; i < dots.length; i++) {
+                const d = dots[i];
+                if (Math.hypot(mx - d.x, my - d.y) < DOT_HIT_RADIUS) {
+                    dots.splice(i, 1);
+                    if (selectedIdx === i) selectedIdx = -1;
+                    else if (selectedIdx > i) selectedIdx--;
+                    updateUI();
+                    render();
+                    return;
+                }
+            }
+        });
+
+        function selectDot(idx) {
+            selectedIdx = idx;
+            updateUI();
+            render();
+        }
+
+        function updateUI() {
+            const editPanel = document.getElementById('editPanel');
+            const noSel = document.getElementById('noSelection');
+
+            if (selectedIdx >= 0 && selectedIdx < dots.length) {
+                const dot = dots[selectedIdx];
+                editPanel.style.display = 'block';
+                noSel.style.display = 'none';
+                document.getElementById('coordsDisplay').textContent = `x: ${dot.x}, y: ${dot.y}`;
+                document.getElementById('stageKey').value = dot.stage;
+                document.getElementById('stageName').value = dot.name;
+            } else {
+                editPanel.style.display = 'none';
+                noSel.style.display = 'block';
+            }
+
+            // Dot list
+            const list = document.getElementById('dotList');
+            list.innerHTML = '';
+            dots.forEach((dot, i) => {
+                const div = document.createElement('div');
+                div.className = 'dot-item' + (i === selectedIdx ? ' selected' : '');
+                div.innerHTML = `
+                    <span>${dot.name} (${dot.x}, ${dot.y})</span>
+                    <span class="delete-btn" data-idx="${i}">&times;</span>
+                `;
+                div.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-btn')) {
+                        const idx = parseInt(e.target.dataset.idx);
+                        dots.splice(idx, 1);
+                        if (selectedIdx === idx) selectedIdx = -1;
+                        else if (selectedIdx > idx) selectedIdx--;
+                        updateUI();
+                        render();
+                    } else {
+                        selectDot(i);
+                    }
+                });
+                list.appendChild(div);
+            });
+        }
+
+        // Update dot button
+        document.getElementById('updateDotBtn').addEventListener('click', () => {
+            if (selectedIdx < 0) return;
+            dots[selectedIdx].stage = document.getElementById('stageKey').value;
+            dots[selectedIdx].name = document.getElementById('stageName').value;
+            updateUI();
+            render();
+        });
+
+        // Export
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const json = JSON.stringify(dots, null, 2);
+            document.getElementById('jsonOutput').value = json;
+            navigator.clipboard.writeText(json).catch(() => {});
+        });
+
+        // Import
+        document.getElementById('importBtn').addEventListener('click', () => {
+            try {
+                const json = document.getElementById('jsonOutput').value;
+                const parsed = JSON.parse(json);
+                if (Array.isArray(parsed)) {
+                    dots = parsed;
+                    selectedIdx = -1;
+                    updateUI();
+                    render();
+                }
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        });
+
+        // Clear
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('Delete all dots?')) {
+                dots = [];
+                selectedIdx = -1;
+                updateUI();
+                render();
+            }
+        });
+    </script>
+</body>
+</html>

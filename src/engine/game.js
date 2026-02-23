@@ -11,6 +11,10 @@ import { SCREEN_W, SCREEN_H } from './camera.js';
 const TIMESTEP = 1000 / 60;
 const MAX_FRAME_SKIP = 5;
 
+// Default gameplay resolution + CSS
+const DEFAULT_CSS_W = '921px';
+const DEFAULT_CSS_H = '672px';
+
 export class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -37,9 +41,29 @@ export class Game {
         this.frameCount = 0;
     }
 
-    /** Set the active game state (e.g., gameplay, menu). */
+    /** Set the active game state. Resizes canvas if state declares screenWidth/screenHeight. */
     setState(state) {
         this.state = state;
+
+        // Resize canvas to match state's declared resolution
+        if (state && state.screenWidth && state.screenHeight) {
+            this.canvas.width = state.screenWidth;
+            this.canvas.height = state.screenHeight;
+            this.ctx.imageSmoothingEnabled = false;
+
+            // Full-viewport sizing for large resolutions (stage select)
+            if (state.screenWidth > SCREEN_W) {
+                this.canvas.style.width = '100vw';
+                this.canvas.style.height = '100vh';
+                this.canvas.style.objectFit = 'contain';
+            } else {
+                // Gameplay resolution — fixed 3x CSS scale
+                this.canvas.style.width = DEFAULT_CSS_W;
+                this.canvas.style.height = DEFAULT_CSS_H;
+                this.canvas.style.objectFit = '';
+            }
+        }
+
         if (state && state.init) state.init(this);
     }
 
@@ -79,7 +103,7 @@ export class Game {
 
         // Render
         this.ctx.fillStyle = '#000';
-        this.ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         if (this.state && this.state.render) {
             this.state.render(this.ctx, this);
         }
