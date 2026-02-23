@@ -122,8 +122,10 @@ export function resolveSlopeHorizontal(level, x, y, w, h, dx) {
     // height so the player can step through the wall of tiles at the junction.
     // This is safe because the vertical proximity check above already nullifies
     // slopeY when the player is far from the slope surface.
-    // On the slope itself, use a small margin (just below surface).
-    const skipMargin = (slopeY !== null && inTransition) ? h : 2;
+    // On the slope itself, skip one tile height to handle staircase tiles at
+    // the surface (these are no longer cleared by _clearSlopeTiles to preserve
+    // ground tiles at slope endpoints).
+    const skipMargin = (slopeY !== null && inTransition) ? h : ts;
 
     // Check every tile row the entity overlaps (top, middle rows, bottom)
     for (let cy = y + 1; cy < y + h - 1; cy += ts) {

@@ -244,8 +244,11 @@ function _extractSlopeSegments(level, polygon, shapeName) {
 
 /**
  * Clear staircase tiles at the slope surface.
- * For each column in the slope range, clears the tile row that the slope passes
- * through (the "step" tile) and one row above it to provide clearance.
+ * For each column in the slope range, clears tiles that poke above the slope
+ * surface (the "step" tiles). Tiles whose top edge is at or below the slope
+ * surface are ground tiles and are preserved.
+ * X is clamped to the slope endpoints to prevent extrapolation from clearing
+ * ground tiles beyond the slope (e.g. at the bottom of a downhill slope).
  */
 function _clearSlopeTiles(level) {
     const ts = level.tileSize;
@@ -255,11 +258,12 @@ function _clearSlopeTiles(level) {
 
         for (let col = startCol; col <= endCol; col++) {
             const cx = col * ts + ts / 2;
-            const slopeY = seg.y1 + seg.slope * (cx - seg.x1);
+            const clampedX = Math.max(seg.x1, Math.min(seg.x2, cx));
+            const slopeY = seg.y1 + seg.slope * (clampedX - seg.x1);
             const slopeRow = Math.floor(slopeY / ts);
-            if (slopeRow >= 0 && slopeRow < level.heightInTiles) {
-                level.setTile(col, slopeRow, 0);
-            }
+            // Only clear above the surface row — the surface row itself is
+            // handled at runtime by resolveSlopeHorizontal's skip margin.
+            // Clearing the surface row would remove ground tiles at slope endpoints.
             if (slopeRow - 1 >= 0) {
                 level.setTile(col, slopeRow - 1, 0);
             }

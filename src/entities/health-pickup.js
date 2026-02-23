@@ -8,7 +8,7 @@
  */
 
 import { Entity } from './entity.js';
-import { resolveHorizontal, resolveVertical } from '../engine/collision.js';
+import { resolveHorizontal, resolveSlopeVertical } from '../engine/collision.js';
 
 // Physics
 const GRAVITY = 0.25;
@@ -71,6 +71,7 @@ export class HealthPickup extends Entity {
 
         // Physics
         this.grounded = false;
+        this.onSlope = false;
 
         // Animation
         this.animStep = 0;
@@ -122,14 +123,16 @@ export class HealthPickup extends Entity {
             this.vx = 0;
         }
 
-        // Vertical
+        // Vertical (slope-aware)
         const oldHitY = this.y + this.hitboxY;
-        const result = resolveVertical(
+        const result = resolveSlopeVertical(
             level, this.x + this.hitboxX, oldHitY,
-            this.hitboxW, this.hitboxH, this.vy
+            this.hitboxW, this.hitboxH, this.vy,
+            this.grounded, this.onSlope
         );
         this.y = result.y - this.hitboxY;
         this.grounded = result.grounded;
+        this.onSlope = result.onSlope;
         if (result.grounded || Math.abs(result.y - (oldHitY + this.vy)) > 0.01) {
             this.vy = 0;
         }

@@ -8,7 +8,7 @@
  */
 
 import { Entity, boxOverlap } from './entity.js';
-import { resolveHorizontal, resolveVertical, isSolid } from '../engine/collision.js';
+import { resolveSlopeHorizontal, resolveSlopeVertical, isSolid } from '../engine/collision.js';
 
 const H = {
     SPEED:            1.2,    // Horizontal hop speed (px/frame)
@@ -87,6 +87,7 @@ export class HopperEnemy extends Entity {
 
         this.facing = -1;
         this.grounded = false;
+        this.onSlope = false;
         this.state = 'idle';  // idle, hop, attack, dying
 
         this.spawnX = x;
@@ -253,24 +254,26 @@ export class HopperEnemy extends Entity {
     // --- Collision ---
 
     _moveAndCollide(level) {
-        // Horizontal
+        // Horizontal (slope-aware)
         const oldHitX = this.x + this.hitboxX;
         const expectedHitX = oldHitX + this.vx;
-        const resolvedHitX = resolveHorizontal(
+        const resolvedHitX = resolveSlopeHorizontal(
             level, oldHitX, this.y + this.hitboxY,
             this.hitboxW, this.hitboxH, this.vx
         );
         this.x = resolvedHitX - this.hitboxX;
         if (Math.abs(resolvedHitX - expectedHitX) > 0.01) this.vx = 0;
 
-        // Vertical
+        // Vertical (slope-aware)
         const oldHitY = this.y + this.hitboxY;
-        const result = resolveVertical(
+        const result = resolveSlopeVertical(
             level, this.x + this.hitboxX, oldHitY,
-            this.hitboxW, this.hitboxH, this.vy
+            this.hitboxW, this.hitboxH, this.vy,
+            this.grounded, this.onSlope
         );
         this.y = result.y - this.hitboxY;
         this.grounded = result.grounded;
+        this.onSlope = result.onSlope;
         if (result.grounded || Math.abs(result.y - (oldHitY + this.vy)) > 0.01) {
             this.vy = 0;
         }
