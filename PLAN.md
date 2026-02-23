@@ -559,6 +559,103 @@ Imported the Crystal Mine (Crystal Snail / Energen Crystal) stage from MMX-Onlin
 
 ---
 
+### 26d. Slope Collision System (DONE)
+
+Full slope support for diagonal ground surfaces extracted from map.json collision polygons. Players, enemies, bosses, and health pickups all walk/land on slopes correctly.
+
+**Problem:** Several stages (Frozen Town, Aircraft Carrier, Crystal Mine) have collision shapes with diagonal edges representing ramps and inclines. The tile-based AABB collision system only supports flat axis-aligned surfaces — diagonal surfaces produced "staircase" tiles that the player would get stuck on when entering or exiting.
+
+**Solution: Three-layer slope system.**
+
+#### Layer 1 — Slope Segment Extraction (`level.js`)
+
+Collision shape polygons are analyzed for ground slope edges: non-axis-aligned edges whose outward normal points upward (using polygon winding to determine normal direction). These edges are extracted as slope segments with `{ x1, y1, x2, y2, slope, shapeName }` (always stored with `x1 < x2`).
+
+Polygons that contain slope edges are **not rasterized** onto the tile grid (they would create broken staircase tiles). Instead, the slope segments are used for direct line-based collision at runtime.
+
+**`_clearSlopeTiles()`** removes staircase tiles that other collision shapes (or custom collision data) placed in the slope area. For each column in the slope range, it clears the row above the slope surface (`slopeRow - 1`). Two key details prevent ground tile destruction:
+
+1. **X is clamped** to the slope's endpoint range (`seg.x1` to `seg.x2`) — prevents extrapolation beyond the slope, which would compute incorrect Y values and clear ground tiles at slope endpoints (e.g., at the bottom of a downhill ramp in Frozen Town).
+2. **Surface row (`slopeRow`) is never cleared** — only `slopeRow - 1` is removed. The surface row tiles are handled dynamically at runtime by `resolveSlopeHorizontal`. This preserves ground tiles at slope/flat junctions.
+
+**Stages with slopes detected:**
+
+| Stage | Shape | Segment | Slope Value | Notes |
+|-------|-------|---------|-------------|-------|
+| Frozen Town | Shape31 | (1041,350)→(1089,368) | +0.375 | Downhill ramp, 4 tile columns |
+| Frozen Town | Shape30 | (1366,417)→(1431,435) | +0.277 | Gentle downhill, 5 tile columns |
+| Aircraft Carrier | Shape38 | (2459,300)→(2560,248) | -0.515 | Uphill ramp, 14 tile columns |
+| Crystal Mine | Shape9 | (116,385)→(817,736) | +0.501 | Massive diagonal, 89 tile columns |
+| Crystal Mine | Shape22 | (1134,638)→(1196,610) | -0.452 | Short uphill section |
+| Crystal Mine | Shape21 | (1230,645)→(1299,608) | -0.536 | Short uphill section |
+| Crystal Mine | Shape19 | (1299,574)→(1360,544) | -0.492 | Short uphill section |
+| Crystal Mine | Shape35 | (1457,499)→(1691,375) | -0.530 | Long uphill, 30 tile columns |
+
+#### Layer 2 — Slope-Aware Vertical Resolution (`resolveSlopeVertical` in `collision.js`)
+
+Replaces `resolveVertical` for all ground entities. Checks slope segments first, falls back to tile-based resolution.
+
+**On-slope snapping:** When the player's foot center X is within a slope segment's range, and their feet are near the slope surface (moving down or standing), the player is snapped to the slope surface: `y = slopeY - hitboxH`. Returns `{ grounded: true, onSlope: true }`.
+
+**Downhill snap:** When grounded and moving downhill, the feet may briefly be above the slope surface (gap < 12px). The system snaps down to keep the player glued to the slope.
+
+**Slope→flat transition:** When leaving a slope (`wasOnSlope && !tileGrounded && dy >= 0`), the slope surface Y may not align with the tile grid, leaving a small gap. The system scans 2 rows downward from the player's feet for the nearest solid tile and snaps to it, preventing micro-drops.
+
+**Proximity guard:** Only considers slopes within `tileSize * 2` of the player's feet (`snapMax`), preventing snapping to distant slopes above or below.
+
+#### Layer 3 — Slope-Aware Horizontal Resolution (`resolveSlopeHorizontal` in `collision.js`)
+
+Replaces `resolveHorizontal` for all ground entities. Allows passage through tiles at slope surfaces while preserving wall collision.
+
+**Three zones with different skip margins:**
+
+| Zone | Condition | Skip Margin | Purpose |
+|------|-----------|-------------|---------|
+| On slope | `checkX` within slope endpoints | `ts` (one tile height) | Skip staircase tiles at the slope surface |
+| Transition | `checkX` within `w` beyond slope endpoints | `h` (full body height) | Skip the wall of tiles at slope/flat junctions |
+| Normal | No nearby slope | 0 (no skip) | Full wall collision |
+
+The skip condition is `cy > slopeY - skipMargin`: tiles below or near the slope surface are allowed through, tiles above are blocked normally.
+
+**Critical: Vertical proximity check.** Before applying any slope skip logic, the function checks if the player's feet are within `tileSize * 2` of the slope surface. If not, `slopeY` is nullified and normal wall collision applies. **This is the key fix that prevents wall clipping.** Without it, large slopes like Crystal Mine's Shape9 (701px wide) would disable wall collision for every entity in their X range, even those walking on flat ground far below.
+
+**Bugs encountered and fixed during development:**
+
+1. **Massive wall clipping** — `resolveSlopeHorizontal` had no vertical proximity check. Any entity in the X range of a slope (even 200px below it) had wall collision disabled. Fixed by nullifying `slopeY` when `|feetY - slopeY| > tileSize * 2`.
+
+2. **Stuck at slope/flat transitions** — Transition `skipMargin` was reduced to `ts` (one tile) which wasn't enough for the full hitbox height of tiles at junctions. Restored to `h` (full body) — safe because the proximity check prevents far-away clipping.
+
+3. **Falling through ground at slope endpoints** — `_clearSlopeTiles` extrapolated the slope Y beyond its actual endpoints, computing incorrect surface positions that caused ground tiles to be cleared. Fixed by clamping X to `[seg.x1, seg.x2]`.
+
+4. **Falling through at downhill ramp bottoms** — `_clearSlopeTiles` cleared the surface row tile even when it was the ground tile at the bottom of a slope. Fixed by never clearing `slopeRow` — only `slopeRow - 1`. Surface-level staircase tiles are now handled at runtime by `resolveSlopeHorizontal` with `skipMargin = ts`.
+
+#### Entity Integration
+
+All ground entities use slope-aware collision:
+
+| Entity | Horizontal | Vertical | `onSlope` tracking |
+|--------|-----------|----------|-------------------|
+| Player (X/Zero) | `resolveSlopeHorizontal` | `resolveSlopeVertical` | Yes |
+| Tank Mechaniloid | `resolveSlopeHorizontal` | `resolveSlopeVertical` | Yes |
+| Hopper Mechaniloid | `resolveSlopeHorizontal` | `resolveSlopeVertical` | Yes |
+| Chill Penguin (boss) | `resolveSlopeHorizontal` | `resolveSlopeVertical` | Yes (kept `resolveHorizontal` import for blow push on player) |
+| Health Pickup | `resolveHorizontal` (unchanged) | `resolveSlopeVertical` | Yes |
+| Bird Mechaniloid | N/A (flying) | N/A (flying) | No |
+
+**Debug overlay:** Slope segments displayed as orange lines in debug mode (P key). `[SLOPE]` indicator shown in top-right when player is on a slope.
+
+**Files modified:**
+- `src/engine/collision.js` — Added `resolveSlopeHorizontal`, `resolveSlopeVertical`, `getSlopeGroundY`
+- `src/levels/level.js` — Added `_extractSlopeSegments`, `_clearSlopeTiles`, `_isGroundSlopeEdge`, `_polygonHasSlopeEdge`, `_signedArea`; `Level` class has `slopeSegments` array
+- `src/entities/player.js` — Uses slope-aware collision, tracks `onSlope`
+- `src/entities/tank-enemy.js` — Uses slope-aware collision, tracks `onSlope`
+- `src/entities/hopper-enemy.js` — Uses slope-aware collision, tracks `onSlope`
+- `src/entities/chill-penguin.js` — Uses slope-aware collision, tracks `onSlope`
+- `src/entities/health-pickup.js` — Uses slope-aware vertical, tracks `onSlope`
+- `src/states/gameplay.js` — Debug overlay renders slope segments + `[SLOPE]` indicator
+
+---
+
 ### How to Import a New Stage from MMX-Online-Deathmatch
 
 Step-by-step procedure for adding a new stage:
@@ -642,6 +739,7 @@ Copy to `assets/music/` keeping the loop-point filename (audio system parses loo
 25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
 26. **Additional stages** — Import more MMX-Deathmatch stage assets. Aircraft carrier (Storm Eagle) and Crystal Mine (Crystal Snail) imported.
 26b. ~~**Fix aircraft carrier stage**~~ — DONE (custom collision tile editor + 8×8 tile support, see details below)
+26d. ~~**Slope collision system**~~ — DONE (3-layer slope system: segment extraction from polygons, slope-aware vertical/horizontal resolution with proximity guard, all ground entities updated. See details below)
 27. ~~**Stage select screen**~~ — DONE (full-screen world map with location dots, see details below)
 28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
 29. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
@@ -696,7 +794,7 @@ mega-human/
 │   │   ├── game.js               — Fixed 60fps game loop, dual resolution canvas switching
 │   │   ├── input.js              — Keyboard input (pressed/held/released)
 │   │   ├── camera.js             — Viewport scrolling (256×224)
-│   │   ├── collision.js          — Tile-based AABB collision (variable tileSize from level, isSolid, resolveH/V, checkWall)
+│   │   ├── collision.js          — Tile-based AABB collision + slope-aware resolution (variable tileSize, isSolid, resolveH/V, resolveSlopeH/V, checkWall)
 │   │   └── audio.js              — Web Audio API sound manager (SFX + Music, loop points, charge loop)
 │   ├── entities/
 │   │   ├── entity.js             — Base entity class + AABB overlap
@@ -760,6 +858,8 @@ mega-human/
 **Tile rasterization precision limit (default 16×16):** Collision shapes are rasterized onto a 16px grid using center-point checks only. Characters land on tile boundaries (multiples of 16), so there can be up to ~8px visual gap between the tile edge and the actual art. For stages where this is unacceptable, use the collision editor (`tools/collision-editor.html`) to create a custom 8×8 tile map — this reduces the gap to ~4px.
 
 **Audio system:** `AudioManager` in `src/engine/audio.js` uses Web Audio API. AudioContext is created lazily on first user gesture (keydown/mousedown), NOT during page load. Audio files are fetched as raw ArrayBuffers during loading and decoded once the context exists. Music loop points are parsed from filenames (e.g. `highway.44,44.87,463.ogg`). Gamepad API is poll-based and cannot trigger AudioContext resume — only keyboard/mouse events work.
+
+**Slope collision critical invariants:** (1) `resolveSlopeHorizontal` MUST check vertical proximity (`|feetY - slopeY| > ts * 2`) before applying slope skip logic — without this, large slopes disable wall collision across their entire X range. (2) `_clearSlopeTiles` MUST clamp X to the slope endpoint range and MUST NOT clear the surface row (`slopeRow`) — only clear `slopeRow - 1`. Clearing the surface row removes ground tiles at slope endpoints. (3) The on-slope `skipMargin = ts` handles surface staircase tiles at runtime, and the transition `skipMargin = h` handles the wall of tiles at slope/flat junctions.
 
 ---
 
