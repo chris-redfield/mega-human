@@ -165,9 +165,6 @@ export class GameplayState {
                 tanks:   [{ x: 500, y: 150 }, { x: 900, y: 150 }, { x: 1400, y: 150 }],
                 hoppers: [{ x: 340, y: 350 }, { x: 700, y: 350 }, { x: 1100, y: 330 }],
                 birds:   [{ x: 600, y: 120 }, { x: 1000, y: 100 }, { x: 1500, y: 130 }],
-                tanks: [],
-                hoppers: [],
-                birds: [],
             },
             aircraftcarrier: {
                 tanks:   [{ x: 350, y: 1000 }, { x: 800, y: 980 }, { x: 1400, y: 1000 }],
