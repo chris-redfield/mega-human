@@ -75,6 +75,144 @@ export function resolveVertical(level, x, y, w, h, dy) {
 }
 
 /**
+ * Slope-aware horizontal resolution for the player.
+ * Same as resolveHorizontal but allows passage through tiles that are at or
+ * below a slope surface at the leading edge.
+ *
+ * On the slope itself: skips tiles within 2px of the slope surface (slope body).
+ * At transition zones (beyond slope endpoints): skips tiles for the full body
+ * height so the player can walk through the wall tiles at slope/flat junctions
+ * without needing to clear them.
+ */
+export function resolveSlopeHorizontal(level, x, y, w, h, dx) {
+    const ts = level.tileSize;
+    const newX = x + dx;
+    if (dx === 0) return newX;
+
+    const checkX = dx > 0 ? newX + w : newX;
+    const snapX = dx > 0
+        ? Math.floor(checkX / ts) * ts - w - 0.01
+        : (Math.floor(checkX / ts) + 1) * ts + 0.01;
+
+    // Find slope surface Y at the leading edge X.
+    // Extend range by hitbox width beyond slope endpoints for smooth transitions.
+    let slopeY = null;
+    let inTransition = false;
+    const feetY = y + h;
+    for (const seg of level.slopeSegments) {
+        if (checkX >= seg.x1 - w && checkX <= seg.x2 + w) {
+            const clampedX = Math.max(seg.x1, Math.min(seg.x2, checkX));
+            const sy = seg.y1 + seg.slope * (clampedX - seg.x1);
+            // Pick the slope closest to player's feet
+            if (slopeY === null || Math.abs(sy - feetY) < Math.abs(slopeY - feetY)) {
+                slopeY = sy;
+                inTransition = checkX < seg.x1 || checkX > seg.x2;
+            }
+        }
+    }
+
+    // At transitions (beyond slope endpoints), use full body height as skip margin
+    // so wall tiles at the slope/flat junction are bypassed.
+    // On the slope itself, use a small margin (just below surface).
+    const skipMargin = (slopeY !== null && inTransition) ? h : 2;
+
+    // Check every tile row the entity overlaps (top, middle rows, bottom)
+    for (let cy = y + 1; cy < y + h - 1; cy += ts) {
+        if (isSolid(level, checkX, cy)) {
+            if (slopeY !== null && cy > slopeY - skipMargin) continue;
+            return snapX;
+        }
+    }
+    if (isSolid(level, checkX, y + h - 1)) {
+        if (slopeY !== null && y + h - 1 > slopeY - skipMargin) {
+            // Near slope surface — allow passage
+        } else {
+            return snapX;
+        }
+    }
+
+    return newX;
+}
+
+/**
+ * Get the slope ground Y at a given foot X position.
+ * Returns the Y of the slope surface, or null if no slope covers this X.
+ * If multiple slopes overlap at this X, returns the highest (smallest Y).
+ */
+export function getSlopeGroundY(level, footX) {
+    let bestY = null;
+    for (const seg of level.slopeSegments) {
+        if (footX >= seg.x1 && footX <= seg.x2) {
+            const slopeY = seg.y1 + seg.slope * (footX - seg.x1);
+            if (bestY === null || slopeY < bestY) {
+                bestY = slopeY;
+            }
+        }
+    }
+    return bestY;
+}
+
+/**
+ * Slope-aware vertical resolution for the player.
+ * Checks slope segments first, falls back to tile-based resolveVertical.
+ * Uses proximity check to avoid snapping to distant slopes.
+ * @param {object} level - Level with slopeSegments and tile grid
+ * @param {number} x - Hitbox left X
+ * @param {number} y - Hitbox top Y
+ * @param {number} w - Hitbox width
+ * @param {number} h - Hitbox height
+ * @param {number} dy - Vertical velocity
+ * @param {boolean} wasGrounded - Whether player was grounded last frame
+ * @returns {{ y: number, grounded: boolean, onSlope: boolean }}
+ */
+export function resolveSlopeVertical(level, x, y, w, h, dy, wasGrounded) {
+    if (level.slopeSegments.length === 0) {
+        const result = resolveVertical(level, x, y, w, h, dy);
+        return { y: result.y, grounded: result.grounded, onSlope: false };
+    }
+
+    const newY = y + dy;
+    const footX = x + w / 2;
+    const feetY = newY + h;
+    // Max distance below slope surface to snap (prevents snapping to distant slopes)
+    const snapMax = level.tileSize * 2;
+
+    // Find the best slope to snap to (closest one within range)
+    let bestSlopeY = null;
+
+    for (const seg of level.slopeSegments) {
+        if (footX < seg.x1 || footX > seg.x2) continue;
+        const slopeY = seg.y1 + seg.slope * (footX - seg.x1);
+
+        // Moving down or standing: snap if feet just passed through slope surface
+        if (dy >= 0 && feetY >= slopeY && feetY - slopeY < snapMax) {
+            if (bestSlopeY === null || slopeY > bestSlopeY) {
+                bestSlopeY = slopeY; // Pick the lowest qualifying slope (closest to feet)
+            }
+        }
+
+        // Downhill snap: grounded and feet just above slope surface
+        if (wasGrounded && dy >= 0 && feetY < slopeY && slopeY - feetY < 12) {
+            if (bestSlopeY === null || slopeY < bestSlopeY) {
+                bestSlopeY = slopeY;
+            }
+        }
+    }
+
+    if (bestSlopeY !== null) {
+        return {
+            y: bestSlopeY - h - 0.01,
+            grounded: true,
+            onSlope: true,
+        };
+    }
+
+    // Fall back to tile-based resolution
+    const result = resolveVertical(level, x, y, w, h, dy);
+    return { y: result.y, grounded: result.grounded, onSlope: false };
+}
+
+/**
  * Check for wall contact (for wall sliding/jumping).
  * Returns -1 (wall on left), 0 (no wall), or 1 (wall on right).
  */

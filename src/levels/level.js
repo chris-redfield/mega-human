@@ -32,6 +32,9 @@ export class Level {
         // Health pickup positions from map instances
         this.healthPickups = [];
 
+        // Slope segments extracted from collision polygons (diagonal ground edges)
+        this.slopeSegments = [];
+
         // Debug: collision shape metadata (name + bounding box) for overlay labels
         this.collisionShapes = [];
     }
@@ -115,9 +118,16 @@ export function createLevelFromMap(mapData, customCollision) {
                     x: Math.min(...xs),
                     y: Math.min(...ys),
                 });
-                // Only rasterize if no custom collision
-                if (!customCollision) {
-                    const polygon = inst.points.map(p => [p.x, p.y]);
+                const polygon = inst.points.map(p => [p.x, p.y]);
+                const hasSlope = _polygonHasSlopeEdge(polygon);
+
+                // Always extract slope segments from polygons that have them
+                if (hasSlope) {
+                    _extractSlopeSegments(level, polygon, inst.name || inst.objectName);
+                }
+
+                // Rasterize only if no custom collision AND polygon has no slope edges
+                if (!customCollision && !hasSlope) {
                     _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
                 }
             } else if (inst.objectName === 'Spawn Point' && inst.pos) {
@@ -140,7 +150,121 @@ export function createLevelFromMap(mapData, customCollision) {
     // Fallback killY from explicit property (highway uses this)
     level.killY = mapData.killY || (mapData.height + 100);
 
+    // Clear staircase tiles under slope segments (from both rasterized and custom collision)
+    if (level.slopeSegments.length > 0) {
+        _clearSlopeTiles(level);
+    }
+
     return level;
+}
+
+/**
+ * Compute signed area of a polygon. Positive = CCW, negative = CW.
+ */
+function _signedArea(polygon) {
+    let area = 0;
+    const n = polygon.length;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += polygon[i][0] * polygon[j][1];
+        area -= polygon[j][0] * polygon[i][1];
+    }
+    return area / 2;
+}
+
+/**
+ * Check if an edge (a→b) is a ground slope: not axis-aligned, outward normal points up.
+ * Uses polygon winding to determine outward normal direction.
+ * @param {number[]} a - [x, y] start
+ * @param {number[]} b - [x, y] end
+ * @param {number} windingSign - +1 for CCW, -1 for CW
+ */
+function _isGroundSlopeEdge(a, b, windingSign) {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    // Skip axis-aligned edges
+    if (dx === 0 || dy === 0) return false;
+    // Outward normal: for CCW winding, outward normal of edge (dx,dy) is (dy, -dx)
+    // For CW winding, outward normal is (-dy, dx)
+    let nx, ny;
+    if (windingSign > 0) {
+        // CCW
+        nx = dy;
+        ny = -dx;
+    } else {
+        // CW
+        nx = -dy;
+        ny = dx;
+    }
+    // Ground slope: normal points upward (ny < 0) and is more vertical than horizontal
+    return ny < 0 && Math.abs(ny) > Math.abs(nx);
+}
+
+/**
+ * Check if a polygon has any ground slope edges.
+ */
+function _polygonHasSlopeEdge(polygon) {
+    const area = _signedArea(polygon);
+    if (Math.abs(area) < 1) return false;
+    const windingSign = area > 0 ? 1 : -1;
+    const n = polygon.length;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        if (_isGroundSlopeEdge(polygon[i], polygon[j], windingSign)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Extract ground slope segments from a polygon and add to level.slopeSegments.
+ * Each segment: { x1, y1, x2, y2, slope, shapeName } with x1 < x2.
+ */
+function _extractSlopeSegments(level, polygon, shapeName) {
+    const area = _signedArea(polygon);
+    if (Math.abs(area) < 1) return;
+    const windingSign = area > 0 ? 1 : -1;
+    const n = polygon.length;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        if (_isGroundSlopeEdge(polygon[i], polygon[j], windingSign)) {
+            let [x1, y1] = polygon[i];
+            let [x2, y2] = polygon[j];
+            // Ensure x1 < x2
+            if (x1 > x2) {
+                [x1, y1, x2, y2] = [x2, y2, x1, y1];
+            }
+            const dx = x2 - x1;
+            const slope = (y2 - y1) / dx;
+            level.slopeSegments.push({ x1, y1, x2, y2, slope, shapeName });
+        }
+    }
+}
+
+/**
+ * Clear staircase tiles at the slope surface.
+ * For each column in the slope range, clears the tile row that the slope passes
+ * through (the "step" tile) and one row above it to provide clearance.
+ */
+function _clearSlopeTiles(level) {
+    const ts = level.tileSize;
+    for (const seg of level.slopeSegments) {
+        const startCol = Math.max(0, Math.floor(seg.x1 / ts));
+        const endCol = Math.min(level.widthInTiles - 1, Math.floor(seg.x2 / ts));
+
+        for (let col = startCol; col <= endCol; col++) {
+            const cx = col * ts + ts / 2;
+            const slopeY = seg.y1 + seg.slope * (cx - seg.x1);
+            const slopeRow = Math.floor(slopeY / ts);
+            if (slopeRow >= 0 && slopeRow < level.heightInTiles) {
+                level.setTile(col, slopeRow, 0);
+            }
+            if (slopeRow - 1 >= 0) {
+                level.setTile(col, slopeRow - 1, 0);
+            }
+        }
+    }
 }
 
 /**

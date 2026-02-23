@@ -7,7 +7,7 @@
  */
 
 import { Entity } from './entity.js';
-import { resolveHorizontal, resolveVertical, checkWallContact, isSolid } from '../engine/collision.js';
+import { resolveHorizontal, resolveSlopeHorizontal, resolveVertical, resolveSlopeVertical, checkWallContact, isSolid } from '../engine/collision.js';
 import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, CHARGE_PARTICLES, DASH_SPARK_FRAMES, DASH_DUST_FRAMES } from './sprite-data.js';
 
 // Physics constants (tuned to match Mega Man X feel)
@@ -68,6 +68,7 @@ export class Player extends Entity {
         this.facing = 1; // 1 = right, -1 = left
         this.state = 'warp_in';
         this.grounded = false;
+        this.onSlope = false;
         this.wallContact = 0; // -1 left, 0 none, 1 right
 
         // Timers
@@ -875,10 +876,10 @@ export class Player extends Entity {
     // --- Movement & Collision ---
 
     _moveAndCollide(level) {
-        // Horizontal
+        // Horizontal (slope-aware: skips tiles below slope surfaces)
         const oldHitX = this.x + this.hitboxX;
         const expectedHitX = oldHitX + this.vx;
-        const resolvedHitX = resolveHorizontal(
+        const resolvedHitX = resolveSlopeHorizontal(
             level,
             oldHitX, this.y + this.hitboxY,
             this.hitboxW, this.hitboxH,
@@ -891,17 +892,19 @@ export class Player extends Entity {
             this.vx = 0;
         }
 
-        // Vertical
+        // Vertical (slope-aware for player)
         const oldHitY = this.y + this.hitboxY;
         const expectedHitY = oldHitY + this.vy;
-        const result = resolveVertical(
+        const result = resolveSlopeVertical(
             level,
             this.x + this.hitboxX, oldHitY,
             this.hitboxW, this.hitboxH,
-            this.vy
+            this.vy,
+            this.grounded
         );
         this.y = result.y - this.hitboxY;
         this.grounded = result.grounded;
+        this.onSlope = result.onSlope;
 
         if (result.grounded || Math.abs(result.y - expectedHitY) > 0.01) {
             this.vy = 0;

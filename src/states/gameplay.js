@@ -765,6 +765,28 @@ export class GameplayState {
             }
         }
 
+        // Slope segments as orange lines
+        if (level.slopeSegments && level.slopeSegments.length > 0) {
+            ctx.strokeStyle = 'rgba(255, 160, 0, 0.9)';
+            ctx.lineWidth = 2;
+            for (const seg of level.slopeSegments) {
+                const sx1 = Math.floor(seg.x1 - cam.x);
+                const sy1 = Math.floor(seg.y1 - cam.y);
+                const sx2 = Math.floor(seg.x2 - cam.x);
+                const sy2 = Math.floor(seg.y2 - cam.y);
+                // Skip if entirely off-screen
+                if (sx1 > SCREEN_W && sx2 > SCREEN_W) continue;
+                if (sx1 < 0 && sx2 < 0) continue;
+                if (sy1 > SCREEN_H && sy2 > SCREEN_H) continue;
+                if (sy1 < 0 && sy2 < 0) continue;
+                ctx.beginPath();
+                ctx.moveTo(sx1, sy1);
+                ctx.lineTo(sx2, sy2);
+                ctx.stroke();
+            }
+            ctx.lineWidth = 1;
+        }
+
         // Collision shape name labels at top-left corner of each shape
         ctx.font = '7px monospace';
         ctx.textAlign = 'left';
@@ -851,6 +873,10 @@ export class GameplayState {
         ctx.font = '8px monospace';
         ctx.fillText(`FPS: ${this._fpsDisplay}`, SCREEN_W - 44, 10);
         ctx.fillText(`X:${Math.floor(this.player.x)} Y:${Math.floor(this.player.y)}`, SCREEN_W - 70, 20);
+        if (this.player.onSlope) {
+            ctx.fillStyle = '#ffa000';
+            ctx.fillText('[SLOPE]', SCREEN_W - 44, 30);
+        }
     }
 
     /**
