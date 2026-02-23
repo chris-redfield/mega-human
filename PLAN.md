@@ -482,7 +482,7 @@ Full-screen world map stage select, replacing the F1/F2/F4 hotkey system.
 - `src/states/stage-select.js` — StageSelectState class
 - `tools/stage-select-editor.html` — location picker tool
 - `assets/stage-select.png` — world map background
-- `assets/stage-locations.json` — dot positions (3 stages: highway, frozentown, aircraftcarrier)
+- `assets/stage-locations.json` — dot positions (4 stages: highway, frozentown, aircraftcarrier, crystalmine)
 - Modified: `src/engine/game.js` (dual resolution), `src/states/gameplay.js` (Escape to return), `index.html` (boot into stage select)
 
 ---
@@ -536,6 +536,83 @@ The aircraft carrier stage's polygon collision data (from the MMX-Deathmatch sou
 
 ---
 
+### 26c. Import Crystal Mine Stage (DONE)
+
+Imported the Crystal Mine (Crystal Snail / Energen Crystal) stage from MMX-Online-Deathmatch.
+
+**Stage details:**
+- Internal name: `crystalmine` (displayName: "energen crystal")
+- Dimensions: 2032 × 830 px, killY: 925
+- 39 collision shapes, 11 spawn points
+- No parallax.png or foreground.png (gracefully handled — parallax load now uses `.catch(() => null)` like foreground)
+- Music: `crystalmine.2,710.44,517.ogg` (loop start: 2.710s, loop end: 44.517s)
+
+**What was added:**
+1. Copied `background.png`, `backwall.png`, `map.json` to `assets/levels/crystalmine_*`
+2. Copied music to `assets/music/crystalmine.2,710.44,517.ogg`
+3. Added `assets.loadStage('crystalmine')` to index.html
+4. Added crystalmine music to audio loading manifest in index.html
+5. Added per-stage enemy layout for crystalmine in gameplay.js `_spawnEnemies()`
+6. Added `crystalmine` to stage-select-editor and collision-editor dropdowns
+7. Added placeholder position to `assets/stage-locations.json` (user adjusts with picker tool)
+8. Made parallax loading graceful (`.catch(() => null)`) in asset-loader.js for stages without parallax
+
+---
+
+### How to Import a New Stage from MMX-Online-Deathmatch
+
+Step-by-step procedure for adding a new stage:
+
+**1. Locate source files**
+```
+MMX-Online-Deathmatch/LevelEditor/assets/maps/{stagename}/
+├── background.png    (required)
+├── backwall.png      (required)
+├── parallax.png      (optional — some stages don't have one)
+├── foreground.png    (optional — drawn over player/enemies)
+├── map.json          (required — collision shapes, spawns, kill zones)
+└── mirrored.json     (ignore — deathmatch mirroring data)
+```
+
+**2. Copy stage assets** to `assets/levels/`:
+```bash
+cp .../maps/{name}/background.png  assets/levels/{name}_background.png
+cp .../maps/{name}/backwall.png    assets/levels/{name}_backwall.png
+cp .../maps/{name}/parallax.png    assets/levels/{name}_parallax.png    # if exists
+cp .../maps/{name}/foreground.png  assets/levels/{name}_foreground.png  # if exists
+cp .../maps/{name}/map.json        assets/levels/{name}_map.json
+```
+
+**3. Copy music** — find the stage music in:
+```
+MMX-Online-Deathmatch/LevelEditor/assets/music/{name}.{loopStart}.{loopEnd}.ogg
+```
+Copy to `assets/music/` keeping the loop-point filename (audio system parses loop points from it).
+
+**4. Update `index.html`:**
+- Add `assets.loadStage('{name}')` to the stage loading Promise.all
+- Add music entry to `game.audio.loadAll()`: `{name}: './assets/music/{name}.{loop}.ogg'`
+
+**5. Update `src/states/gameplay.js`:**
+- Add enemy layout for the new stage in `_spawnEnemies()` `layouts` object
+- Optionally add a spawn override in `stageSpawns` if the first map spawn point isn't suitable
+- The stage uses the first `Spawn Point` from map.json by default
+
+**6. Update tool dropdowns:**
+- `tools/stage-select-editor.html` — add `<option value="{name}">{name}</option>` to `#stageKey` select
+- `tools/collision-editor.html` — add `<option value="{name}">{name}</option>` to `#stageSelect` select
+
+**7. Add to stage-locations.json:**
+- Add a placeholder entry: `{ "x": ..., "y": ..., "stage": "{name}", "name": "Display Name" }`
+- Use the stage-select-editor tool to place the dot at the correct position on the world map
+
+**8. Test:**
+- Verify stage loads without console errors (check for 404s on missing parallax/foreground)
+- Check collision shapes via debug overlay (P key)
+- If collision is broken, use collision-editor to create custom tiles and add stage to `CUSTOM_COLLISION_STAGES` in `asset-loader.js`
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -563,7 +640,7 @@ The aircraft carrier stage's polygon collision data (from the MMX-Deathmatch sou
 23. ~~**Playable Zero**~~ — DONE (see details below)
 24. ~~**Collision edge-case fix**~~ — DONE (collision checks now sample every TILE_SIZE along entity height/width instead of just 2 endpoints, fixing clipping through single-row solid tiles for 34-40px tall characters; tile rasterization unchanged — center-point only)
 25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
-26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo). Aircraft carrier (Storm Eagle) imported.
+26. **Additional stages** — Import more MMX-Deathmatch stage assets. Aircraft carrier (Storm Eagle) and Crystal Mine (Crystal Snail) imported.
 26b. ~~**Fix aircraft carrier stage**~~ — DONE (custom collision tile editor + 8×8 tile support, see details below)
 27. ~~**Stage select screen**~~ — DONE (full-screen world map with location dots, see details below)
 28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
@@ -596,7 +673,7 @@ mega-human/
 │   │   ├── mmx/                      — X buster SFX (buster.ogg, buster2-4.ogg)
 │   │   ├── zero/                     — Zero saber SFX (saber1-3.ogg)
 │   │   └── sigma/                    — Boss SFX (chillpBlizzard, chillpSlide, maverickDie)
-│   ├── music/                        — Stage BGM with loop metadata in filenames (highway, frozentown, bossroom, win)
+│   ├── music/                        — Stage BGM with loop metadata in filenames (highway, frozentown, crystalmine, bossroom, win)
 │   └── levels/
 │       ├── highway_background.png    — Highway stage background layer
 │       ├── highway_backwall.png      — Highway stage backwall layer
@@ -610,7 +687,10 @@ mega-human/
 │       ├── aircraftcarrier_backwall.png   — Aircraft Carrier backwall layer
 │       ├── aircraftcarrier_parallax.png   — Aircraft Carrier parallax layer
 │       ├── aircraftcarrier_map.json       — Aircraft Carrier collision polygons + spawn points
-│       └── aircraftcarrier_collision.json — Aircraft Carrier custom 8×8 collision tiles (overrides polygons)
+│       ├── aircraftcarrier_collision.json — Aircraft Carrier custom 8×8 collision tiles (overrides polygons)
+│       ├── crystalmine_background.png   — Crystal Mine background layer
+│       ├── crystalmine_backwall.png     — Crystal Mine backwall layer
+│       └── crystalmine_map.json         — Crystal Mine collision polygons + spawn points
 ├── src/
 │   ├── engine/
 │   │   ├── game.js               — Fixed 60fps game loop, dual resolution canvas switching

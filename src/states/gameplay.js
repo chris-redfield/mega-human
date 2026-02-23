@@ -98,6 +98,7 @@ export class GameplayState {
         const stageSpawns = {
             frozentown: { x: 133, y: 640 },
             aircraftcarrier: { x: 221, y: 1019 },
+            crystalmine: { x: 50, y: 349 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -169,6 +170,11 @@ export class GameplayState {
                 tanks:   [{ x: 350, y: 1000 }, { x: 800, y: 980 }, { x: 1400, y: 1000 }],
                 hoppers: [{ x: 530, y: 980 }, { x: 1200, y: 1000 }, { x: 1900, y: 480 }],
                 birds:   [{ x: 700, y: 700 }, { x: 1300, y: 650 }, { x: 2100, y: 400 }],
+            },
+            crystalmine: {
+                tanks:   [{ x: 400, y: 300 }, { x: 800, y: 300 }, { x: 1100, y: 400 }],
+                hoppers: [{ x: 600, y: 370 }, { x: 950, y: 700 }, { x: 1500, y: 320 }],
+                birds:   [{ x: 350, y: 250 }, { x: 750, y: 200 }, { x: 1600, y: 100 }],
             },
         };
 
