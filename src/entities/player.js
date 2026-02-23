@@ -900,7 +900,8 @@ export class Player extends Entity {
             this.x + this.hitboxX, oldHitY,
             this.hitboxW, this.hitboxH,
             this.vy,
-            this.grounded
+            this.grounded,
+            this.onSlope
         );
         this.y = result.y - this.hitboxY;
         this.grounded = result.grounded;

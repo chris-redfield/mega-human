@@ -165,7 +165,7 @@ export function getSlopeGroundY(level, footX) {
  * @param {boolean} wasGrounded - Whether player was grounded last frame
  * @returns {{ y: number, grounded: boolean, onSlope: boolean }}
  */
-export function resolveSlopeVertical(level, x, y, w, h, dy, wasGrounded) {
+export function resolveSlopeVertical(level, x, y, w, h, dy, wasGrounded, wasOnSlope) {
     if (level.slopeSegments.length === 0) {
         const result = resolveVertical(level, x, y, w, h, dy);
         return { y: result.y, grounded: result.grounded, onSlope: false };
@@ -209,6 +209,28 @@ export function resolveSlopeVertical(level, x, y, w, h, dy, wasGrounded) {
 
     // Fall back to tile-based resolution
     const result = resolveVertical(level, x, y, w, h, dy);
+
+    // Slope→flat transition fix: when leaving a slope, the slope surface Y
+    // may not align with the tile grid, leaving a small gap. Scan downward
+    // for the nearest solid tile and snap to it to prevent micro-drops.
+    if (wasOnSlope && !result.grounded && dy >= 0) {
+        const ts = level.tileSize;
+        const feetY = result.y + h;
+        const startRow = Math.floor(feetY / ts);
+        const endRow = Math.min(startRow + 2, level.heightInTiles - 1);
+        const leftCol = Math.floor((x + 1) / ts);
+        const rightCol = Math.floor((x + w - 1) / ts);
+        for (let r = startRow; r <= endRow; r++) {
+            if (level.getTile(leftCol, r) !== 0 || level.getTile(rightCol, r) !== 0) {
+                return {
+                    y: r * ts - h - 0.01,
+                    grounded: true,
+                    onSlope: false,
+                };
+            }
+        }
+    }
+
     return { y: result.y, grounded: result.grounded, onSlope: false };
 }
 
