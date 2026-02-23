@@ -76,9 +76,10 @@ export class GameplayState {
     }
 
     init(game) {
-        // Load map data and build level
+        // Load map data and build level (use custom collision if available)
         const mapData = this.assets.getJSON(`${this.stageName}_map`);
-        this.level = createLevelFromMap(mapData);
+        const customCollision = this.assets.getJSON(`${this.stageName}_collision`);
+        this.level = createLevelFromMap(mapData, customCollision);
         this.camera = new Camera(this.level.width, this.level.height);
 
         // Load stage images
@@ -733,9 +734,9 @@ export class GameplayState {
      * Green outlines = solid tiles, semi-transparent fill.
      */
     _renderDebugCollision(ctx) {
-        const ts = 16; // TILE_SIZE
-        const cam = this.camera;
         const level = this.level;
+        const ts = level.tileSize;
+        const cam = this.camera;
 
         // Calculate visible tile range
         const startCol = Math.max(0, Math.floor(cam.x / ts));

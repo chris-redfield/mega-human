@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Collision Tile Editor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            font-family: monospace;
+            padding: 10px;
+        }
+        h1 { color: #00d4ff; font-size: 16px; margin-bottom: 6px; }
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        button, select {
+            background: #2a2a4a;
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+            padding: 5px 12px;
+            font-family: monospace;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        button:hover { background: #3a3a6a; }
+        button.active { background: #00d4ff; color: #000; }
+        .info {
+            color: #888;
+            font-size: 11px;
+        }
+        .info span { color: #0f0; }
+        .canvas-wrap {
+            overflow: auto;
+            max-height: calc(100vh - 90px);
+            border: 1px solid #333;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        textarea {
+            width: 100%;
+            max-width: 900px;
+            height: 100px;
+            background: #12122a;
+            color: #0f0;
+            border: 1px solid #555;
+            padding: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 6px;
+        }
+        .mode-draw { cursor: crosshair; }
+        .mode-erase { cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>Collision Tile Editor</h1>
+    <div class="toolbar">
+        <label>Stage:
+            <select id="stageSelect">
+                <option value="highway">highway</option>
+                <option value="frozentown">frozentown</option>
+                <option value="aircraftcarrier" selected>aircraftcarrier</option>
+            </select>
+        </label>
+        <label>Tile Size:
+            <select id="tileSizeSelect">
+                <option value="16">16×16</option>
+                <option value="8">8×8 (fine)</option>
+            </select>
+        </label>
+        <button id="loadBtn">Load Stage</button>
+        <button id="drawBtn" class="active">Draw (D)</button>
+        <button id="eraseBtn">Erase (E)</button>
+        <button id="clearBtn">Clear All</button>
+        <button id="reloadPolygonsBtn">Reload from Polygons</button>
+        <button id="exportBtn">Export JSON</button>
+        <button id="importBtn">Import JSON</button>
+        <label style="color:#888;font-size:11px">
+            <input type="checkbox" id="showGrid" checked> Grid
+        </label>
+        <label style="color:#888;font-size:11px">
+            <input type="checkbox" id="showLabels" checked> Labels
+        </label>
+        <span class="info">
+            Tiles: <span id="tileCount">0</span> |
+            Hover: <span id="hoverInfo">-</span> |
+            <span id="modeInfo">Mode: DRAW</span>
+        </span>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="editor"></canvas>
+    </div>
+    <textarea id="jsonOutput" placeholder="JSON output / paste to import"></textarea>
+
+    <script>
+        let TILE_SIZE = 16;
+        const SCALE = 2; // Display scale for easier editing
+
+        const canvas = document.getElementById('editor');
+        const ctx = canvas.getContext('2d');
+
+        let bgImage = null;
+        let mapData = null;
+        let stageName = 'aircraftcarrier';
+        let widthInTiles = 0;
+        let heightInTiles = 0;
+        let tiles = null; // Uint8Array grid
+        let mode = 'draw'; // 'draw' or 'erase'
+        let painting = false;
+        let paintValue = 1;
+        let collisionShapes = []; // For labels
+
+        // --- Stage Loading ---
+
+        async function loadStage(name) {
+            stageName = name;
+            TILE_SIZE = parseInt(document.getElementById('tileSizeSelect').value);
+            const [img, json] = await Promise.all([
+                loadImage(`../assets/levels/${name}_background.png`),
+                fetch(`../assets/levels/${name}_map.json`).then(r => r.json()),
+            ]);
+            bgImage = img;
+            mapData = json;
+
+            const maxY = Math.max(mapData.height, mapData.killY || mapData.height);
+            widthInTiles = Math.ceil(mapData.width / TILE_SIZE);
+            heightInTiles = Math.ceil(maxY / TILE_SIZE);
+            tiles = new Uint8Array(widthInTiles * heightInTiles);
+
+            canvas.width = widthInTiles * TILE_SIZE * SCALE;
+            canvas.height = heightInTiles * TILE_SIZE * SCALE;
+            ctx.imageSmoothingEnabled = false;
+
+            // Try loading existing custom collision map
+            try {
+                const resp = await fetch(`../assets/levels/${name}_collision.json`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.tiles && Array.isArray(data.tiles)) {
+                        // If saved with a different tile size, reload with that size
+                        if (data.tileSize && data.tileSize !== TILE_SIZE) {
+                            TILE_SIZE = data.tileSize;
+                            document.getElementById('tileSizeSelect').value = String(TILE_SIZE);
+                            widthInTiles = Math.ceil(mapData.width / TILE_SIZE);
+                            const maxY2 = Math.max(mapData.height, mapData.killY || mapData.height);
+                            heightInTiles = Math.ceil(maxY2 / TILE_SIZE);
+                            tiles = new Uint8Array(widthInTiles * heightInTiles);
+                            canvas.width = widthInTiles * TILE_SIZE * SCALE;
+                            canvas.height = heightInTiles * TILE_SIZE * SCALE;
+                            ctx.imageSmoothingEnabled = false;
+                        }
+                        for (const [col, row] of data.tiles) {
+                            if (col >= 0 && col < widthInTiles && row >= 0 && row < heightInTiles) {
+                                tiles[row * widthInTiles + col] = 1;
+                            }
+                        }
+                        console.log(`Loaded custom collision: ${data.tiles.length} tiles (${TILE_SIZE}×${TILE_SIZE})`);
+                        parseShapeLabels();
+                        render();
+                        updateTileCount();
+                        return;
+                    }
+                }
+            } catch (e) { /* no custom map, fall through */ }
+
+            // Fall back to polygon rasterization
+            rasterizeFromPolygons();
+            render();
+            updateTileCount();
+        }
+
+        function rasterizeFromPolygons() {
+            tiles.fill(0);
+            collisionShapes = [];
+            if (!mapData || !mapData.instances) return;
+
+            for (const inst of mapData.instances) {
+                if (inst.objectName === 'Collision Shape' && inst.points && inst.points.length >= 3) {
+                    const polygon = inst.points.map(p => [p.x, p.y]);
+                    rasterizePolygon(polygon);
+
+                    const xs = inst.points.map(p => p.x);
+                    const ys = inst.points.map(p => p.y);
+                    collisionShapes.push({
+                        name: inst.name || inst.objectName,
+                        x: Math.min(...xs),
+                        y: Math.min(...ys),
+                    });
+                }
+            }
+        }
+
+        function parseShapeLabels() {
+            collisionShapes = [];
+            if (!mapData || !mapData.instances) return;
+            for (const inst of mapData.instances) {
+                if (inst.objectName === 'Collision Shape' && inst.points && inst.points.length >= 3) {
+                    const xs = inst.points.map(p => p.x);
+                    const ys = inst.points.map(p => p.y);
+                    collisionShapes.push({
+                        name: inst.name || inst.objectName,
+                        x: Math.min(...xs),
+                        y: Math.min(...ys),
+                    });
+                }
+            }
+        }
+
+        function rasterizePolygon(polygon) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const pt of polygon) {
+                if (pt[0] < minX) minX = pt[0];
+                if (pt[1] < minY) minY = pt[1];
+                if (pt[0] > maxX) maxX = pt[0];
+                if (pt[1] > maxY) maxY = pt[1];
+            }
+            const startCol = Math.max(0, Math.floor(minX / TILE_SIZE));
+            const endCol = Math.min(widthInTiles - 1, Math.floor(maxX / TILE_SIZE));
+            const startRow = Math.max(0, Math.floor(minY / TILE_SIZE));
+            const endRow = Math.min(heightInTiles - 1, Math.floor(maxY / TILE_SIZE));
+
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const cx = col * TILE_SIZE + TILE_SIZE / 2;
+                    const cy = row * TILE_SIZE + TILE_SIZE / 2;
+                    if (pointInPolygon(cx, cy, polygon)) {
+                        tiles[row * widthInTiles + col] = 1;
+                    }
+                }
+            }
+        }
+
+        function pointInPolygon(px, py, polygon) {
+            let inside = false;
+            const n = polygon.length;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                if (((yi > py) !== (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`Failed: ${url}`));
+                img.src = url;
+            });
+        }
+
+        // --- Rendering ---
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background image
+            if (bgImage) {
+                ctx.drawImage(bgImage, 0, 0, bgImage.width * SCALE, bgImage.height * SCALE);
+            }
+
+            const showGrid = document.getElementById('showGrid').checked;
+            const showLabels = document.getElementById('showLabels').checked;
+
+            // Solid tiles
+            for (let row = 0; row < heightInTiles; row++) {
+                for (let col = 0; col < widthInTiles; col++) {
+                    const sx = col * TILE_SIZE * SCALE;
+                    const sy = row * TILE_SIZE * SCALE;
+                    const sz = TILE_SIZE * SCALE;
+
+                    if (tiles[row * widthInTiles + col] === 1) {
+                        ctx.fillStyle = 'rgba(0, 255, 80, 0.25)';
+                        ctx.fillRect(sx, sy, sz, sz);
+                        ctx.strokeStyle = 'rgba(0, 255, 80, 0.6)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(sx + 0.5, sy + 0.5, sz - 1, sz - 1);
+                    } else if (showGrid) {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(sx + 0.5, sy + 0.5, sz - 1, sz - 1);
+                    }
+                }
+            }
+
+            // Collision shape labels
+            if (showLabels) {
+                ctx.font = `${11 * SCALE}px monospace`;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                for (const shape of collisionShapes) {
+                    const sx = shape.x * SCALE;
+                    const sy = shape.y * SCALE;
+                    const text = shape.name;
+                    const tw = ctx.measureText(text).width;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.fillRect(sx, sy, tw + 6, 14 * SCALE);
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fillText(text, sx + 3, sy + 2);
+                }
+            }
+        }
+
+        // --- Tile Editing ---
+
+        function getTileAt(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const col = Math.floor(mx / (TILE_SIZE * SCALE));
+            const row = Math.floor(my / (TILE_SIZE * SCALE));
+            if (col < 0 || col >= widthInTiles || row < 0 || row >= heightInTiles) return null;
+            return { col, row };
+        }
+
+        function setTile(col, row, value) {
+            if (col < 0 || col >= widthInTiles || row < 0 || row >= heightInTiles) return;
+            tiles[row * widthInTiles + col] = value;
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            const t = getTileAt(e);
+            if (!t) return;
+            painting = true;
+            paintValue = mode === 'draw' ? 1 : 0;
+            setTile(t.col, t.row, paintValue);
+            render();
+            updateTileCount();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const t = getTileAt(e);
+            if (t) {
+                document.getElementById('hoverInfo').textContent =
+                    `col=${t.col} row=${t.row} (${t.col * TILE_SIZE}, ${t.row * TILE_SIZE}) ${tiles[t.row * widthInTiles + t.col] ? 'SOLID' : 'empty'}`;
+            }
+            if (painting && t) {
+                setTile(t.col, t.row, paintValue);
+                render();
+                updateTileCount();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => { painting = false; });
+        canvas.addEventListener('mouseleave', () => { painting = false; });
+
+        // Right-click = quick erase
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const t = getTileAt(e);
+            if (t) {
+                setTile(t.col, t.row, 0);
+                render();
+                updateTileCount();
+            }
+        });
+
+        // --- Keyboard Shortcuts ---
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyD') { setMode('draw'); }
+            if (e.code === 'KeyE') { setMode('erase'); }
+        });
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('drawBtn').classList.toggle('active', m === 'draw');
+            document.getElementById('eraseBtn').classList.toggle('active', m === 'erase');
+            document.getElementById('modeInfo').textContent = `Mode: ${m.toUpperCase()}`;
+            canvas.className = m === 'draw' ? 'mode-draw' : 'mode-erase';
+        }
+
+        // --- UI ---
+
+        function updateTileCount() {
+            let count = 0;
+            for (let i = 0; i < tiles.length; i++) {
+                if (tiles[i]) count++;
+            }
+            document.getElementById('tileCount').textContent = count;
+        }
+
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            loadStage(document.getElementById('stageSelect').value);
+        });
+
+        document.getElementById('drawBtn').addEventListener('click', () => setMode('draw'));
+        document.getElementById('eraseBtn').addEventListener('click', () => setMode('erase'));
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('Clear all tiles?')) {
+                tiles.fill(0);
+                render();
+                updateTileCount();
+            }
+        });
+
+        document.getElementById('reloadPolygonsBtn').addEventListener('click', () => {
+            if (confirm('Reload tiles from polygon data? This will overwrite your edits.')) {
+                rasterizeFromPolygons();
+                render();
+                updateTileCount();
+            }
+        });
+
+        document.getElementById('showGrid').addEventListener('change', render);
+        document.getElementById('showLabels').addEventListener('change', render);
+
+        // --- Export / Import ---
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const solidTiles = [];
+            for (let row = 0; row < heightInTiles; row++) {
+                for (let col = 0; col < widthInTiles; col++) {
+                    if (tiles[row * widthInTiles + col] === 1) {
+                        solidTiles.push([col, row]);
+                    }
+                }
+            }
+            const data = {
+                stage: stageName,
+                tileSize: TILE_SIZE,
+                width: widthInTiles,
+                height: heightInTiles,
+                tiles: solidTiles,
+            };
+            const json = JSON.stringify(data);
+            // Download as file
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${stageName}_collision.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            // Also put in textarea and scroll to it
+            const ta = document.getElementById('jsonOutput');
+            ta.value = json;
+            ta.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => {
+            try {
+                const data = JSON.parse(document.getElementById('jsonOutput').value);
+                if (data.tiles && Array.isArray(data.tiles)) {
+                    tiles.fill(0);
+                    for (const [col, row] of data.tiles) {
+                        if (col >= 0 && col < widthInTiles && row >= 0 && row < heightInTiles) {
+                            tiles[row * widthInTiles + col] = 1;
+                        }
+                    }
+                    render();
+                    updateTileCount();
+                }
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        });
+
+        // --- Init ---
+        loadStage('aircraftcarrier');
+    </script>
+</body>
+</html>

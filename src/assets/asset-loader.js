@@ -31,7 +31,20 @@ export class AssetLoader {
         return data;
     }
 
-    /** Load all assets for a stage (background PNGs + map.json). */
+    /** Try loading a JSON file — returns null silently if not found (no console errors). */
+    async tryLoadJSON(name, url) {
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            this.json[name] = data;
+            return data;
+        } catch {
+            return null;
+        }
+    }
+
+    /** Load all assets for a stage (background PNGs + map.json + optional custom collision). */
     async loadStage(name) {
         await Promise.all([
             this.loadImage(`${name}_background`, `./assets/levels/${name}_background.png`),
@@ -39,6 +52,8 @@ export class AssetLoader {
             this.loadImage(`${name}_parallax`, `./assets/levels/${name}_parallax.png`),
             this.loadImage(`${name}_foreground`, `./assets/levels/${name}_foreground.png`).catch(() => null),
             this.loadJSON(`${name}_map`, `./assets/levels/${name}_map.json`),
+            // Custom collision tile map (optional — overrides polygon rasterization)
+            this.tryLoadJSON(`${name}_collision`, `./assets/levels/${name}_collision.json`),
         ]);
     }
 

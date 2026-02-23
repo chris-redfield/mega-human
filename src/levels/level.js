@@ -75,13 +75,17 @@ function pointInPolygon(px, py, polygon) {
 
 /**
  * Create a Level from MMX-Deathmatch map.json data.
- * Rasterizes "Collision Shape" instances onto a 16x16 tile grid.
+ * If customCollision is provided, uses that instead of polygon rasterization.
+ * Otherwise rasterizes "Collision Shape" instances onto a 16x16 tile grid.
  * (mergedWalls is for AI pathfinding only — not used for collision.)
  * @param {object} mapData - Parsed map.json
+ * @param {object} [customCollision] - Optional custom collision tile data
+ *   { tiles: [[col, row], ...], tileSize: 16, width: N, height: N }
  * @returns {Level}
  */
-export function createLevelFromMap(mapData) {
-    const tileSize = 16;
+export function createLevelFromMap(mapData, customCollision) {
+    // Custom collision may specify a different tile size (e.g. 8 for finer precision)
+    const tileSize = (customCollision && customCollision.tileSize) || 16;
     const widthInTiles = Math.ceil(mapData.width / tileSize);
     // Extend height slightly beyond visual area to include pit collision walls
     const maxY = Math.max(mapData.height, mapData.killY || mapData.height);
@@ -89,7 +93,8 @@ export function createLevelFromMap(mapData) {
 
     const level = new Level(widthInTiles, heightInTiles, tileSize);
 
-    // Parse instances
+    // Parse instances for non-collision data (kill zones, spawns, pickups)
+    // and collision shapes (only if no custom collision provided)
     if (mapData.instances) {
         for (const inst of mapData.instances) {
             if (inst.objectName === 'Kill Zone' && inst.points && inst.points.length >= 2) {
@@ -102,10 +107,7 @@ export function createLevelFromMap(mapData) {
                     h: Math.max(...ys) - Math.min(...ys),
                 });
             } else if (inst.objectName === 'Collision Shape' && inst.points && inst.points.length >= 3) {
-                // Rasterize collision polygon onto tile grid
-                const polygon = inst.points.map(p => [p.x, p.y]);
-                _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
-                // Store shape metadata for debug overlay
+                // Store shape metadata for debug overlay (always)
                 const xs = inst.points.map(p => p.x);
                 const ys = inst.points.map(p => p.y);
                 level.collisionShapes.push({
@@ -113,6 +115,11 @@ export function createLevelFromMap(mapData) {
                     x: Math.min(...xs),
                     y: Math.min(...ys),
                 });
+                // Only rasterize if no custom collision
+                if (!customCollision) {
+                    const polygon = inst.points.map(p => [p.x, p.y]);
+                    _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
+                }
             } else if (inst.objectName === 'Spawn Point' && inst.pos) {
                 level.spawnPoints.push({ x: inst.pos.x, y: inst.pos.y });
             } else if (inst.objectName === 'Large Health' && inst.pos) {
@@ -120,6 +127,13 @@ export function createLevelFromMap(mapData) {
             } else if (inst.objectName === 'Small Health' && inst.pos) {
                 level.healthPickups.push({ x: inst.pos.x, y: inst.pos.y, size: 'small' });
             }
+        }
+    }
+
+    // Apply custom collision tile data if provided
+    if (customCollision && customCollision.tiles) {
+        for (const [col, row] of customCollision.tiles) {
+            level.setTile(col, row, 1);
         }
     }
 
