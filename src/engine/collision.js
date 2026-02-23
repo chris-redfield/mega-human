@@ -111,8 +111,17 @@ export function resolveSlopeHorizontal(level, x, y, w, h, dx) {
         }
     }
 
-    // At transitions (beyond slope endpoints), use full body height as skip margin
-    // so wall tiles at the slope/flat junction are bypassed.
+    // Only apply slope skip logic when player's feet are near the slope surface.
+    // Without this, any player in the slope's X range (even far below) gets
+    // wall collision disabled — causing massive clipping on large slopes.
+    if (slopeY !== null && Math.abs(feetY - slopeY) > ts * 2) {
+        slopeY = null;
+    }
+
+    // At transitions (beyond slope endpoints), skip tiles across the full body
+    // height so the player can step through the wall of tiles at the junction.
+    // This is safe because the vertical proximity check above already nullifies
+    // slopeY when the player is far from the slope surface.
     // On the slope itself, use a small margin (just below surface).
     const skipMargin = (slopeY !== null && inTransition) ? h : 2;
 
