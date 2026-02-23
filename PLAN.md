@@ -487,6 +487,55 @@ Full-screen world map stage select, replacing the F1/F2/F4 hotkey system.
 
 ---
 
+### 26b. Fix Aircraft Carrier Stage / Custom Collision System (DONE)
+
+The aircraft carrier stage's polygon collision data (from the MMX-Deathmatch source) produced broken tile rasterization — large invisible solid blocks in mid-air and missing ground tiles. Instead of manually editing polygon JSON, we built a full custom collision pipeline.
+
+**Problem:** Deathmatch map.json `Collision Shape` polygons are designed for multiplayer boundaries, not platformer collision. Rasterizing them onto a 16×16 grid produces incorrect results — entire regions of solid tiles floating in the sky.
+
+**Solution: Custom collision tile maps with variable tile size.**
+
+**Collision Tile Editor** (`tools/collision-editor.html`):
+- Visual editor to paint/erase solid tiles on top of stage background art
+- Supports **16×16** (standard) and **8×8** (fine precision) tile sizes
+- Click/drag to paint (D key), erase (E key), right-click to quick-erase
+- "Reload from Polygons" resets to auto-rasterized state as a starting point
+- Shows collision shape labels from map.json for reference
+- Loads existing custom collision files automatically
+- Exports compact JSON: `{ stage, tileSize, width, height, tiles: [[col,row], ...] }`
+
+**Variable tile size support:**
+- `collision.js` now reads `level.tileSize` instead of hardcoded `TILE_SIZE = 16`
+- All collision functions (`isSolid`, `resolveHorizontal`, `resolveVertical`, `checkWallContact`) use `level.tileSize`
+- `level.js` reads `tileSize` from custom collision data — if the JSON says `tileSize: 8`, the level uses an 8×8 grid
+- Stages without custom collision keep their 16×16 polygon rasterization unchanged
+
+**Asset loading:**
+- `asset-loader.js` has a `CUSTOM_COLLISION_STAGES` whitelist (currently: `['aircraftcarrier']`)
+- Only whitelisted stages fetch `{name}_collision.json` — no 404 requests for stages that don't have one
+- When adding custom collision for a new stage, add its name to this list
+
+**Stages with custom collision tiles:**
+
+| Stage | Tile Size | File |
+|-------|-----------|------|
+| aircraftcarrier | 8×8 | `assets/levels/aircraftcarrier_collision.json` |
+
+**Debug overlay enhancement:**
+- P key debug mode now shows **collision shape names** (from map.json `name` property) as yellow labels at the top-left corner of each shape polygon, with dark background for readability
+
+**Files created:**
+- `tools/collision-editor.html` — visual collision tile editor
+- `assets/levels/aircraftcarrier_collision.json` — custom 8×8 collision tiles for aircraft carrier
+
+**Files modified:**
+- `src/engine/collision.js` — replaced hardcoded `TILE_SIZE = 16` with `level.tileSize`
+- `src/levels/level.js` — `createLevelFromMap()` accepts optional custom collision data, reads tileSize from it, stores collision shape metadata for debug
+- `src/states/gameplay.js` — passes custom collision to level creation, debug overlay shows shape labels using `level.tileSize`
+- `src/assets/asset-loader.js` — `CUSTOM_COLLISION_STAGES` whitelist, `loadStage()` conditionally loads collision JSON
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
@@ -514,8 +563,8 @@ Full-screen world map stage select, replacing the F1/F2/F4 hotkey system.
 23. ~~**Playable Zero**~~ — DONE (see details below)
 24. ~~**Collision edge-case fix**~~ — DONE (collision checks now sample every TILE_SIZE along entity height/width instead of just 2 endpoints, fixing clipping through single-row solid tiles for 34-40px tall characters; tile rasterization unchanged — center-point only)
 25. ~~**Sound effects & music**~~ — DONE (Web Audio API AudioManager, 27 audio assets: X buster/charge/dash/jump/land/hurt/die, Zero saber1-3, enemies explosion, boss attacks, stage BGM with parsed loop points)
-26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo). Aircraft carrier (Storm Eagle) imported but has collision/rendering issues — invisible collision blocks in the air and broken background in some areas. Needs investigation and fix.
-26b. **Fix aircraft carrier stage** — Debug and fix collision rasterization and background rendering issues on the aircraftcarrier stage (invisible solid tiles in mid-air, broken background art in places)
+26. **Additional stages** — Import more MMX-Deathmatch stage assets (Storm Eagle, Spark Mandrill, Flame Mammoth, Armored Armadillo). Aircraft carrier (Storm Eagle) imported.
+26b. ~~**Fix aircraft carrier stage**~~ — DONE (custom collision tile editor + 8×8 tile support, see details below)
 27. ~~**Stage select screen**~~ — DONE (full-screen world map with location dots, see details below)
 28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
 29. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
@@ -556,13 +605,18 @@ mega-human/
 │       ├── frozentown_background.png — Frozen Town (Chill Penguin) background layer
 │       ├── frozentown_backwall.png   — Frozen Town backwall layer
 │       ├── frozentown_parallax.png   — Frozen Town parallax layer (0.5x X+Y scroll)
-│       └── frozentown_map.json       — Frozen Town collision polygons + spawn points
+│       ├── frozentown_map.json       — Frozen Town collision polygons + spawn points
+│       ├── aircraftcarrier_background.png — Aircraft Carrier background layer
+│       ├── aircraftcarrier_backwall.png   — Aircraft Carrier backwall layer
+│       ├── aircraftcarrier_parallax.png   — Aircraft Carrier parallax layer
+│       ├── aircraftcarrier_map.json       — Aircraft Carrier collision polygons + spawn points
+│       └── aircraftcarrier_collision.json — Aircraft Carrier custom 8×8 collision tiles (overrides polygons)
 ├── src/
 │   ├── engine/
 │   │   ├── game.js               — Fixed 60fps game loop, dual resolution canvas switching
 │   │   ├── input.js              — Keyboard input (pressed/held/released)
 │   │   ├── camera.js             — Viewport scrolling (256×224)
-│   │   ├── collision.js          — Tile-based AABB collision (isSolid, resolveH/V, checkWall)
+│   │   ├── collision.js          — Tile-based AABB collision (variable tileSize from level, isSolid, resolveH/V, checkWall)
 │   │   └── audio.js              — Web Audio API sound manager (SFX + Music, loop points, charge loop)
 │   ├── entities/
 │   │   ├── entity.js             — Base entity class + AABB overlap
@@ -579,15 +633,16 @@ mega-human/
 │   │   ├── stage-select.js      — Stage select screen (world map, location dots, navigation)
 │   │   └── gameplay.js           — Gameplay state (PNG backgrounds, player, camera, HUD)
 │   ├── levels/
-│   │   └── level.js              — Level from map.json (polygon→tile-grid rasterizer)
+│   │   └── level.js              — Level from map.json (polygon→tile-grid rasterizer, custom collision support)
 │   └── assets/
-│       └── asset-loader.js       — Image + JSON loading/caching
+│       └── asset-loader.js       — Image + JSON loading/caching, conditional custom collision loading
 ├── analysis/
 │   └── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
 ├── tools/
 │   ├── map-controller.py         — Gamepad mapping tool (pygame, outputs controller-map.json)
 │   ├── controller-map.json       — Last generated controller mapping (8BitDo Ultimate 2C)
 │   ├── stage-select-editor.html  — Location picker for stage select dots (click to place, export JSON)
+│   ├── collision-editor.html     — Visual collision tile editor (paint/erase tiles, 16×16 or 8×8, export JSON)
 │   ├── tile-viewer.html          — ROM tile browser (legacy)
 │   ├── sprite-assembler.html     — Manual sprite assembly tool (legacy)
 │   └── sprite-finder.html        — Tile search tool (legacy)
@@ -618,9 +673,11 @@ mega-human/
 
 **Original MMX screen width:** The original game uses 298×224, not 256×224. Our viewport is 307×224 (~20% wider than SNES 256, slightly wider than original MMX).
 
-**Collision check density:** `resolveHorizontal` and `checkWallContact` now check every TILE_SIZE (16px) along the entity's height, not just top+bottom endpoints. This prevents tall entities (X=34px, Zero=40px) from clipping through single-row solid tiles that fall in the middle of their hitbox. **Do NOT add extra collision tiles** to fix clipping — fix the check logic instead.
+**Collision check density:** `resolveHorizontal` and `checkWallContact` now check every `level.tileSize` along the entity's height, not just top+bottom endpoints. This prevents tall entities (X=34px, Zero=40px) from clipping through single-row solid tiles that fall in the middle of their hitbox. **Do NOT add extra collision tiles** to fix clipping — fix the check logic instead.
 
-**Tile rasterization precision limit:** Collision shapes are rasterized onto a 16px grid using center-point checks only. Characters land on tile boundaries (multiples of 16), so there can be up to ~8px visual gap between the tile edge and the actual art. Shrinking a collision shape below ~12px tall risks it falling between tile centers and generating zero tiles. Do not attempt to fix small visual float by adjusting collision shapes.
+**Variable tile size collision:** `collision.js` reads `level.tileSize` instead of a hardcoded constant. Default stages use 16×16 tiles from polygon rasterization. Stages with custom collision maps can use 8×8 tiles for finer precision (half the gap, 4× the tiles). The `CUSTOM_COLLISION_STAGES` whitelist in `asset-loader.js` controls which stages load custom collision data — add the stage name there to avoid 404 requests. Custom collision JSON format: `{ stage, tileSize, width, height, tiles: [[col,row], ...] }`.
+
+**Tile rasterization precision limit (default 16×16):** Collision shapes are rasterized onto a 16px grid using center-point checks only. Characters land on tile boundaries (multiples of 16), so there can be up to ~8px visual gap between the tile edge and the actual art. For stages where this is unacceptable, use the collision editor (`tools/collision-editor.html`) to create a custom 8×8 tile map — this reduces the gap to ~4px.
 
 **Audio system:** `AudioManager` in `src/engine/audio.js` uses Web Audio API. AudioContext is created lazily on first user gesture (keydown/mousedown), NOT during page load. Audio files are fetched as raw ArrayBuffers during loading and decoded once the context exists. Music loop points are parsed from filenames (e.g. `highway.44,44.87,463.ogg`). Gamepad API is poll-based and cannot trigger AudioContext resume — only keyboard/mouse events work.
 
