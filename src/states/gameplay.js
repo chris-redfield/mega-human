@@ -757,6 +757,24 @@ export class GameplayState {
                 }
             }
         }
+
+        // Collision shape name labels at top-left corner of each shape
+        ctx.font = '7px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        for (const shape of level.collisionShapes) {
+            const sx = Math.floor(shape.x - cam.x);
+            const sy = Math.floor(shape.y - cam.y);
+            // Skip if off-screen
+            if (sx > SCREEN_W + 50 || sy > SCREEN_H + 10 || sx < -150 || sy < -10) continue;
+            // Background for readability
+            const text = shape.name;
+            const tw = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(sx, sy, tw + 4, 9);
+            ctx.fillStyle = '#ffff00';
+            ctx.fillText(text, sx + 2, sy + 1);
+        }
     }
 
     /**

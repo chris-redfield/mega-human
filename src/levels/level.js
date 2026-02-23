@@ -31,6 +31,9 @@ export class Level {
 
         // Health pickup positions from map instances
         this.healthPickups = [];
+
+        // Debug: collision shape metadata (name + bounding box) for overlay labels
+        this.collisionShapes = [];
     }
 
     /** Get collision value at tile coordinates. */
@@ -102,6 +105,14 @@ export function createLevelFromMap(mapData) {
                 // Rasterize collision polygon onto tile grid
                 const polygon = inst.points.map(p => [p.x, p.y]);
                 _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
+                // Store shape metadata for debug overlay
+                const xs = inst.points.map(p => p.x);
+                const ys = inst.points.map(p => p.y);
+                level.collisionShapes.push({
+                    name: inst.name || inst.objectName,
+                    x: Math.min(...xs),
+                    y: Math.min(...ys),
+                });
             } else if (inst.objectName === 'Spawn Point' && inst.pos) {
                 level.spawnPoints.push({ x: inst.pos.x, y: inst.pos.y });
             } else if (inst.objectName === 'Large Health' && inst.pos) {
