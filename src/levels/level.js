@@ -126,8 +126,10 @@ export function createLevelFromMap(mapData, customCollision) {
                     _extractSlopeSegments(level, polygon, inst.name || inst.objectName);
                 }
 
-                // Rasterize only if no custom collision AND polygon has no slope edges
-                if (!customCollision && !hasSlope) {
+                // Rasterize only if no custom collision (slope polygons are rasterized too —
+                // staircase tiles at the surface are cleared by _clearSlopeTiles and handled
+                // at runtime by resolveSlopeHorizontal; this preserves solid ground below slopes)
+                if (!customCollision) {
                     _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
                 }
             } else if (inst.objectName === 'Spawn Point' && inst.pos) {

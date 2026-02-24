@@ -22,5 +22,11 @@
     "y": 195,
     "stage": "crystalmine",
     "name": "Crystal Mine"
+  },
+  {
+    "x": 648,
+    "y": 397,
+    "stage": "weathercontrol",
+    "name": "Weather Control"
   }
 ]

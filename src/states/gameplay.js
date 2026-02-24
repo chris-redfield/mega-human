@@ -100,6 +100,7 @@ export class GameplayState {
             frozentown: { x: 133, y: 640 },
             aircraftcarrier: { x: 221, y: 1019 },
             crystalmine: { x: 50, y: 349 },
+            weathercontrol: { x: 130, y: 90 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -176,6 +177,11 @@ export class GameplayState {
                 tanks:   [{ x: 400, y: 470 }, { x: 800, y: 400 }, { x: 1100, y: 400 }],
                 hoppers: [{ x: 600, y: 370 }, { x: 950, y: 700 }, { x: 1520, y: 430 }],
                 birds:   [{ x: 617, y: 480 }, { x: 920, y: 650 }, { x: 1740, y: 240 }],
+            },
+            weathercontrol: {
+                tanks:   [{ x: 500, y: 100 }, { x: 1200, y: 100 }, { x: 2000, y: 100 }],
+                hoppers: [{ x: 800, y: 100 }, { x: 1600, y: 100 }, { x: 2400, y: 100 }],
+                birds:   [{ x: 600, y: 60 },  { x: 1400, y: 50 },  { x: 2200, y: 55 }],
             },
         };
 
