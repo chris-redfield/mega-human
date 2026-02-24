@@ -7,6 +7,7 @@
 import { Camera, SCREEN_W, SCREEN_H } from '../engine/camera.js';
 import { Player } from '../entities/player.js';
 import { Zero } from '../entities/zero.js';
+import { Sigma } from '../entities/sigma.js';
 import { TankEnemy } from '../entities/tank-enemy.js';
 import { HopperEnemy } from '../entities/hopper-enemy.js';
 import { BirdEnemy } from '../entities/bird-enemy.js';
@@ -147,6 +148,9 @@ export class GameplayState {
         if (this.characterId === 'zero') {
             player = new Zero(x, y);
             player.spriteImage = this.assets.getImage('zeroSprite');
+        } else if (this.characterId === 'sigma') {
+            player = new Sigma(x, y);
+            player.spriteImage = this.assets.getImage('sigmaSprite');
         } else {
             player = new Player(x, y);
             player.spriteImage = this.assets.getImage('playerSprite');
@@ -296,7 +300,9 @@ export class GameplayState {
 
         // Toggle character with Tab key (respawns as new character)
         if (game.input.rawKeys['Tab'] && !this._prevKeyTab) {
-            this.characterId = this.characterId === 'x' ? 'zero' : 'x';
+            const chars = ['x', 'zero', 'sigma'];
+            const idx = chars.indexOf(this.characterId);
+            this.characterId = chars[(idx + 1) % chars.length];
             this._resetPlayerAtSpawn();
             this.player.warpBeamActive = true;
             this.player.warpBeamY = this.player.y - 200;
@@ -350,7 +356,7 @@ export class GameplayState {
         // Player shots ↔ enemies collision
         this._checkPlayerShotsVsEnemies();
 
-        // Sword hitbox ↔ enemies collision (Zero only)
+        // Sword hitbox ↔ enemies collision (Zero/Sigma)
         this._checkSwordVsEnemies();
 
         // Remove dead enemies, spawn drops
