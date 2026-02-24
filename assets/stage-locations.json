@@ -40,5 +40,11 @@
     "y": 443,
     "stage": "tower",
     "name": "The Tower"
+  },
+  {
+    "x": 379,
+    "y": 160,
+    "stage": "sigma2",
+    "name": "AI LAB"
   }
 ]

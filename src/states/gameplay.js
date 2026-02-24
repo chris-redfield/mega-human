@@ -103,6 +103,7 @@ export class GameplayState {
             weathercontrol: { x: 130, y: 90 },
             robotjunkyard: { x: 83, y: 660 },
             tower: { x: 150, y: 920 },
+            sigma2: { x: 100, y: 80 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -194,6 +195,11 @@ export class GameplayState {
                 tanks:   [{ x: 350, y: 900 }, { x: 200, y: 600 }, { x: 800, y: 150 }],
                 hoppers: [{ x: 500, y: 800 }, { x: 150, y: 400 }, { x: 600, y: 150 }],
                 birds:   [{ x: 300, y: 750 }, { x: 500, y: 350 }, { x: 900, y: 100 }],
+            },
+            sigma2: {
+                tanks:   [{ x: 500, y: 100 }, { x: 1000, y: 100 }, { x: 1800, y: 100 }],
+                hoppers: [{ x: 700, y: 100 }, { x: 1300, y: 100 }, { x: 2000, y: 100 }],
+                birds:   [{ x: 400, y: 60 },  { x: 1200, y: 50 },  { x: 2100, y: 55 }],
             },
         };
 
