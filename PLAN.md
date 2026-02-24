@@ -710,6 +710,140 @@ Copy to `assets/music/` keeping the loop-point filename (audio system parses loo
 
 ---
 
+### 26e. Weather Control Stage Import (IN PROGRESS — SLOPE COLLISION BROKEN)
+
+Imported the Weather Control (Storm Owl) stage from MMX-Online-Deathmatch. The stage loaded fine, but its collision polygons exposed a fundamental limitation in our slope collision system that remains **unresolved after 6+ fix attempts**.
+
+**Stage details:**
+- Internal name: `weathercontrol`
+- Dimensions: 3328 × 256 px (very wide, short)
+- 50 collision shapes, 3 kill zones, 11 spawn points
+- Multiple slope polygons that contain BOTH the slope surface AND solid ground beneath them
+- Music: `weathercontrol.0,1.49,946.ogg`
+
+**Files added during import:**
+- `assets/levels/weathercontrol_background.png`
+- `assets/levels/weathercontrol_backwall.png`
+- `assets/levels/weathercontrol_parallax.png`
+- `assets/levels/weathercontrol_foreground.png`
+- `assets/levels/weathercontrol_map.json`
+- `assets/music/weathercontrol.0,1.49,946.ogg`
+
+**Code changes for import:**
+- `index.html`: Added `assets.loadStage('weathercontrol')` and music entry
+- `src/states/gameplay.js`: Added weathercontrol enemy layout, spawn override `weathercontrol: { x: 130, y: 90 }`
+- `assets/stage-locations.json`: Added weathercontrol dot at (648, 397)
+- `tools/stage-select-editor.html`: Added weathercontrol dropdown
+- `tools/collision-editor.html`: Added weathercontrol dropdown
+
+---
+
+#### THE SLOPE COLLISION BUG — Full History of Attempts
+
+**ROOT CAUSE:** Weather control's slope polygons are structured differently from existing stages. In frozen town/aircraft carrier/crystal mine, slope polygons are mostly just the slope surface. But weather control has polygons where the slope is the TOP EDGE of a large polygon that also contains the solid ground beneath. The existing code marked these polygons as "has slope" and then **entirely skipped their rasterization** (the old `if (!customCollision && !hasSlope)` check on line 130 of level.js). This deleted all ground tiles under the slopes.
+
+**WHAT WAS WORKING BEFORE WEATHER CONTROL:** All existing stages (highway, frozentown, aircraftcarrier, crystalmine) had correct slope collision. The system had:
+1. `level.js`: Slope polygons entirely skipped from rasterization, `_clearSlopeTiles()` removed staircase tiles from adjacent shapes at slopeRow-1
+2. `collision.js`: `resolveSlopeHorizontal` with `w`-pixel extension beyond endpoints, `h` transition margin, `ts*2` proximity guard
+3. `collision.js`: `resolveSlopeVertical` with slope→flat transition scan
+
+---
+
+**ATTEMPT 1 — Rasterize slope polygons normally**
+- **Change:** Changed `if (!customCollision && !hasSlope)` to `if (!customCollision)` on line 130 of level.js, so slope polygons ARE rasterized
+- **Result:** Ground under slopes preserved in weather control! But introduced TWO new bugs:
+  - **Bug 1 (wall clipping):** At the start of weather control, near the beginning of a slope, the player could clip through solid blocks/walls. The `resolveSlopeHorizontal` transition zone (extending `w` pixels = 18px beyond slope endpoints, with `h` = 34px skip margin) was disabling wall collision for blocks adjacent to slope endpoints.
+  - **Bug 2 (missing tile):** At the junction between Shape10 and Shape11, a collision tile was missing. `_clearSlopeTiles()` was damaging tiles from non-slope shapes that shared columns with slope shapes.
+- **Why it failed:** Rasterizing the slope polygon body created staircase tiles at the slope surface, which then interacted badly with `resolveSlopeHorizontal`'s transition zones.
+
+---
+
+**ATTEMPT 2 — Two-pass rasterization + directional transition**
+- **Changes:**
+  1. `level.js`: Rasterize slope polygons FIRST, then call `_clearSlopeTiles()`, then rasterize non-slope polygons (so `_clearSlopeTiles` can't damage non-slope shapes)
+  2. `collision.js`: Made the transition zone directional — only apply the `h` skip margin when moving TOWARD the slope (approaching from flat to slope), not when moving away
+- **Result:** Fixed Bug 2 (non-slope shapes no longer damaged). But introduced **Bug 3:**
+  - **Bug 3 (stuck at slope→flat):** When walking UP a slope and transitioning to flat ground, the player got stuck at the slope endpoint. The directional check meant: when the leading edge was past the slope endpoint and the player was moving AWAY from the slope, the transition zone was disabled. But the player's feet were still being snapped to the slope by `resolveSlopeVertical`, creating a conflict where vertical said "you're on the slope" but horizontal said "you can't pass through these tiles."
+- **Why it failed:** The slope→flat transition requires the skip margin in BOTH directions, not just the approach direction. The player needs to walk through the wall of tiles at the junction regardless of which direction they're coming from.
+
+---
+
+**ATTEMPT 3 — feetOnSlope check**
+- **Change:** Added a `feetOnSlope` boolean: if the player's foot center X is within the slope segment's [x1, x2] range, always allow the full transition zone (bypass the directional check)
+- **Result:** User reported "this created more bugs" — likely caused issues on other stages where the player's feet could be "on slope" by X coordinate but standing on flat ground above/below the slope, leading to false transition zone activation.
+- **Why it failed:** The X-range check alone isn't sufficient — the player could be at the right X but on a different Y level entirely (e.g., standing on a platform above the slope).
+
+---
+
+**AT THIS POINT: User nuked all collision changes and asked me to research original MMX-Online-Deathmatch source.**
+
+**Research findings:** The original game uses DIRECT POLYGON COLLISION (not tile rasterization). Collision is tested as polygon-vs-hitbox intersection. Slopes use a `pushIncline` mechanism: when the player's hitbox intersects a slope polygon, the engine computes the surface normal and pushes the player upward along the normal. There are no tiles, no staircase artifacts, no transition zones. Our tile-based system is fundamentally different and can't replicate this approach without a major rewrite.
+
+---
+
+**ATTEMPT 4 — _rasterizeSlopePolygon (clean approach inspired by original)**
+- **Changes:**
+  1. `level.js`: NEW function `_rasterizeSlopePolygon()` that rasterizes the polygon body BUT skips tiles at `slopeRow` and `slopeRow-1` (the two rows at the slope surface). This preserves ground below slopes while avoiding staircase artifacts at the surface.
+  2. `level.js`: Removed `_clearSlopeTiles()` entirely (no longer needed since surface tiles are handled by the new function)
+  3. `collision.js`: Simplified `resolveSlopeHorizontal` — removed `w` extension, kept strict [x1, x2] range only
+- **Result:** Weather control ground preserved, no staircase artifacts. But TWO new bugs:
+  - **Weather control wall shaking:** Standing on flat ground near a slope endpoint and pressing against a wall caused screen shaking. The old proximity guard (`ts * 2` = 32px) was too loose — the player's feet at y=176 were 21px from slopeY=155, which passed the check (21 < 32) and activated slope skip logic, disabling wall collision.
+  - **Aircraft carrier stuck:** Player got stuck at slope transitions on aircraft carrier. This stage uses CUSTOM COLLISION (hand-painted tiles). `_clearSlopeTiles()` was needed to clear staircase tiles from the custom collision data near slope surfaces. Removing it broke aircraft carrier.
+- **Why it partially failed:** (a) Proximity guard too loose for weather control's geometry. (b) Custom collision stages still need `_clearSlopeTiles`.
+
+---
+
+**ATTEMPT 5 — Remove extension entirely (strict slope range)**
+- **Change:** In `resolveSlopeHorizontal`, changed the slope detection from `checkX >= seg.x1 - w && checkX <= seg.x2 + w` to `checkX >= seg.x1 && checkX <= seg.x2` (no extension at all)
+- **Result:** "all transitions are bugged now" — removing the extension means there's NO transition zone. At every slope→flat junction, there's a column of solid tiles (from the flat ground polygon) that the player can't walk through. The slope surface handles the Y position, but the X collision hits the wall of tiles at the junction. Without the `w`-pixel extension and `h` skip margin, the player gets stuck at EVERY slope endpoint.
+- **Why it failed:** The extension IS needed. The problem isn't the extension — it's the PROXIMITY GUARD being too loose. The extension should stay but should only activate when the player is actually near the slope surface.
+
+---
+
+**ATTEMPT 6 — Tighten proximity guard only (current state, UNTESTED)**
+- **Changes:**
+  1. `collision.js`: Restored the ORIGINAL `resolveSlopeHorizontal` exactly as it was before all weather control changes (with `w` extension, `h` transition margin, `inTransition` flag), but tightened the proximity guard from `ts * 2` (32px) to `ts` (16px).
+  2. `level.js`: Still has `_rasterizeSlopePolygon` from Attempt 4. Still MISSING the `_clearSlopeTiles` call (removed in Attempt 4, never restored).
+- **Theory:** The weather control wall-shaking bug was caused by the proximity guard being 32px instead of 16px. At the problem location, the player's feet are ~21px from the slope surface. With `ts*2=32`: 21 < 32 → slope activated (BUG). With `ts=16`: 21 > 16 → slope nullified (FIXED). Meanwhile all the actual slope transitions have feet within ~0-8px of the slope surface, so the tighter guard shouldn't affect them.
+- **INCOMPLETE:** The `_clearSlopeTiles` call still needs to be restored in level.js for aircraft carrier / crystal mine (custom collision stages with slopes). The function body was removed from the file entirely in Attempt 4 and needs to be brought back.
+- **Status:** User said "you have one extra shot" and then context was lost due to compaction. This fix was NEVER TESTED.
+
+---
+
+#### CURRENT FILE STATE (after all attempts):
+
+**`src/levels/level.js` — Modified from original:**
+- Line 130: `if (!customCollision)` — slope polygons ARE rasterized (changed from `if (!customCollision && !hasSlope)`)
+- Lines 131-136: Slope polygons use `_rasterizeSlopePolygon()` which skips tiles at slopeRow and slopeRow-1
+- Lines 255-292: NEW `_rasterizeSlopePolygon()` function added
+- **MISSING:** `_clearSlopeTiles()` — both the function definition AND its call were removed. This needs to come back.
+
+**`src/engine/collision.js` — Modified from original:**
+- Line 117: Proximity guard tightened from `Math.abs(feetY - slopeY) > ts * 2` to `> ts`
+- Everything else is identical to the pre-weather-control version
+
+---
+
+#### WHAT NEEDS TO HAPPEN TO FIX THIS (theory, untested):
+
+1. **Restore `_clearSlopeTiles()`** in level.js — both the function and its call after tile rasterization. This is needed for custom collision stages (aircraft carrier, crystal mine) where hand-painted tiles create staircase artifacts at slopes.
+
+2. **Keep `_rasterizeSlopePolygon()`** — this correctly preserves ground under slopes while skipping surface tiles. Weather control needs this.
+
+3. **Keep the tightened proximity guard** (`ts` instead of `ts*2`) — this should prevent false slope activation on weather control's pillars near slope endpoints.
+
+4. **Test ALL stages:** highway (no slopes), frozentown (2 slopes), aircraftcarrier (1 slope, custom collision), crystalmine (5 slopes), weathercontrol (new, multiple slopes). Every slope entry/exit transition must work in both directions.
+
+#### KEY INSIGHT FOR FUTURE FIXING:
+The fundamental tension is: `resolveSlopeHorizontal` needs to skip tiles at slope/flat junctions (otherwise player gets stuck), but it must NOT skip tiles at walls that happen to be near a slope endpoint. The proximity guard (checking if feet are near the slope surface) is the ONLY thing separating these two cases. Getting the proximity threshold right is critical — too loose (32px) and walls near slopes break, too tight (maybe 8px?) and transitions break.
+
+#### ALTERNATIVE APPROACHES NOT YET TRIED:
+1. **Custom collision for weather control** — Add `weathercontrol` to `CUSTOM_COLLISION_STAGES` in asset-loader.js and paint the tiles manually. This completely sidesteps the rasterization problem. The slope system would still handle slopes (extracted from map.json), but the ground tiles would be hand-placed.
+2. **Polygon-based collision** — Replace the tile grid with direct polygon intersection testing (like the original game). Major rewrite, would solve all slope issues but break everything temporarily.
+3. **Hybrid approach** — Use polygon collision only for slope polygons, tile collision for everything else. Less invasive than a full rewrite.
+
+---
+
 ### Implementation Priority
 
 1. ~~**Shooting overlay animations**~~ — DONE (6 shoot variants)
