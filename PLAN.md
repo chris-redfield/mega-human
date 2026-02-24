@@ -453,6 +453,177 @@ Second playable character with sword-based combat. Tab key switches between X an
 
 ---
 
+### 26f. Import Sigma Stage 2 (DONE)
+
+Imported the Sigma Stage 2 from MMX-Online-Deathmatch.
+
+**Stage details:**
+- Internal name: `sigma2` (displayName: "sigma stage 2")
+- Dimensions: 2466 × 256 px (wide, short)
+- 19 collision shapes, 2 kill zones, 10 spawn points
+- Player spawn override: (100, 80)
+- Music: `sigma2.0.61,373.ogg` (loop start: 0s, loop end: 61.373s)
+- Has parallax.png, no foreground.png
+
+**Files added:**
+- `assets/levels/sigma2_background.png`, `sigma2_backwall.png`, `sigma2_parallax.png`, `sigma2_map.json`
+- `assets/music/sigma2.0.61,373.ogg`
+
+**Code changes:**
+- `index.html`: stage loading + music entry
+- `gameplay.js`: spawn override + enemy layout
+- `tools/stage-select-editor.html` + `collision-editor.html`: dropdown options
+- NOT added to `stage-locations.json` — user places dot manually via editor tool
+
+---
+
+### 36. Playable Sigma (DONE)
+
+Third playable character with beam saber combat. Tab key cycles X → Zero → Sigma.
+
+**Entity:** `src/entities/sigma.js` — `Sigma` class extending `Player`.
+**Sprites:** All from `assets/sigma.png` (sigma_x1 from MMX-Deathmatch, botmid alignment), 17 animations in `sigma-sprite-data.js`.
+
+**Architecture:**
+- `Sigma` extends `Player`, overrides `_getAnim()`, `_groundState()`, `_airState()`, `_dashState()`, `_wallSlideState()`, `_handleShooting()`, `_attackState()`, `render()`
+- No buster or charge — `_handleShooting()` is a no-op, shoot button always triggers sword attacks
+- No combo chain (one ground slash), but has ground/air/dash/wall slide attack variants
+- Sword collision reuses existing `_checkSwordVsEnemies()` system (same as Zero)
+
+**Hitbox:** 28×52 (larger than X's 18×34 and Zero's 18×40)
+**Warp beam:** 58×60 capsule effect from sigma.png at (192, 3) — visually distinct from X/Zero's thin beams
+
+**Beam Saber Attacks (shoot button):**
+
+| Attack | Trigger | Damage | Animation | Notes |
+|--------|---------|--------|-----------|-------|
+| Ground slash | Shoot (idle/run) | 3 | `attack` 4f (2 windup, 1 swing, 1 hold) | Slow forward movement during attack |
+| Air slash | Shoot (jump/fall) | 3 | `attack_air` 4f | Mid-air downward slash |
+| Dash slash | Shoot during dash | 4 | `attack_dash` 2f | Carries dash momentum, direction locked |
+| Wall slash | Shoot during wall slide | 3 | `wall_slide_attack` 12f (atkBox frames 3-6) | Stays on wall, sprite faces wall via facing flip |
+
+**atkBox values (manually tuned by user):**
+- Ground: `{w:23, h:40, ox:30, oy:-32}` — narrow, tall, far forward
+- Air: `{w:23, h:40, ox:23, oy:-42}` — same shape, higher up
+- Dash: `{w:23, h:40, ox:21, oy:-33}` — similar to ground
+- Wall: `{w:48, h:53, ox:53, oy:3}` — wide, extends far from wall
+
+**Wall slide attack implementation:**
+- `_wallSlideState()` override checks shoot press → `_startWallSlideAttack()`
+- Preserves `wallContact` in `_wallAttackContact` for physics and rendering
+- `_attackState()` handles wall attack: `vy = WALL_SLIDE_SPEED`, `vx = 0`, facing away from wall
+- After animation finishes, returns to `wall_slide` state (restores wallContact)
+- Render override: temporarily flips `facing` toward wall so base Player render draws sprite facing wall correctly (NOT by changing state — that caused a bug where `_getAnim('wall_slide')` returned wrong animation)
+
+**Bug found and fixed:** Initial render approach temporarily set `this.state = 'wall_slide'` during render so the base class flip logic would apply. But this caused `_getAnim('wall_slide')` to be called instead of `_getAnim('attack')`, returning the 3-frame wall_slide animation instead of the 12-frame wall_slide_attack. With `animFrame > 2`, the modulo wrapped and the animation visually looped rapidly. Fix: flip `this.facing` toward the wall instead of changing state.
+
+**Character selection:**
+- Tab key cycles: X → Zero → Sigma → X (array-based rotation in gameplay.js)
+- `_createPlayer()` factory creates `Sigma` class with `sigmaSprite` image
+
+**Sprite data (auto-generated via `analysis/build_sigma_sprites.py`):**
+
+| Animation | Frames | Notes |
+|-----------|--------|-------|
+| idle | 4, loop | Caped stance |
+| run | 10, loop | Fast run cycle |
+| jump | 1, once | Ascending pose |
+| fall | 1, loop | Same as jump |
+| land | 1, once | Landing squash |
+| dash | 1, loop | Low dash pose |
+| wall_slide | 3, once | Facing wall |
+| hurt | 4, once | Recoil |
+| die | 1, once | Death pose |
+| warp_in | 6, once | Capsule materialize |
+| warp_beam | 1 | 58×60 warp capsule |
+| shoot | 2, loop | Projectile firing pose (for future proj_slash) |
+| attack | 4, once | Ground slash (atkBox frames 2-3) |
+| attack_air | 4, once | Air slash (atkBox frames 2-3) |
+| attack_dash | 2, once | Dash slash (atkBox frames 0-1) |
+| wall_slide_attack | 12, once | Wall slash (atkBox frames 3-6) |
+| proj_slash | 1, once | Energy wave projectile sprite (79×50, for future use) |
+
+**Asset pipeline:**
+- `sigma.png` (sigma_x1.png) copied from MMX-Deathmatch spritesheets to `assets/`
+- Loaded in `index.html` as key `'sigmaSprite'`
+- `build_sigma_sprites.py` generates sprite data with `MANUAL_ATK_BOXES` and `MANUAL_DURATIONS` overrides
+
+---
+
+### 37. Sigma Additional Attacks (NOT STARTED)
+
+Additional attack animations available from MMX-Deathmatch JSONs, not yet wired into the playable character:
+
+**High priority:**
+
+| Attack | JSON Source | Description | Implementation |
+|--------|------------|-------------|----------------|
+| **Projectile slash** | `sigma_shoot.json` + `sigma_proj_slash.json` | Energy wave ranged attack (79×50 sprite). `shoot` anim has POI spawn positions. | Fire projectile entity from hand POI during a new "shoot" state. Gives Sigma his only ranged attack. |
+| **Block/Guard** | `sigma_block.json` | Defensive stance with 4 shield hitboxes. | New `block` state on a dedicated button. Reduce incoming damage while blocking. |
+
+**Medium priority:**
+
+| Attack | JSON Source | Description | Implementation |
+|--------|------------|-------------|----------------|
+| **Wall dash** | `sigma_wall_dash.json` | Dash along wall (1 frame hold). | New movement option while wall sliding + directional input. |
+| **Wall dash attack** | `sigma_wall_dash_attack.json` | Slash during wall dash (2 frames). | Extension of wall dash, press shoot during wall dash. |
+| **Wall kick** | `sigma_wall_kick.json` | Kick off wall (3 frames). | Alternative to wall jump with different trajectory/damage. |
+
+**Low priority:**
+
+| Attack | JSON Source | Description | Implementation |
+|--------|------------|-------------|----------------|
+| **Ladder attack** | `sigma_ladder_attack.json` | Slash on ladder (11 frames, hitbox on frame 4: 36×55). | Requires ladder climbing system (#31) first. |
+| **Cloak** | `sigma_cloak.json` | Cloaking ability. | Stealth mechanic, reduce visibility to enemies. |
+| **Summon Maverick** | `sigma_summon_maverick.json` | Summon a Maverick ally. | Complex — spawn a temporary AI ally. |
+
+---
+
+### 38. Sigma CPU AI / Enemy Sigma (NOT STARTED)
+
+Sigma as a boss/enemy entity controlled by AI, inspired by the CPU AI system in MMX-Online-Deathmatch.
+
+**Concept:** The original MMX-Deathmatch has a full CPU AI system that controls characters in deathmatch mode — making movement decisions, choosing attacks based on distance/situation, and reacting to the player. We want to port this for Sigma as an enemy encounter.
+
+**Research needed:**
+- Study `MMX-Online-Deathmatch/` source for CPU AI logic (likely in C# files under a `AI/` or `CPU/` directory)
+- Identify the decision-making system: distance-based attack selection, movement patterns, aggression levels
+- Determine how the AI selects between: approach, retreat, attack, jump, dash, block
+
+**Implementation plan:**
+
+1. **SigmaEnemy class** — New entity extending `Entity` (NOT `Player`), similar to `ChillPenguin` boss pattern but using Sigma's full moveset
+   - Uses `sigma.png` spritesheet and `SIGMA_ANIMATIONS` from `sigma-sprite-data.js`
+   - Full AI state machine: idle, chase, attack, dash, jump, wall_slide, hurt, dying
+   - All sword attacks available: ground slash, air slash, dash slash, wall slash, projectile slash
+
+2. **AI Decision System:**
+   - **Distance-based:** Choose attack type based on range to player
+     - Close range (< 40px): ground slash or dash slash
+     - Medium range (40-120px): approach or projectile slash
+     - Far range (> 120px): dash toward player or projectile slash
+   - **Situational:** React to player position
+     - Player above: jump + air slash
+     - Player on wall: wall dash attack
+     - Low HP: more aggressive, use projectile slash more
+   - **Cooldowns:** Prevent attack spam, add idle windows between attacks
+
+3. **Combat values:**
+   - HP: 32+ (boss-tier)
+   - Ground slash: 3 damage, air slash: 3, dash slash: 4, projectile slash: 2
+   - Contact damage: 3 (60-frame cooldown)
+   - Invincibility frames after hit: 45 frames
+
+4. **Spawn:** Configurable per-stage, can be used as a boss or as a recurring enemy encounter (e.g., Sigma stages)
+
+5. **Reuse existing systems:**
+   - Sword hitbox collision via `_checkSwordVsEnemies()` pattern (enemy version)
+   - Boss HP bar rendering
+   - Death explosion from effects.png
+   - Enemy shot system for projectile slash
+
+---
+
 ### 27. Stage Select Screen (DONE)
 
 Full-screen world map stage select, replacing the F1/F2/F4 hotkey system.
@@ -875,6 +1046,7 @@ The fundamental tension is: `resolveSlopeHorizontal` needs to skip tiles at slop
 26b. ~~**Fix aircraft carrier stage**~~ — DONE (custom collision tile editor + 8×8 tile support, see details below)
 26d. ~~**Slope collision system**~~ — DONE (3-layer slope system: segment extraction from polygons, slope-aware vertical/horizontal resolution with proximity guard, all ground entities updated. See details below)
 27. ~~**Stage select screen**~~ — DONE (full-screen world map with location dots, see details below)
+26f. ~~**Import Sigma Stage 2**~~ — DONE (sigma2 stage, 2466×256, wide layout)
 28. **Boss door / boss room transitions** — Shutter door animation, camera lock in boss arena, trigger zone to activate boss
 29. **More bosses** — Boss entities for new stages (reuse ChillPenguin pattern)
 30. **Score / lives system** — Lives counter, game over screen, score tracking
@@ -883,6 +1055,9 @@ The fundamental tension is: `resolveSlopeHorizontal` needs to skip tiles at slop
 33. **Boss defeat cutscene** — Boss explosion sequence, stage clear fanfare, weapon get screen
 34. **Crouch** — Crouching state (sprite data exists in XDefault.png, not wired into state machine)
 35. **Pause menu** — Pause screen with weapon select, subtank use, options
+36. ~~**Playable Sigma**~~ — DONE (third playable character, beam saber, 4 attack variants, see details below)
+37. **Sigma additional attacks** — Projectile slash (ranged), block/guard, wall dash attacks (see details below)
+38. **Sigma CPU AI / Enemy Sigma** — AI-controlled Sigma as boss/enemy encounter (see details below)
 
 ---
 
@@ -895,6 +1070,7 @@ mega-human/
 ├── assets/
 │   ├── XDefault.png              — X player spritesheet (from MMX Deathmatch)
 │   ├── zero.png                  — Zero player spritesheet (from MMX Deathmatch)
+│   ├── sigma.png                 — Sigma player spritesheet (sigma_x1 from MMX Deathmatch)
 │   ├── effects.png               — Projectile/VFX/HUD spritesheet (buster shots, charge particles, explosions, HP bar)
 │   ├── sigma_viral.png           — Enemy spritesheet (Tank, Hopper, Bird mechaniloids)
 │   ├── mavericks.png             — Maverick boss spritesheet (Chill Penguin + others)
@@ -922,7 +1098,11 @@ mega-human/
 │       ├── aircraftcarrier_collision.json — Aircraft Carrier custom 8×8 collision tiles (overrides polygons)
 │       ├── crystalmine_background.png   — Crystal Mine background layer
 │       ├── crystalmine_backwall.png     — Crystal Mine backwall layer
-│       └── crystalmine_map.json         — Crystal Mine collision polygons + spawn points
+│       ├── crystalmine_map.json         — Crystal Mine collision polygons + spawn points
+│       ├── sigma2_background.png        — Sigma Stage 2 background layer
+│       ├── sigma2_backwall.png          — Sigma Stage 2 backwall layer
+│       ├── sigma2_parallax.png          — Sigma Stage 2 parallax layer
+│       └── sigma2_map.json              — Sigma Stage 2 collision polygons + spawn points
 ├── src/
 │   ├── engine/
 │   │   ├── game.js               — Fixed 60fps game loop, dual resolution canvas switching
@@ -936,6 +1116,8 @@ mega-human/
 │   │   ├── sprite-data.js        — X animation frames (19 anims) + projectile sprite data
 │   │   ├── zero-sprite-data.js   — Zero animation frames (21 anims) + sword hitbox data
 │   │   ├── zero.js               — Zero: extends Player, Z-Saber 3-hit combo, air slash
+│   │   ├── sigma-sprite-data.js  — Sigma animation frames (17 anims) + sword hitbox data
+│   │   ├── sigma.js              — Sigma: extends Player, beam saber, 4 attack variants
 │   │   ├── tank-enemy.js         — Tank Mechaniloid: 5-state AI, patrol/shoot enemy
 │   │   ├── hopper-enemy.js       — Hopper Mechaniloid: 4-state AI, jump/melee enemy
 │   │   ├── bird-enemy.js         — Bird Mechaniloid: 3-state AI, flying/swoop enemy
@@ -949,7 +1131,9 @@ mega-human/
 │   └── assets/
 │       └── asset-loader.js       — Image + JSON loading/caching, conditional custom collision loading
 ├── analysis/
-│   └── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
+│   ├── build_sprite_module.py    — Generates sprite-data.js from MMX Deathmatch JSONs
+│   ├── build_zero_sprites.py     — Generates zero-sprite-data.js from Zero JSONs
+│   └── build_sigma_sprites.py    — Generates sigma-sprite-data.js from Sigma JSONs
 ├── tools/
 │   ├── map-controller.py         — Gamepad mapping tool (pygame, outputs controller-map.json)
 │   ├── controller-map.json       — Last generated controller mapping (8BitDo Ultimate 2C)
