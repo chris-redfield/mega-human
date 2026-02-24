@@ -101,8 +101,8 @@ export class GameplayState {
             aircraftcarrier: { x: 221, y: 1019 },
             crystalmine: { x: 50, y: 349 },
             weathercontrol: { x: 130, y: 90 },
-            robotjunkyard: { x: 83, y: 687 },
-            tower: { x: 157, y: 932 },
+            robotjunkyard: { x: 83, y: 660 },
+            tower: { x: 150, y: 920 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -586,6 +586,7 @@ export class GameplayState {
         // Parallax layer (scrolls at half camera speed on both axes)
         if (this.parallaxImg) {
             const parallaxOverrides = {
+                robotjunkyard: { y: 50, scaleY: 1.1 },
                 tower: { y: 100, scaleY: 1.2 },
             };
             const pOvr = parallaxOverrides[this.stageName];
