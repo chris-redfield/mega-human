@@ -61,7 +61,7 @@ const SE = {
     CONTACT_DAMAGE:    3,
     CONTACT_COOLDOWN:  60,
     HP:                32,
-    INVINCIBLE_TIME:   45,
+    INVINCIBLE_TIME:   70,
 
     // Recovery (when fallen below platform)
     RECOVER_SPEED:    -4.0,       // Upward speed when recovering

@@ -40,7 +40,7 @@ const CP = {
     CONTACT_DAMAGE:   3,
     CONTACT_COOLDOWN: 60,
     HP:               32,
-    INVINCIBLE_TIME:  45,        // frames of invincibility after taking damage
+    INVINCIBLE_TIME:  70,        // frames of invincibility after taking damage
 
     // AI timing
     IDLE_MIN:         40,
