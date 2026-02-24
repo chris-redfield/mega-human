@@ -34,5 +34,11 @@
     "y": 717,
     "stage": "robotjunkyard",
     "name": "Robot Junkyard"
+  },
+  {
+    "x": 987,
+    "y": 443,
+    "stage": "tower",
+    "name": "The Tower"
   }
 ]

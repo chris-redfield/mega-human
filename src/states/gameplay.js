@@ -102,6 +102,7 @@ export class GameplayState {
             crystalmine: { x: 50, y: 349 },
             weathercontrol: { x: 130, y: 90 },
             robotjunkyard: { x: 83, y: 687 },
+            tower: { x: 157, y: 932 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -188,6 +189,11 @@ export class GameplayState {
                 tanks:   [{ x: 500, y: 600 }, { x: 1000, y: 630 }, { x: 1500, y: 600 }],
                 hoppers: [{ x: 700, y: 610 }, { x: 1200, y: 640 }, { x: 1800, y: 400 }],
                 birds:   [{ x: 400, y: 550 }, { x: 900, y: 500 },  { x: 1600, y: 300 }],
+            },
+            tower: {
+                tanks:   [{ x: 350, y: 900 }, { x: 200, y: 600 }, { x: 800, y: 150 }],
+                hoppers: [{ x: 500, y: 800 }, { x: 150, y: 400 }, { x: 600, y: 150 }],
+                birds:   [{ x: 300, y: 750 }, { x: 500, y: 350 }, { x: 900, y: 100 }],
             },
         };
 
@@ -579,9 +585,17 @@ export class GameplayState {
 
         // Parallax layer (scrolls at half camera speed on both axes)
         if (this.parallaxImg) {
+            const parallaxOverrides = {
+                tower: { y: 100, scaleY: 1.2 },
+            };
+            const pOvr = parallaxOverrides[this.stageName];
             const px = Math.floor(-this.camera.x * 0.5);
-            const py = Math.floor(-this.camera.y * 0.5);
-            ctx.drawImage(this.parallaxImg, px, py);
+            const py = Math.floor(-this.camera.y * 0.5) + (pOvr ? pOvr.y : 0);
+            if (pOvr && pOvr.scaleY) {
+                ctx.drawImage(this.parallaxImg, px, py, this.parallaxImg.width, Math.floor(this.parallaxImg.height * pOvr.scaleY));
+            } else {
+                ctx.drawImage(this.parallaxImg, px, py);
+            }
         }
 
         // Backwall layer (scrolls 1:1 with camera, drawn behind main background)
