@@ -101,6 +101,7 @@ export class GameplayState {
             aircraftcarrier: { x: 221, y: 1019 },
             crystalmine: { x: 50, y: 349 },
             weathercontrol: { x: 130, y: 90 },
+            robotjunkyard: { x: 83, y: 687 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -182,6 +183,11 @@ export class GameplayState {
                 tanks:   [{ x: 500, y: 100 }, { x: 1200, y: 100 }, { x: 2000, y: 100 }],
                 hoppers: [{ x: 800, y: 100 }, { x: 1600, y: 100 }, { x: 2400, y: 100 }],
                 birds:   [{ x: 600, y: 60 },  { x: 1400, y: 50 },  { x: 2200, y: 55 }],
+            },
+            robotjunkyard: {
+                tanks:   [{ x: 500, y: 600 }, { x: 1000, y: 630 }, { x: 1500, y: 600 }],
+                hoppers: [{ x: 700, y: 610 }, { x: 1200, y: 640 }, { x: 1800, y: 400 }],
+                birds:   [{ x: 400, y: 550 }, { x: 900, y: 500 },  { x: 1600, y: 300 }],
             },
         };
 

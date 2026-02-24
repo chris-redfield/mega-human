@@ -28,5 +28,11 @@
     "y": 397,
     "stage": "weathercontrol",
     "name": "Weather Control"
+  },
+  {
+    "x": 1017,
+    "y": 717,
+    "stage": "robotjunkyard",
+    "name": "Robot Junkyard"
   }
 ]
