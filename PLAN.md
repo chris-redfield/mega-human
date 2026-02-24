@@ -810,17 +810,17 @@ Imported the Weather Control (Storm Owl) stage from MMX-Online-Deathmatch. The s
 
 ---
 
-#### CURRENT FILE STATE (after all attempts):
+#### CURRENT FILE STATE (repo nuked — back to original pre-weather-control state):
 
-**`src/levels/level.js` — Modified from original:**
-- Line 130: `if (!customCollision)` — slope polygons ARE rasterized (changed from `if (!customCollision && !hasSlope)`)
-- Lines 131-136: Slope polygons use `_rasterizeSlopePolygon()` which skips tiles at slopeRow and slopeRow-1
-- Lines 255-292: NEW `_rasterizeSlopePolygon()` function added
-- **MISSING:** `_clearSlopeTiles()` — both the function definition AND its call were removed. This needs to come back.
+**`src/levels/level.js` — ORIGINAL (no weather control changes):**
+- Line 129-134: Slope polygons ARE rasterized with `_rasterizePolygon()` (same as non-slope). No `_rasterizeSlopePolygon` function exists.
+- Line 155-158: `_clearSlopeTiles()` IS called — clears slopeRow-1 tiles for each slope segment
+- This is the version that works for frozentown, aircraftcarrier, crystalmine but causes weather control to have staircase artifacts at slope surfaces (the ground beneath IS preserved since slope polygons are rasterized normally)
 
-**`src/engine/collision.js` — Modified from original:**
-- Line 117: Proximity guard tightened from `Math.abs(feetY - slopeY) > ts * 2` to `> ts`
-- Everything else is identical to the pre-weather-control version
+**`src/engine/collision.js` — ORIGINAL (no weather control changes):**
+- Line 117: Proximity guard is `ts * 2` (32px) — the original value
+- `resolveSlopeHorizontal` has `w`-extension, `h` transition margin, `inTransition` flag — all original
+- This is the version that works for all existing stages but causes wall-clipping/shaking on weather control near slope endpoints (because `ts*2` is too loose for WC's geometry)
 
 ---
 
