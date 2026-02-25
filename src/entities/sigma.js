@@ -31,6 +31,7 @@ export class Sigma extends Player {
         this.swordDamage = 3;
         this.swordHitEnemies = new Set(); // Track which enemies were hit this swing
         this._wallAttackContact = 0;     // Preserved wall contact during wall slide attack
+        this.attackCooldown = 0;         // Frames before next attack allowed
     }
 
     /** Use Sigma's sprite data instead of X's. */
@@ -43,9 +44,14 @@ export class Sigma extends Player {
         return getSigmaAnim(state);
     }
 
+    update(game) {
+        if (this.attackCooldown > 0) this.attackCooldown--;
+        super.update(game);
+    }
+
     // --- Override ground state to add sword attack on shoot press ---
     _groundState(input, level) {
-        if (input.pressed('shoot')) {
+        if (input.pressed('shoot') && this.attackCooldown <= 0) {
             this._startGroundAttack();
             return;
         }
@@ -54,7 +60,7 @@ export class Sigma extends Player {
 
     // --- Override air state to add air sword slash ---
     _airState(input, level) {
-        if (input.pressed('shoot')) {
+        if (input.pressed('shoot') && this.attackCooldown <= 0) {
             this._startAirAttack();
             return;
         }
@@ -63,7 +69,7 @@ export class Sigma extends Player {
 
     // --- Override dash state to allow dash attack ---
     _dashState(input, level) {
-        if (input.pressed('shoot')) {
+        if (input.pressed('shoot') && this.attackCooldown <= 0) {
             this._startDashAttack();
             return;
         }
@@ -72,7 +78,7 @@ export class Sigma extends Player {
 
     // --- Override wall slide to allow wall attack ---
     _wallSlideState(input, level) {
-        if (input.pressed('shoot')) {
+        if (input.pressed('shoot') && this.attackCooldown <= 0) {
             this._startWallSlideAttack();
             return;
         }
@@ -188,9 +194,10 @@ export class Sigma extends Player {
         // Check if animation finished
         if (this.animFrame >= totalFrames - 1 &&
             this.animTimer >= anim.frames[totalFrames - 1].dur - 1) {
-            // End attack
+            // End attack — apply cooldown before next attack allowed
             this.swordHitbox = null;
             this.attackAnimName = '';
+            this.attackCooldown = 16; // ~0.27s gap → ~1.8 attacks/sec
             if (isWallAttack && this._wallAttackContact) {
                 // Return to wall slide
                 this.wallContact = this._wallAttackContact;
