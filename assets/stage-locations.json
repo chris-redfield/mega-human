@@ -52,5 +52,11 @@
     "y": 203,
     "stage": "volcaniczone",
     "name": "Volcanic Zone"
+  },
+  {
+    "x": 453,
+    "y": 734,
+    "stage": "shipyard",
+    "name": "Shipyard"
   }
 ]
