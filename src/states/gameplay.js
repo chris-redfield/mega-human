@@ -100,11 +100,11 @@ export class GameplayState {
         const stageSpawns = {
             frozentown: { x: 133, y: 640 },
             aircraftcarrier: { x: 221, y: 1019 },
-            crystalmine: { x: 50, y: 349 },
+            crystalmine: { x: 60, y: 335 },
             weathercontrol: { x: 130, y: 90 },
             robotjunkyard: { x: 83, y: 660 },
             tower: { x: 150, y: 920 },
-            sigma2: { x: 100, y: 80 },
+            sigma2: { x: 100, y: 75 },
         };
 
         let spawnX = 100, spawnY = 80;
