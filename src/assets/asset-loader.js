@@ -18,6 +18,7 @@ const STAGE_OPTIONAL_LAYERS = {
     sigma2:          ['parallax'],
     volcaniczone:    ['parallax', 'parallax2', 'parallax3'],
     shipyard:        ['parallax'],
+    mountain:        ['parallax', 'foreground'],
 };
 
 export class AssetLoader {

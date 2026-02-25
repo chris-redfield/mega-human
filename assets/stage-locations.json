@@ -58,5 +58,17 @@
     "y": 734,
     "stage": "shipyard",
     "name": "Shipyard"
+  },
+  {
+    "x": 1100,
+    "y": 400,
+    "stage": "mountain",
+    "name": "Mountain"
+  },
+  {
+    "x": 815,
+    "y": 186,
+    "stage": "mountain",
+    "name": "Mountain"
   }
 ]

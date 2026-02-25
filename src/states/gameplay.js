@@ -109,6 +109,7 @@ export class GameplayState {
             sigma2: { x: 100, y: 75 },
             volcaniczone: { x: 80, y: 500 },
             shipyard: { x: 213, y: 80 },
+            mountain: { x: 507, y: 407 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -218,6 +219,11 @@ export class GameplayState {
                 tanks:   [{ x: 400, y: 130 }, { x: 850, y: 370 }, { x: 1200, y: 880 }],
                 hoppers: [{ x: 600, y: 650 }, { x: 950, y: 200 }, { x: 1350, y: 900 }],
                 birds:   [{ x: 350, y: 100 }, { x: 730, y: 130 }, { x: 1100, y: 650 }],
+            },
+            mountain: {
+                tanks:   [{ x: 700, y: 400 }, { x: 1100, y: 350 }, { x: 1600, y: 120 }],
+                hoppers: [{ x: 850, y: 390 }, { x: 1300, y: 130 }, { x: 1750, y: 50 }],
+                birds:   [{ x: 600, y: 350 }, { x: 1000, y: 300 }, { x: 1500, y: 100 }],
             },
         };
 
