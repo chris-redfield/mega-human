@@ -103,7 +103,7 @@ export class GameplayState {
             crystalmine: { x: 60, y: 335 },
             weathercontrol: { x: 130, y: 90 },
             robotjunkyard: { x: 83, y: 660 },
-            tower: { x: 150, y: 920 },
+            tower: { x: 150, y: 900 },
             sigma2: { x: 100, y: 75 },
         };
 
@@ -196,9 +196,9 @@ export class GameplayState {
                 birds:   [{ x: 400, y: 550 }, { x: 900, y: 500 },  { x: 1600, y: 300 }],
             },
             tower: {
-                tanks:   [{ x: 350, y: 900 }, { x: 200, y: 600 }, { x: 800, y: 150 }],
-                hoppers: [{ x: 500, y: 800 }, { x: 150, y: 400 }, { x: 600, y: 150 }],
-                birds:   [{ x: 300, y: 750 }, { x: 500, y: 350 }, { x: 900, y: 100 }],
+                tanks:   [{ x: 150, y: 800 }, { x: 200, y: 600 }, { x: 880, y: 160 }],
+                hoppers: [{ x: 190, y: 800 }, { x: 150, y: 400 }, { x: 615, y: 150 }],
+                birds:   [{ x: 150, y: 670 }, { x: 150, y: 350 }, { x: 910, y: 90 }],
             },
             sigma2: {
                 tanks:   [{ x: 500, y: 100 }, { x: 1000, y: 100 }, { x: 1800, y: 100 }],
