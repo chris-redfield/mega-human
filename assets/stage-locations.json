@@ -46,5 +46,11 @@
     "y": 160,
     "stage": "sigma2",
     "name": "AI LAB"
+  },
+  {
+    "x": 1182,
+    "y": 203,
+    "stage": "volcaniczone",
+    "name": "Volcanic Zone"
   }
 ]

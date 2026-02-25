@@ -88,6 +88,8 @@ export class GameplayState {
         this.backgroundImg = this.assets.getImage(`${this.stageName}_background`);
         this.backwallImg = this.assets.getImage(`${this.stageName}_backwall`);
         this.parallaxImg = this.assets.getImage(`${this.stageName}_parallax`);
+        this.parallax2Img = this.assets.getImage(`${this.stageName}_parallax2`);
+        this.parallax3Img = this.assets.getImage(`${this.stageName}_parallax3`);
         this.foregroundImg = this.assets.getImage(`${this.stageName}_foreground`);
 
         // Parse background color from map data
@@ -105,6 +107,7 @@ export class GameplayState {
             robotjunkyard: { x: 83, y: 660 },
             tower: { x: 150, y: 900 },
             sigma2: { x: 100, y: 75 },
+            volcaniczone: { x: 80, y: 500 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -204,6 +207,11 @@ export class GameplayState {
                 tanks:   [{ x: 245, y: 110 }, { x: 1060, y: 100 }, { x: 1800, y: 100 }],
                 hoppers: [{ x: 390, y: 140 }, { x: 1300, y: 100 }, { x: 2000, y: 100 }],
                 birds:   [{ x: 400, y: 60 },  { x: 1200, y: 50 },  { x: 2100, y: 55 }],
+            },
+            volcaniczone: {
+                tanks:   [{ x: 500, y: 500 }, { x: 900, y: 400 }, { x: 1300, y: 170 }],
+                hoppers: [{ x: 700, y: 490 }, { x: 1050, y: 300 }, { x: 1400, y: 500 }],
+                birds:   [{ x: 400, y: 450 }, { x: 800, y: 350 }, { x: 1200, y: 150 }],
             },
         };
 
@@ -595,8 +603,35 @@ export class GameplayState {
         ctx.fillStyle = this.bgColor;
         ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-        // Parallax layer (scrolls at half camera speed on both axes)
-        if (this.parallaxImg) {
+        // Parallax layers
+        if (this.parallax2Img) {
+            // Two-zone parallax: parallax1 on the left, parallax2 on the right
+            const splitX = Math.floor(1100 - this.camera.x);
+
+            // Left zone: parallax1
+            if (this.parallaxImg && splitX > 0) {
+                const px = Math.floor(-this.camera.x * 0.5);
+                const py = Math.floor(-this.camera.y * 0.5);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, splitX, SCREEN_H);
+                ctx.clip();
+                ctx.drawImage(this.parallaxImg, px, py);
+                ctx.restore();
+            }
+
+            // Right zone: parallax2
+            if (splitX < SCREEN_W) {
+                const px = Math.floor(325 - this.camera.x * 0.43);
+                const py = Math.floor(-238 - this.camera.y * 0.45);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(splitX, 0, SCREEN_W - splitX, SCREEN_H);
+                ctx.clip();
+                ctx.drawImage(this.parallax2Img, px, py);
+                ctx.restore();
+            }
+        } else if (this.parallaxImg) {
             const parallaxOverrides = {
                 robotjunkyard: { y: 50, scaleY: 1.1 },
                 tower: { y: 100, scaleY: 1.2 },
