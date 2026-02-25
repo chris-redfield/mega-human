@@ -67,6 +67,7 @@ export class Zero extends Player {
         this.state = 'attack';
         this.comboStep = step;
         this.comboChain = false;
+        this._hitboxWasActive = false;
         this.animFrame = 0;
         this.animTimer = 0;
         this._prevAnimState = 'attack';
@@ -95,6 +96,7 @@ export class Zero extends Player {
         this.state = 'attack';
         this.comboStep = 1; // No air combo chain for now
         this.comboChain = false;
+        this._hitboxWasActive = false;
         this.animFrame = 0;
         this.animTimer = 0;
         this._prevAnimState = 'attack';
@@ -119,21 +121,14 @@ export class Zero extends Player {
         if (input.held('left')) this.facing = -1;
         if (input.held('right')) this.facing = 1;
 
-        // Check for combo chain input (after 40% of animation)
         const anim = this._getAnim('attack');
         const totalFrames = anim.frames.length;
-        const progress = this.animFrame / totalFrames;
-
-        if (input.pressed('shoot') && progress > 0.4 && this.attackAnimName !== 'attack_air') {
-            this.comboChain = true;
-        }
+        const frameIdx = this.animFrame % totalFrames;
+        const frame = anim.frames[frameIdx];
 
         // Update sword hitbox from current frame's atkBox data
-        const frameIdx = this.animFrame % anim.frames.length;
-        const frame = anim.frames[frameIdx];
         if (frame.atkBox) {
-            // Hitbox uses botmid alignment (same as original game):
-            // box is positioned with bottom-center at feet, then shifted by offset
+            this._hitboxWasActive = true;
             const feetX = this.x + this.hitboxX + this.hitboxW / 2;
             const feetY = this.y + this.hitboxY + this.hitboxH;
             this.swordHitbox = {
@@ -146,14 +141,21 @@ export class Zero extends Player {
             this.swordHitbox = null;
         }
 
+        // Buffer combo input once active frames have started
+        if (input.pressed('shoot') && this._hitboxWasActive && this.attackAnimName !== 'attack_air') {
+            this.comboChain = true;
+        }
+
+        // Cancel recovery into next combo step immediately (skip recovery frames)
+        if (this.comboChain && this._hitboxWasActive && !frame.atkBox &&
+            this.comboStep < 3 && this.grounded) {
+            this._startAttack(this.comboStep + 1);
+            return;
+        }
+
         // Check if animation finished
         if (this.animFrame >= totalFrames - 1 &&
             this.animTimer >= anim.frames[totalFrames - 1].dur - 1) {
-            // Chain to next combo step if buffered
-            if (this.comboChain && this.comboStep < 3 && this.grounded) {
-                this._startAttack(this.comboStep + 1);
-                return;
-            }
             // End attack
             this.swordHitbox = null;
             this.comboStep = 0;
