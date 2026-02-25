@@ -76,18 +76,18 @@ export const SIGMA_ANIMATIONS = {
     attack: { loop: false, frames: [
         {sx:924, sy:425, sw:48, sh:54, dur:2},
         {sx:863, sy:425, sw:56, sh:54, dur:2, ox:-4},
-        {sx:396, sy:485, sw:64, sh:72, dur:3, ox:11, atkBox:{w:23,h:40,ox:30,oy:-32}},
-        {sx:327, sy:485, sw:63, sh:72, dur:10, ox:10, atkBox:{w:23,h:40,ox:30,oy:-32}},
+        {sx:396, sy:485, sw:64, sh:72, dur:3, ox:11, hx:18, hy:-41, atkBox:{w:79,h:50,ox:18,oy:-16}},
+        {sx:327, sy:485, sw:63, sh:72, dur:10, ox:10, hx:17, hy:-41, atkBox:{w:79,h:50,ox:17,oy:-16}},
     ] },
     attack_air: { loop: false, frames: [
         {sx:473, sy:409, sw:59, sh:62, dur:2, ox:-10},
         {sx:625, sy:503, sw:56, sh:63, dur:2, ox:8},
-        {sx:479, sy:481, sw:52, sh:84, dur:3, ox:7, atkBox:{w:23,h:40,ox:23,oy:-42}},
-        {sx:548, sy:481, sw:53, sh:84, dur:10, ox:7, atkBox:{w:23,h:40,ox:23,oy:-42}},
+        {sx:479, sy:481, sw:52, sh:84, dur:3, ox:7, hx:8, hy:-53, atkBox:{w:79,h:50,ox:8,oy:-28}},
+        {sx:548, sy:481, sw:53, sh:84, dur:10, ox:7, hx:10, hy:-53, atkBox:{w:79,h:50,ox:10,oy:-28}},
     ] },
     attack_dash: { loop: false, frames: [
-        {sx:396, sy:485, sw:64, sh:72, dur:3, atkBox:{w:23,h:40,ox:21,oy:-33}},
-        {sx:327, sy:485, sw:63, sh:72, dur:10, ox:-1, atkBox:{w:23,h:40,ox:21,oy:-33}},
+        {sx:396, sy:485, sw:64, sh:72, dur:3, hx:8, hy:-41, atkBox:{w:79,h:50,ox:8,oy:-16}},
+        {sx:327, sy:485, sw:63, sh:72, dur:10, ox:-1, hx:6, hy:-41, atkBox:{w:79,h:50,ox:6,oy:-16}},
     ] },
     wall_slide_attack: { loop: false, frames: [
         {sx:974, sy:76, sw:43, sh:58, dur:2, ox:-6, oy:3},

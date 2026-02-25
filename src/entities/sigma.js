@@ -234,5 +234,40 @@ export class Sigma extends Player {
             return;
         }
         super.render(ctx, camera);
+        this._renderSlashEffect(ctx, camera);
+    }
+
+    /** Draw the green energy slash arc during active attack frames. */
+    _renderSlashEffect(ctx, camera) {
+        if (this.state !== 'attack') return;
+        if (!this.swordHitbox) return;
+        if (!this.spriteImage) return;
+        if (this.attackAnimName === 'wall_slide_attack') return;
+        // Match invincibility flash with player sprite
+        if (this.invincibleTimer > 0 && this.invincibleTimer % 4 < 2) return;
+
+        const anim = this._getAnim('attack');
+        const frameIdx = this.animFrame % anim.frames.length;
+        const frame = anim.frames[frameIdx];
+        if (frame.hx === undefined) return;
+
+        const slash = SIGMA_ANIMATIONS.proj_slash.frames[0];
+        const feetX = Math.floor(this.x + this.hitboxX + this.hitboxW / 2 - camera.x);
+        const feetY = Math.floor(this.y + this.hitboxY + this.hitboxH - camera.y);
+        const drawY = feetY + frame.hy - Math.floor(slash.sh / 2);
+
+        if (this.facing < 0) {
+            ctx.save();
+            ctx.translate(feetX, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(this.spriteImage,
+                slash.sx, slash.sy, slash.sw, slash.sh,
+                frame.hx - Math.floor(slash.sw / 2), drawY, slash.sw, slash.sh);
+            ctx.restore();
+        } else {
+            ctx.drawImage(this.spriteImage,
+                slash.sx, slash.sy, slash.sw, slash.sh,
+                feetX + frame.hx - Math.floor(slash.sw / 2), drawY, slash.sw, slash.sh);
+        }
     }
 }
