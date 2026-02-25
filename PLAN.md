@@ -299,7 +299,7 @@ Imported the Chill Penguin stage ("frozentown") from MMX-Online-Deathmatch.
 4. `foreground.png` → `assets/levels/{name}_foreground.png` (drawn over player/enemies)
 5. `map.json` → `assets/levels/{name}_map.json` (collision polygons, spawn points, kill zones)
 
-**Note:** More stages to be imported later. The asset pipeline (`loadStage()`) loads all 5 files automatically — foreground gracefully skipped if missing.
+**Note:** More stages to be imported later. The asset pipeline (`loadStage()`) loads required files (background, backwall, map.json) plus only the optional layers listed in `STAGE_OPTIONAL_LAYERS` in `asset-loader.js` — no fallback requests for missing files.
 
 ---
 
@@ -851,31 +851,37 @@ cp .../maps/{name}/foreground.png  assets/levels/{name}_foreground.png  # if exi
 cp .../maps/{name}/map.json        assets/levels/{name}_map.json
 ```
 
-**3. Copy music** — find the stage music in:
+**3. Update `STAGE_OPTIONAL_LAYERS`** in `src/assets/asset-loader.js`:
+- Add an entry for the new stage listing which optional layers were copied (from: `parallax`, `parallax2`, `parallax3`, `foreground`)
+- Only list layers that actually exist as files — the loader will NOT attempt to load unlisted layers (no `.catch(() => null)` fallback)
+- Example: `mystage: ['parallax', 'foreground'],` or `mystage: [],` if none exist
+- `background`, `backwall`, and `map.json` are always loaded (not optional)
+
+**4. Copy music** — find the stage music in:
 ```
 MMX-Online-Deathmatch/LevelEditor/assets/music/{name}.{loopStart}.{loopEnd}.ogg
 ```
 Copy to `assets/music/` keeping the loop-point filename (audio system parses loop points from it).
 
-**4. Update `index.html`:**
+**5. Update `index.html`:**
 - Add `assets.loadStage('{name}')` to the stage loading Promise.all
 - Add music entry to `game.audio.loadAll()`: `{name}: './assets/music/{name}.{loop}.ogg'`
 
-**5. Update `src/states/gameplay.js`:**
+**6. Update `src/states/gameplay.js`:**
 - Add enemy layout for the new stage in `_spawnEnemies()` `layouts` object
 - Optionally add a spawn override in `stageSpawns` if the first map spawn point isn't suitable
 - The stage uses the first `Spawn Point` from map.json by default
 
-**6. Update tool dropdowns:**
+**7. Update tool dropdowns:**
 - `tools/stage-select-editor.html` — add `<option value="{name}">{name}</option>` to `#stageKey` select
 - `tools/collision-editor.html` — add `<option value="{name}">{name}</option>` to `#stageSelect` select
 
-**7. Add to stage-locations.json:**
+**8. Add to stage-locations.json:**
 - Add a placeholder entry: `{ "x": ..., "y": ..., "stage": "{name}", "name": "Display Name" }`
 - Use the stage-select-editor tool to place the dot at the correct position on the world map
 
-**8. Test:**
-- Verify stage loads without console errors (check for 404s on missing parallax/foreground)
+**9. Test:**
+- Verify stage loads without console errors (no 404s — if you see any, check `STAGE_OPTIONAL_LAYERS` in `asset-loader.js`)
 - Check collision shapes via debug overlay (P key)
 - If collision is broken, use collision-editor to create custom tiles and add stage to `CUSTOM_COLLISION_STAGES` in `asset-loader.js`
 

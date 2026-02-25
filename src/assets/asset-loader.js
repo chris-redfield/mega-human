@@ -6,6 +6,20 @@
 // Stages that have custom collision tile maps (avoids 404 requests for stages that don't)
 const CUSTOM_COLLISION_STAGES = ['aircraftcarrier', 'crystalmine'];
 
+// Which optional layer assets each stage actually has (avoids 404 requests)
+const STAGE_OPTIONAL_LAYERS = {
+    highway:         ['parallax', 'foreground'],
+    frozentown:      ['parallax', 'foreground'],
+    aircraftcarrier: ['parallax', 'foreground'],
+    crystalmine:     [],
+    weathercontrol:  ['parallax', 'foreground'],
+    robotjunkyard:   ['parallax', 'foreground'],
+    tower:           ['parallax'],
+    sigma2:          ['parallax'],
+    volcaniczone:    ['parallax', 'parallax2', 'parallax3'],
+    shipyard:        ['parallax'],
+};
+
 export class AssetLoader {
     constructor() {
         this.images = {};   // name -> HTMLImageElement
@@ -36,15 +50,15 @@ export class AssetLoader {
 
     /** Load all assets for a stage (background PNGs + map.json + optional custom collision). */
     async loadStage(name) {
+        const layers = STAGE_OPTIONAL_LAYERS[name] || [];
         const loads = [
             this.loadImage(`${name}_background`, `./assets/levels/${name}_background.png`),
             this.loadImage(`${name}_backwall`, `./assets/levels/${name}_backwall.png`),
-            this.loadImage(`${name}_parallax`, `./assets/levels/${name}_parallax.png`).catch(() => null),
-            this.loadImage(`${name}_parallax2`, `./assets/levels/${name}_parallax2.png`).catch(() => null),
-            this.loadImage(`${name}_parallax3`, `./assets/levels/${name}_parallax3.png`).catch(() => null),
-            this.loadImage(`${name}_foreground`, `./assets/levels/${name}_foreground.png`).catch(() => null),
             this.loadJSON(`${name}_map`, `./assets/levels/${name}_map.json`),
         ];
+        for (const layer of layers) {
+            loads.push(this.loadImage(`${name}_${layer}`, `./assets/levels/${name}_${layer}.png`));
+        }
         // Only fetch custom collision for stages that actually have one
         if (CUSTOM_COLLISION_STAGES.includes(name)) {
             loads.push(this.loadJSON(`${name}_collision`, `./assets/levels/${name}_collision.json`));
