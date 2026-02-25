@@ -110,6 +110,7 @@ export class GameplayState {
             volcaniczone: { x: 80, y: 500 },
             shipyard: { x: 213, y: 80 },
             mountain: { x: 507, y: 407 },
+            deepseabase: { x: 99, y: 330 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -224,6 +225,11 @@ export class GameplayState {
                 tanks:   [{ x: 700, y: 400 }, { x: 1100, y: 350 }, { x: 1600, y: 120 }],
                 hoppers: [{ x: 850, y: 390 }, { x: 1300, y: 130 }, { x: 1750, y: 50 }],
                 birds:   [{ x: 600, y: 350 }, { x: 1000, y: 300 }, { x: 1500, y: 100 }],
+            },
+            deepseabase: {
+                tanks:   [{ x: 500, y: 340 }, { x: 900, y: 950 }, { x: 1600, y: 700 }],
+                hoppers: [{ x: 350, y: 260 }, { x: 750, y: 1000 }, { x: 1400, y: 870 }],
+                birds:   [{ x: 400, y: 300 }, { x: 1000, y: 900 }, { x: 1550, y: 650 }],
             },
         };
 

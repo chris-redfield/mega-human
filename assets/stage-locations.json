@@ -70,5 +70,11 @@
     "y": 186,
     "stage": "mountain",
     "name": "Mountain"
+  },
+  {
+    "x": 823,
+    "y": 790,
+    "stage": "deepseabase",
+    "name": "Deep Sea Base"
   }
 ]

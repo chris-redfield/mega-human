@@ -4,7 +4,7 @@
  */
 
 // Stages that have custom collision tile maps (avoids 404 requests for stages that don't)
-const CUSTOM_COLLISION_STAGES = ['aircraftcarrier', 'crystalmine'];
+const CUSTOM_COLLISION_STAGES = ['aircraftcarrier', 'crystalmine', 'deepseabase'];
 
 // Which optional layer assets each stage actually has (avoids 404 requests)
 const STAGE_OPTIONAL_LAYERS = {
@@ -19,6 +19,7 @@ const STAGE_OPTIONAL_LAYERS = {
     volcaniczone:    ['parallax', 'parallax2', 'parallax3'],
     shipyard:        ['parallax'],
     mountain:        ['parallax', 'foreground'],
+    deepseabase:     ['parallax', 'foreground'],
 };
 
 export class AssetLoader {
