@@ -102,6 +102,7 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 ### Items
 - **Health pickups** (`health-pickup.js`): Small (4 HP) and large (8 HP), from effects.png sprites
 - **RAM Memory** (`memory-pickup.js`): Currency dropped by enemies/bosses, yellow shine effect, counter shown in pause menu
+- **Save system** (`save-manager.js`): localStorage persistence under `megahuman_save` key. RAM count survives stage changes and browser restarts. Exports `loadSave()`, `updateSave(fn)`, `clearSave()`
 
 ### Tools
 - `tools/collision-editor.html` — Paint custom collision tiles

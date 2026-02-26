@@ -17,6 +17,7 @@ import { MemoryPickup } from '../entities/memory-pickup.js';
 import { ChillPenguin } from '../entities/chill-penguin.js';
 import { StormEagle } from '../entities/storm-eagle.js';
 import { createLevelFromMap } from '../levels/level.js';
+import { loadSave, updateSave } from '../engine/save-manager.js';
 
 export class GameplayState {
     // Canvas resolution — tells Game to resize to gameplay dimensions
@@ -44,7 +45,7 @@ export class GameplayState {
 
         // Memory (currency) pickups
         this.memoryPickups = [];
-        this.memoryCount = 0;
+        this.memoryCount = loadSave().memoryCount;
 
         // Heal queue: ticks +1 HP every 3 frames
         this.healTickTimer = 0;
@@ -180,8 +181,8 @@ export class GameplayState {
         // Per-stage enemy layouts
         const layouts = {
             highway: {
-                tanks:   [{ x: 500, y: 100 }, { x: 900, y: 50 }, { x: 1300, y: 100 }],
-                hoppers: [{ x: 650, y: 100 }, { x: 1100, y: 70 }],
+                tanks:   [{ x: 500, y: 100 }, { x: 900, y: 50 }, { x: 1400, y: 70 }],
+                hoppers: [{ x: 650, y: 100 }, { x: 1100, y: 70 }, { x: 1550, y: 70 }],
                 birds:   [{ x: 400, y: 60 },  { x: 800, y: 50 },  { x: 1200, y: 55 }],
             },
             frozentown: {
@@ -485,6 +486,7 @@ export class GameplayState {
                 if (boxOverlap(pBox, memBox)) {
                     mem.active = false;
                     this.memoryCount++;
+                    updateSave(s => { s.memoryCount = this.memoryCount; });
                     if (this.audio) this.audio.play('heal');
                 }
             }

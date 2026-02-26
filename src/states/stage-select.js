@@ -22,7 +22,7 @@ const BANNER_H = 62;
 
 // Corner label regions (overlay "STAGE" and "SPEC" text)
 const CORNER_LABELS = [
-    { x: 67,  y: 40,  w: 172, h: 76, text: 'HERO' },
+    { x: 67,  y: 40,  w: 172, h: 76, text: 'SHOP' },
     { x: 67,  y: 740, w: 172, h: 76, text: 'EQUIP' },
 ];
 
