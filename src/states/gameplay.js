@@ -833,24 +833,30 @@ export class GameplayState {
     _renderPauseMenu(ctx) {
         const menuImg = this.assets.getImage('menuSprite');
         const ramImg = this.assets.getImage('ramMemory');
+        const xPortrait = this.assets.getImage('xMenuPortrait');
 
-        // Pre-assembled menu frame from menu.png: (4,4) 256x224 — scaled up 10%
-        const srcW = 256;
-        const srcH = 224;
-        const frameW = Math.round(srcW * 1.1);   // 282
-        const frameH = Math.round(srcH * 1.1);   // 246
+        // Pre-assembled menu frame from menu.png: (4,4) 256x224 — 1:1 scale
+        const frameW = 256;
+        const frameH = 224;
         const fx = Math.floor((SCREEN_W - frameW) / 2);
-        const fy = Math.floor((SCREEN_H - frameH) / 2);
+        const fy = 0;
 
-        // Black fill behind the frame (covers the 307-wide screen edges)
+        // Black fill behind the frame
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
         // Draw the menu frame sprite
         if (menuImg) {
             ctx.drawImage(menuImg,
-                4, 4, srcW, srcH,
+                4, 4, frameW, frameH,
                 fx, fy, frameW, frameH);
+        }
+
+        // X portrait on top of the black square (64px wide, aspect-ratio preserved)
+        if (xPortrait) {
+            const pw = 59;
+            const ph = Math.round(pw * (xPortrait.naturalHeight / xPortrait.naturalWidth));
+            ctx.drawImage(xPortrait, fx + 38, fy + 29, pw, ph);
         }
 
         // RAM memory counter (bottom-right area of the frame)
