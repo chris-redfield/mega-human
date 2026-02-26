@@ -76,6 +76,9 @@ export class GameplayState {
         this.respawnTimer = 0;
         this.fadeAlpha = 0;        // 0 = clear, 1 = full black
 
+        // Pause menu
+        this.paused = false;
+
         // Stage select return context (set by StageSelectState before transition)
         this._stageSelectLocations = null;
         this._stageSelectIndex = 0;
@@ -336,6 +339,15 @@ export class GameplayState {
     }
 
     update(game) {
+        // Toggle pause menu with Start/Enter
+        if (game.input.pressed('start')) {
+            this.paused = !this.paused;
+            return;
+        }
+
+        // Skip all game logic while paused
+        if (this.paused) return;
+
         // Return to stage select with Escape or gamepad Select button
         if ((game.input.rawKeys['Escape'] && !this._prevKeyEsc) || game.input.pressed('select')) {
             if (this._stageSelectLocations) {
@@ -765,6 +777,11 @@ export class GameplayState {
             this._renderDebugFPS(ctx, game);
         }
 
+        // Pause menu overlay
+        if (this.paused) {
+            this._renderPauseMenu(ctx);
+        }
+
         // Fade overlay (respawn transitions)
         if (this.fadeAlpha > 0) {
             ctx.globalAlpha = this.fadeAlpha;
@@ -792,8 +809,6 @@ export class GameplayState {
             }
         }
 
-        // Memory counter (top-right)
-        this._renderMemoryCounter(ctx);
     }
 
     _renderMemoryCounter(ctx) {
@@ -813,6 +828,48 @@ export class GameplayState {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(`x${this.memoryCount}`, x + iconW + 3, y + iconH / 2);
+    }
+
+    _renderPauseMenu(ctx) {
+        const menuImg = this.assets.getImage('menuSprite');
+        const ramImg = this.assets.getImage('ramMemory');
+
+        // Pre-assembled menu frame from menu.png: (4,4) 256x224 — scaled up 10%
+        const srcW = 256;
+        const srcH = 224;
+        const frameW = Math.round(srcW * 1.1);   // 282
+        const frameH = Math.round(srcH * 1.1);   // 246
+        const fx = Math.floor((SCREEN_W - frameW) / 2);
+        const fy = Math.floor((SCREEN_H - frameH) / 2);
+
+        // Black fill behind the frame (covers the 307-wide screen edges)
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+        // Draw the menu frame sprite
+        if (menuImg) {
+            ctx.drawImage(menuImg,
+                4, 4, srcW, srcH,
+                fx, fy, frameW, frameH);
+        }
+
+        // RAM memory counter (bottom-right area of the frame)
+        if (ramImg) {
+            const iconW = Math.round(52 * 0.4);
+            const iconH = Math.round(27 * 0.4);
+            const rx = fx + frameW - iconW - 40;
+            const ry = fy + frameH - iconH - 20;
+
+            ctx.drawImage(ramImg, rx, ry, iconW, iconH);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`x${this.memoryCount}`, rx + iconW + 3, ry + iconH / 2);
+        }
+
+        ctx.textAlign = 'left';
     }
 
     /**
