@@ -13,6 +13,7 @@ import { HopperEnemy } from '../entities/hopper-enemy.js';
 import { BirdEnemy } from '../entities/bird-enemy.js';
 import { boxOverlap } from '../entities/entity.js';
 import { HealthPickup } from '../entities/health-pickup.js';
+import { MemoryPickup } from '../entities/memory-pickup.js';
 import { ChillPenguin } from '../entities/chill-penguin.js';
 import { StormEagle } from '../entities/storm-eagle.js';
 import { createLevelFromMap } from '../levels/level.js';
@@ -40,6 +41,10 @@ export class GameplayState {
 
         // Health pickups
         this.pickups = [];
+
+        // Memory (currency) pickups
+        this.memoryPickups = [];
+        this.memoryCount = 0;
 
         // Heal queue: ticks +1 HP every 3 frames
         this.healTickTimer = 0;
@@ -286,18 +291,48 @@ export class GameplayState {
     }
 
     _spawnEnemyDrop(x, y) {
-        let size;
-        if (Math.random() < 0.1) {
-            size = 'large';            // 10% large health
-        } else if (Math.random() < 0.3) {
-            size = 'small';            // 30% small health (if no large)
-        } else {
-            return;                    // No drop
+        const roll = Math.random();
+
+        if (roll < 0.05) {
+            // 5% — RAM memory
+            const ramImg = this.assets.getImage('ramMemory');
+            if (ramImg) {
+                const mem = new MemoryPickup(x, y);
+                mem.image = ramImg;
+                this.memoryPickups.push(mem);
+            }
+        } else if (roll < 0.15) {
+            // 10% — large health
+            const pickup = new HealthPickup(x, y, 'large', true);
+            pickup.effectsImage = this.assets.getImage('effectsSprite');
+            this.pickups.push(pickup);
+        } else if (roll < 0.35) {
+            // 20% — small health
+            const pickup = new HealthPickup(x, y, 'small', true);
+            pickup.effectsImage = this.assets.getImage('effectsSprite');
+            this.pickups.push(pickup);
         }
-        const effectsSprite = this.assets.getImage('effectsSprite');
-        const pickup = new HealthPickup(x, y, size, true);
-        pickup.effectsImage = effectsSprite;
-        this.pickups.push(pickup);
+        // 65% — no drop
+    }
+
+    _spawnBossDrop(boss) {
+        const ramImg = this.assets.getImage('ramMemory');
+        if (!ramImg) return;
+
+        const cx = boss.x + boss.hitboxX + boss.hitboxW / 2;
+        const cy = boss.y + boss.hitboxY + boss.hitboxH;
+
+        // Guaranteed first drop
+        const mem1 = new MemoryPickup(cx, cy);
+        mem1.image = ramImg;
+        this.memoryPickups.push(mem1);
+
+        // 25% chance for a second drop, offset 10px to the right
+        if (Math.random() < 0.25) {
+            const mem2 = new MemoryPickup(cx + 10, cy);
+            mem2.image = ramImg;
+            this.memoryPickups.push(mem2);
+        }
     }
 
     update(game) {
@@ -401,6 +436,7 @@ export class GameplayState {
             this.boss.checkPlayerCollision(this.player);
         }
         if (this.boss && !this.boss.active) {
+            this._spawnBossDrop(this.boss);
             this.boss = null;
         }
 
@@ -424,6 +460,24 @@ export class GameplayState {
             }
         }
         this.pickups = this.pickups.filter(p => p.active);
+
+        // Update memory pickups
+        for (const mem of this.memoryPickups) {
+            if (!mem.active) continue;
+            mem.update(game);
+
+            // Check player overlap for collection
+            if (!this.player.dead) {
+                const pBox = this.player.getHitbox();
+                const memBox = mem.getHitbox();
+                if (boxOverlap(pBox, memBox)) {
+                    mem.active = false;
+                    this.memoryCount++;
+                    if (this.audio) this.audio.play('heal');
+                }
+            }
+        }
+        this.memoryPickups = this.memoryPickups.filter(m => m.active);
 
         // Heal queue tick: +1 HP every 3 frames
         if (this.player.healQueue > 0) {
@@ -506,6 +560,7 @@ export class GameplayState {
         // Re-spawn enemies and pickups
         this.enemies = [];
         this.pickups = [];
+        this.memoryPickups = [];
         this._spawnEnemies();
         this._spawnMapPickups();
         this.healTickTimer = 0;
@@ -683,6 +738,9 @@ export class GameplayState {
         for (const pickup of this.pickups) {
             if (pickup.active) pickup.render(ctx, this.camera);
         }
+        for (const mem of this.memoryPickups) {
+            if (mem.active) mem.render(ctx, this.camera);
+        }
 
         // Render boss
         if (this.boss && this.boss.active) {
@@ -733,6 +791,28 @@ export class GameplayState {
                 this._renderBossHealthBar(ctx, ef);
             }
         }
+
+        // Memory counter (top-right)
+        this._renderMemoryCounter(ctx);
+    }
+
+    _renderMemoryCounter(ctx) {
+        const ramImg = this.assets.getImage('ramMemory');
+        // Same scale factor as MemoryPickup (52x27 source at 70%)
+        const iconW = Math.round(52 * 0.4);   // 36
+        const iconH = Math.round(27 * 0.4);   // 19
+        const x = SCREEN_W - iconW - 30;
+        const y = SCREEN_H - iconH - 4;
+
+        if (ramImg) {
+            ctx.drawImage(ramImg, x, y, iconW, iconH);
+        }
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`x${this.memoryCount}`, x + iconW + 3, y + iconH / 2);
     }
 
     /**
