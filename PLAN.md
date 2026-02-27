@@ -119,12 +119,30 @@ Weather control slope polygons contain slope surface AND ground beneath (unlike 
 
 ---
 
+## Shop System (IMPLEMENTED)
+
+**Files:** `src/states/shop.js`, background at `assets/shiba-shop-complete.png`
+
+### Shop UI
+- Bottom panel (Y=838, 980×170) with item cards centered horizontally
+- Left/Right arrows to browse items, Shoot to buy, Escape to exit
+- Cards show icon, name, RAM price. Selected card has gold pulsing border.
+- Two icon types: animated effects.png sprites (heart, subtank — static when unselected, animate when selected) and standalone PNGs (armor pieces — use `IMAGE_ICONS` with per-item `offsetY` for alignment)
+- RAM counter displayed top-right of panel
+- Purchase logic stubbed (`_tryBuyItem()`) — effects not yet implemented
+
+### Adding New Items Checklist
+1. Copy PNG from `MMX-Online-Deathmatch/LevelEditor/assets/spritesheets/` → `assets/`
+2. Add `assets.loadImage()` line in `index.html`
+3. Add entry to `IMAGE_ICONS` in `shop.js` (with `offsetY` for vertical alignment)
+4. Add entry to `SHOP_ITEMS` array in `shop.js`
+
 ## Shop Items — Sprite Reference
 
 All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Currency: RAM Memory.
 
 ### Status Key
-- **DONE** = in shop already
+- **DONE** = in shop, visual only (no gameplay effect yet)
 - **TODO** = planned, sprite located
 - **LOAD** = needs new spritesheet loaded in index.html
 
@@ -132,8 +150,8 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 
 | Item | ID | Effect (from source code) | Sprite Frames | Status |
 |------|----|---------------------------|---------------|--------|
-| Heart Tank | `heart` | +1 max HP per tank (base 16 HP, max 8 tanks → 24 HP). Heals by 1 on purchase. | effects.png: (476,147 14×15), (643,145 14×15), (660,145 14×15) | **DONE** |
-| Sub Tank | `subtank` | Stores up to 16 HP. Fills +4 HP per kill. Use in combat to heal. Max 4 tanks. | effects.png: (621,145 16×16), (590,145 16×16), (678,145 16×16) | **DONE** |
+| Heart Tank | `heart` | +1 max HP per tank (base 16 HP, max 8 tanks → 24 HP). Heals by 1 on purchase. | effects.png: (476,147 14×15), (643,145 14×15), (660,145 14×15) | **DONE** 8 RAM |
+| Sub Tank | `subtank` | Stores up to 16 HP. Fills +4 HP per kill. Use in combat to heal. Max 4 tanks. | effects.png: (621,145 16×16), (590,145 16×16), (678,145 16×16) | **DONE** 16 RAM |
 | Sub Tank Bar (UI) | `subtank_bar` | HUD fill indicator for sub tank level | effects.png: (612,146 4×14) | TODO |
 | Enhancement Chip | `chip` | Enhances one X3 armor slot (see X3 table). Only one chip at a time. | effects.png: (132,185 8×8) | TODO |
 
@@ -143,8 +161,8 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 |------|----|---------------------------|------|-------------|--------|
 | X1 Helmet | `x1_helmet` | Headbutt on jump: 2 dmg (normal), 4 dmg (up-dash). Hitbox 14×4 px. | 1 | XHelmetMenu.png | TODO LOAD |
 | X1 Body | `x1_body` | 12.5% damage reduction (dmg/8). Flinch time ×0.75 (25% faster recovery). | 3 | XBodyMenu.png | TODO LOAD |
-| X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 3 sine-wave shots, 4 dmg each. | 4 | XArmMenu.png | TODO LOAD |
-| X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). | 2 | XBootsMenu.png | TODO LOAD |
+| X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 3 sine-wave shots, 4 dmg each. | 4 | XArmMenu.png | **DONE** 20 RAM, offsetY:40 |
+| X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). | 2 | XBootsMenu.png | **DONE** 20 RAM, offsetY:0 |
 
 ### X2 Armor Parts (MMX2 — Giga Armor. Full set bonus: SHORYUKEN)
 
