@@ -119,6 +119,69 @@ Weather control slope polygons contain slope surface AND ground beneath (unlike 
 
 ---
 
+## Shop Items — Sprite Reference
+
+All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Currency: RAM Memory.
+
+### Status Key
+- **DONE** = in shop already
+- **TODO** = planned, sprite located
+- **LOAD** = needs new spritesheet loaded in index.html
+
+### Tanks & Chips (sprites in effects.png — already loaded as `effectsSprite`)
+
+| Item | ID | Effect (from source code) | Sprite Frames | Status |
+|------|----|---------------------------|---------------|--------|
+| Heart Tank | `heart` | +1 max HP per tank (base 16 HP, max 8 tanks → 24 HP). Heals by 1 on purchase. | effects.png: (476,147 14×15), (643,145 14×15), (660,145 14×15) | **DONE** |
+| Sub Tank | `subtank` | Stores up to 16 HP. Fills +4 HP per kill. Use in combat to heal. Max 4 tanks. | effects.png: (621,145 16×16), (590,145 16×16), (678,145 16×16) | **DONE** |
+| Sub Tank Bar (UI) | `subtank_bar` | HUD fill indicator for sub tank level | effects.png: (612,146 4×14) | TODO |
+| Enhancement Chip | `chip` | Enhances one X3 armor slot (see X3 table). Only one chip at a time. | effects.png: (132,185 8×8) | TODO |
+
+### X1 Armor Parts (MMX1 — First Armor. Full set bonus: HADOUKEN)
+
+| Item | ID | Effect (from source code) | Cost | Spritesheet | Status |
+|------|----|---------------------------|------|-------------|--------|
+| X1 Helmet | `x1_helmet` | Headbutt on jump: 2 dmg (normal), 4 dmg (up-dash). Hitbox 14×4 px. | 1 | XHelmetMenu.png | TODO LOAD |
+| X1 Body | `x1_body` | 12.5% damage reduction (dmg/8). Flinch time ×0.75 (25% faster recovery). | 3 | XBodyMenu.png | TODO LOAD |
+| X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 3 sine-wave shots, 4 dmg each. | 4 | XArmMenu.png | TODO LOAD |
+| X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). | 2 | XBootsMenu.png | TODO LOAD |
+
+### X2 Armor Parts (MMX2 — Giga Armor. Full set bonus: SHORYUKEN)
+
+| Item | ID | Effect (from source code) | Cost | Spritesheet | Status |
+|------|----|---------------------------|------|-------------|--------|
+| X2 Helmet | `x2_helmet` | Scan beam: tag enemies within 150px. Tagged enemies show HP bar through walls. | 1 | XHelmetMenu2.png | TODO LOAD |
+| X2 Body | `x2_body` | 12.5% damage reduction + Giga Crush weapon: 12 dmg AoE, invincible during anim, costs 32 ammo. | 3 | XBodyMenu2.png | TODO LOAD |
+| X2 Arms | `x2_arms` | Stocked charge shot: L3 charge fires, then a second auto-fires on next press. 4 dmg each. | 4 | XArmMenu2.png | TODO LOAD |
+| X2 Boots | `x2_boots` | Air dash duration ×1.15 (15% longer/farther: 0.6s → 0.69s). | 2 | XBootsMenu2.png | TODO LOAD |
+
+### X3 Armor Parts (MMX3 — Max Armor. Requires all 4 to use Enhancement Chips.)
+
+| Item | ID | Effect (from source code) | Chip Enhancement | Cost | Spritesheet | Status |
+|------|----|---------------------------|------------------|------|-------------|--------|
+| X3 Helmet | `x3_helmet` | Radar HUD: shows enemy positions on minimap. | +HP regen: 1 HP/sec after 4s no damage (max 32 HP total healed per life). | 1 | XHelmetMenu3.png | TODO LOAD |
+| X3 Body | `x3_body` | Barrier on damage: 25% dmg reduction for 0.75–1.5s, no cooldown. | +Orange barrier: 50% dmg reduction instead of 25%. | 3 | XBodyMenu3.png | TODO LOAD |
+| X3 Arms | `x3_arms` | Hyper Buster weapon: X3 charge shot (4 dmg, accelerating) + Cross Shot. 8 ammo/shot. | +Half ammo: all weapon ammo costs ×0.5. | 4 | XArmMenu3.png | TODO LOAD |
+| X3 Boots | `x3_boots` | Upward air dash: press Up+Dash in air for vertical dash. | +Double air dash: can air-dash twice per jump. | 2 | XBootsMenu3.png | TODO LOAD |
+
+*Only one Enhancement Chip at a time. Using a chip locks out Golden Armor.*
+
+### Special Armors
+
+| Item | ID | Effect (from source code) | Cost | Spritesheet | Status |
+|------|----|---------------------------|------|-------------|--------|
+| Golden Armor | `x_golden` | ALL armor effects from ALL generations active. All 4 chips active. L3 charge auto-stocks a saber swing (4 dmg, 0.66s cooldown). Hadouken + Shoryuken. Requires all X3 parts + no chips used. | 5 | XGoldenMenu.png | TODO LOAD |
+| Ultimate Armor | `x_ultimate` | Nova Strike: 4 dmg dash attack, invincible during, 350 speed, 0.6s duration, 16 ammo cost. Plasma Buster: L3 charge passes through enemies (4 dmg, 400 speed). Lost on death. Requires any full armor set. | 10 | XUltimateMenu.png | TODO LOAD |
+
+### Notes
+- All armor PNGs at `MMX-Online-Deathmatch/LevelEditor/assets/spritesheets/` — copy to `assets/` when importing
+- Armor sprites are 118×186 full-body portraits (too tall for current 146px shop cards — scale or adjust layout)
+- Enhancement Chip is 8×8 — needs heavy upscaling or custom rendering
+- Armor slot indices in code: 0=Boots, 1=Body, 2=Helmet, 3=Arms
+- Armor generation indices: 1=X1, 2=X2, 3=X3, 15=Chip enhanced
+
+---
+
 ## Future Ideas (NOT STARTED)
 - Sigma additional attacks: projectile slash, block/guard, wall dash
 - Sigma CPU AI / Enemy Sigma boss

@@ -60,21 +60,41 @@ const ICON_FRAMES = {
 };
 const ICON_ANIM_SPEED = 14; // frames per animation step
 
+// Standalone image icons (asset key → crop rect, or null for full image)
+const IMAGE_ICONS = {
+    x1_boots: { asset: 'x1Boots', sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 0 },
+    x1_arms:  { asset: 'x1Arms',  sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 40 },
+};
+
 // ── Shop Items ──
 const SHOP_ITEMS = [
     {
         id: 'heart',
         name: 'Heart',
-        description: 'Max HP +2',
-        price: 3,
+        description: 'Max HP +1',
+        price: 8,
         icon: 'heart',
     },
     {
         id: 'subtank',
         name: 'Sub Tank',
         description: 'Store 16 HP',
-        price: 4,
+        price: 16,
         icon: 'subtank',
+    },
+    {
+        id: 'x1_boots',
+        name: 'X1 Boots',
+        description: 'Dash +15%',
+        price: 20,
+        icon: 'x1_boots',
+    },
+    {
+        id: 'x1_arms',
+        name: 'X1 Arms',
+        description: 'Charge +50%',
+        price: 20,
+        icon: 'x1_arms',
     },
 ];
 
@@ -240,21 +260,45 @@ export class ShopState {
     }
 
     _drawItemIcon(ctx, iconType, cx, cy, selected) {
+        // Animated sprite from effects.png
         const frames = ICON_FRAMES[iconType];
-        if (!frames || !this.effectsImg) return;
+        if (frames && this.effectsImg) {
+            const frameIdx = selected ? (this.animFrame % frames.length) : 0;
+            const frame = frames[frameIdx];
+            const scale = 3.6;
+            const dw = frame.sw * scale;
+            const dh = frame.sh * scale;
 
-        const frame = frames[this.animFrame % frames.length];
-        const scale = 4;
-        const dw = frame.sw * scale;
-        const dh = frame.sh * scale;
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(
+                this.effectsImg,
+                frame.sx, frame.sy, frame.sw, frame.sh,
+                Math.floor(cx - dw / 2), Math.floor(cy - dh / 2), dw, dh
+            );
+            ctx.imageSmoothingEnabled = true;
+            return;
+        }
 
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-            this.effectsImg,
-            frame.sx, frame.sy, frame.sw, frame.sh,
-            Math.floor(cx - dw / 2), Math.floor(cy - dh / 2), dw, dh
-        );
-        ctx.imageSmoothingEnabled = true;
+        // Standalone image icon — bottom-aligned above the name text
+        const imgIcon = IMAGE_ICONS[iconType];
+        if (imgIcon) {
+            const img = this.assets.getImage(imgIcon.asset);
+            if (!img) return;
+            const maxH = 115;
+            const scale = Math.min(maxH / imgIcon.sh, 1);
+            const dw = imgIcon.sw * scale;
+            const dh = imgIcon.sh * scale;
+            // Align bottom edge above the name row, with per-icon offset
+            const drawY = cy + 25 - dh + (imgIcon.offsetY || 0);
+
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(
+                img,
+                imgIcon.sx, imgIcon.sy, imgIcon.sw, imgIcon.sh,
+                Math.floor(cx - dw / 2), Math.floor(drawY), dw, dh
+            );
+            ctx.imageSmoothingEnabled = true;
+        }
     }
 
     _drawItemPrice(ctx, price, cx, y, canAfford, selected) {
