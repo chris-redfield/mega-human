@@ -26,6 +26,7 @@ const BANNER_H = 62;
 const CORNER_LABELS = [
     { x: 69,  y: 35,  w: 169, h: 76, text: 'SHOP' },
     { x: 69,  y: 735, w: 169, h: 76, text: 'EQUIP' },
+    { x: 1295,  y: 35,  w: 169, h: 76, text: 'MAP' },
 ];
 
 // SHOP label treated as a navigable point at its center
