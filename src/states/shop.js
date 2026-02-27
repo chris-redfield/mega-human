@@ -5,7 +5,7 @@
  * Bottom panel shows item cards. Left/Right to browse, Shoot to buy, Escape to exit.
  */
 
-import { loadSave } from '../engine/save-manager.js';
+import { loadSave, updateSave } from '../engine/save-manager.js';
 
 const SHOP_W = 1536;
 const SHOP_H = 1024;
@@ -153,6 +153,13 @@ export class ShopState {
         if (input.pressed('shoot')) {
             this._tryBuyItem();
         }
+
+        // Debug: + key adds 10 RAM memories
+        const plusDown = game.input.rawKeys['Equal'] || game.input.rawKeys['NumpadAdd'];
+        if (plusDown && !this._prevKeyPlus) {
+            updateSave(s => { s.memoryCount += 10; });
+        }
+        this._prevKeyPlus = plusDown;
 
         // Escape / select → back to stage select
         if (input.pressed('select') ||
