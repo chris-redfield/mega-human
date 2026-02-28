@@ -520,9 +520,10 @@ export class GameplayState {
                 this.player.healQueue--;
                 if (this.player.hp < this.player.maxHp) {
                     this.player.hp = Math.min(this.player.hp + 1, this.player.maxHp);
-                } else {
-                    // HP full — overflow to sub tanks
-                    this._fillSubTanks(1);
+                    // HP just reached max — discard remaining heal queue
+                    if (this.player.hp >= this.player.maxHp) {
+                        this.player.healQueue = 0;
+                    }
                 }
             }
         } else {
