@@ -236,7 +236,7 @@ export class GameplayState {
             mountain: {
                 tanks:   [{ x: 700, y: 400 }, { x: 1100, y: 350 }, { x: 1600, y: 120 }],
                 hoppers: [{ x: 850, y: 390 }, { x: 1300, y: 130 }, { x: 1750, y: 50 }],
-                birds:   [{ x: 600, y: 350 }, { x: 1000, y: 300 }, { x: 1500, y: 100 }],
+                birds:   [{ x: 610, y: 350 }, { x: 1000, y: 300 }, { x: 1500, y: 100 }],
             },
             deepseabase: {
                 tanks:   [{ x: 500, y: 340 }, { x: 900, y: 950 }, { x: 1600, y: 700 }],
