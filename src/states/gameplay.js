@@ -175,6 +175,7 @@ export class GameplayState {
             // Armor overlay images (only X has armor upgrades)
             player.armorImages = {
                 boots: [null, this.assets.getImage('xBootsOverlay'), null, null], // [none, X1, X2, X3]
+                arm: [null, this.assets.getImage('xArmOverlay'), null, null],
             };
         }
         player.effectsImage = this.assets.getImage('effectsSprite');
@@ -743,6 +744,9 @@ export class GameplayState {
                 } else if (shot.type === 'charge2') {
                     shotBox.x = shot.x - 16; shotBox.y = shot.y - 14;
                     shotBox.w = 32; shotBox.h = 28;
+                } else if (shot.type === 'charge3') {
+                    shotBox.x = shot.x - 8; shotBox.y = shot.y - 8;
+                    shotBox.w = 16; shotBox.h = 15;
                 }
 
                 if (boxOverlap(shotBox, enemyBox)) {
@@ -777,6 +781,9 @@ export class GameplayState {
             } else if (shot.type === 'charge2') {
                 shotBox.x = shot.x - 16; shotBox.y = shot.y - 14;
                 shotBox.w = 32; shotBox.h = 28;
+            } else if (shot.type === 'charge3') {
+                shotBox.x = shot.x - 8; shotBox.y = shot.y - 8;
+                shotBox.w = 16; shotBox.h = 15;
             }
 
             if (boxOverlap(shotBox, bossBox)) {

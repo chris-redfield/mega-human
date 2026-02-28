@@ -8,7 +8,7 @@
 
 import { Entity } from './entity.js';
 import { resolveHorizontal, resolveSlopeHorizontal, resolveVertical, resolveSlopeVertical, checkWallContact, isSolid } from '../engine/collision.js';
-import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, CHARGE_PARTICLES, DASH_SPARK_FRAMES, DASH_DUST_FRAMES } from './sprite-data.js';
+import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, BUSTER4_FRAMES, CHARGE_PARTICLES, DASH_SPARK_FRAMES, DASH_DUST_FRAMES } from './sprite-data.js';
 import { loadSave } from '../engine/save-manager.js';
 
 // Physics constants (tuned to match Mega Man X feel)
@@ -35,6 +35,7 @@ const P = {
     CHARGE_SPEED_3:   7.0,    // Level 2 charged shot speed
     CHARGE1_TIME:     45,     // Frames to reach charge level 1 (0.75s at 60fps)
     CHARGE2_TIME:     105,    // Frames to reach charge level 2 (1.75s at 60fps)
+    CHARGE3_TIME:     180,    // Frames to reach charge level 3 (3.0s, ~2.0s with X1 Arms)
 
     HURT_VX:          2.0,
     HURT_VY:         -2.0,
@@ -96,7 +97,7 @@ export class Player extends Entity {
 
         // Charge system
         this.chargeTime = 0;     // Frames held
-        this.chargeLevel = 0;    // 0=none, 1=medium, 2=large
+        this.chargeLevel = 0;    // 0=none, 1=medium, 2=large, 3=L3 (X1 Arms)
         this.chargeFlashTimer = 0;
 
         // Charge particle state (8 particles in a circle)
@@ -648,11 +649,13 @@ export class Player extends Entity {
             if (this.audio) this.audio.play('buster');
         }
 
-        // While holding: build charge
+        // While holding: build charge (X1 Arms = 1.5x charge speed)
         if (input.held('shoot')) {
             const prevLevel = this.chargeLevel;
-            this.chargeTime++;
-            if (this.chargeTime >= P.CHARGE2_TIME) {
+            this.chargeTime += (this.armorArm >= 1 ? 1.5 : 1.0);
+            if (this.chargeTime >= P.CHARGE3_TIME && this.armorArm >= 1) {
+                this.chargeLevel = 3;
+            } else if (this.chargeTime >= P.CHARGE2_TIME) {
                 this.chargeLevel = 2;
             } else if (this.chargeTime >= P.CHARGE1_TIME) {
                 this.chargeLevel = 1;
@@ -671,7 +674,10 @@ export class Player extends Entity {
         // On release: fire charged shot if charged
         if (input.released('shoot') && this.chargeLevel > 0) {
             this.shootAnimTimer = 18;
-            if (this.chargeLevel === 2) {
+            if (this.chargeLevel === 3) {
+                this._fireCharge3();
+                if (this.audio) this.audio.play('buster4');
+            } else if (this.chargeLevel === 2) {
                 this._fireShot(P.CHARGE_SPEED_3, 3, 'charge2');
                 if (this.audio) this.audio.play('buster3');
             } else {
@@ -720,12 +726,71 @@ export class Player extends Entity {
             vx: speed * this.facing,
             active: true,
             damage: damage,
-            type: type,       // 'normal', 'charge1', 'charge2'
+            type: type,       // 'normal', 'charge1', 'charge2', 'charge3'
             fading: false,
             animFrame: 0,
             animTimer: 0,
             startupDone: type === 'normal',
         });
+    }
+
+    _fireCharge3() {
+        // Fire 3 lines × 5 projectiles = 15 sine-wave projectiles (reference: Buster.cs)
+        this.shootAnimTimer = 18;
+
+        const anim = this._getAnim(this.state, true);
+        const frameIdx = this.animFrame % anim.frames.length;
+        const frame = anim.frames[frameIdx];
+
+        const feetX = this.x + this.hitboxX + this.hitboxW / 2;
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+
+        let spawnX, spawnY;
+        if (frame.hx !== undefined) {
+            const hx = this.state === 'wall_slide' ? -frame.hx : frame.hx;
+            spawnX = feetX + hx * this.facing;
+            spawnY = feetY + frame.hy;
+        } else {
+            spawnX = feetX + (this.hitboxW / 2 + 4) * this.facing;
+            spawnY = feetY - this.hitboxH / 2;
+        }
+
+        // 3 lines, each offset 15px apart horizontally, starting 50px behind player
+        const lineOffsets = [0, 1, 2]; // offsetTime values
+        // 5 projectiles per line: [xOffset, frameType(0=large,3=tiny), num(phase)]
+        const projDefs = [
+            { xOff: 1,  frameType: 3, num: 4 },
+            { xOff: 8,  frameType: 2, num: 3 },
+            { xOff: 18, frameType: 2, num: 2 },
+            { xOff: 32, frameType: 1, num: 1 },
+            { xOff: 46, frameType: 0, num: 0 },
+        ];
+
+        for (const offsetTime of lineOffsets) {
+            const lineX = spawnX + (-50 + offsetTime * 15) * this.facing;
+            for (const def of projDefs) {
+                const px = lineX + def.xOff * this.facing;
+                // sinePhase = num * 0.5 - offsetTime * 2.09
+                const sinePhase = def.num * 0.5 - offsetTime * 2.09;
+                this.shots.push({
+                    x: px,
+                    y: spawnY,
+                    initY: spawnY,
+                    vx: 7.0 * this.facing,
+                    active: true,
+                    damage: 4,
+                    type: 'charge3',
+                    fading: false,
+                    animFrame: 0,
+                    animTimer: 0,
+                    startupDone: true,
+                    sinePhase: sinePhase,
+                    sineTime: 0,
+                    lifetime: 0,
+                    frameType: def.frameType, // Fixed frame index (0=large, 3=tiny)
+                });
+            }
+        }
     }
 
     _updateShots(level) {
@@ -768,6 +833,20 @@ export class Player extends Entity {
 
             shot.x += shot.vx;
 
+            // Sine-wave Y movement for charge3 shots
+            if (shot.type === 'charge3') {
+                shot.sineTime++;
+                shot.y = shot.initY + Math.sin(shot.sineTime * 0.3 - shot.sinePhase) * 15;
+                shot.lifetime++;
+                if (shot.lifetime >= 30) { // 0.5s max
+                    shot.fading = true;
+                    shot.fadeFrame = 0;
+                    shot.fadeTimer = 0;
+                    shot.vx = 0;
+                    continue;
+                }
+            }
+
             // Remove if off-screen
             if (shot.x < this.x - 300 || shot.x > this.x + 300) {
                 shot.active = false;
@@ -790,11 +869,13 @@ export class Player extends Entity {
     }
 
     _getShotFrames(shot) {
+        if (shot.type === 'charge3') return BUSTER4_FRAMES.loop;
         const data = shot.type === 'charge2' ? BUSTER3_FRAMES : BUSTER2_FRAMES;
         return shot.startupDone ? data.loop : data.startup;
     }
 
     _getFadeFrames(type) {
+        if (type === 'charge3') return BUSTER4_FRAMES.fade;
         if (type === 'charge2') return BUSTER3_FRAMES.fade;
         if (type === 'charge1') return BUSTER2_FRAMES.fade;
         return BUSTER_FRAMES.fade;
@@ -1113,6 +1194,7 @@ export class Player extends Entity {
         // Draw each armor layer: boots, body, helmet, arm (order matches reference)
         const layers = [
             { level: this.armorBoots,  key: 'boots' },
+            { level: this.armorArm,    key: 'arm' },
         ];
 
         for (const layer of layers) {
@@ -1202,7 +1284,7 @@ export class Player extends Entity {
 
             if (!ef) {
                 // Fallback: colored rectangle (bigger for charged shots)
-                const size = shot.type === 'charge2' ? 12 : shot.type === 'charge1' ? 8 : 4;
+                const size = shot.type === 'charge3' ? 8 : shot.type === 'charge2' ? 12 : shot.type === 'charge1' ? 8 : 4;
                 ctx.fillStyle = shot.type !== 'normal' ? '#00ffff' : '#ffdd00';
                 ctx.fillRect(sx - size, sy - size / 2, size * 2, size);
                 continue;
@@ -1220,6 +1302,10 @@ export class Player extends Entity {
                 // Normal lemon shot
                 const bf = BUSTER_FRAMES.shot;
                 this._drawShotSprite(ctx, ef, bf, sx, sy, shot.vx < 0);
+            } else if (shot.type === 'charge3') {
+                // L3 charge shot — each projectile shows a fixed frame size
+                const frame = BUSTER4_FRAMES.loop[shot.frameType];
+                this._drawShotSprite(ctx, ef, frame, sx, sy, shot.vx < 0);
             } else {
                 // Charged shot — animated
                 const frames = this._getShotFrames(shot);

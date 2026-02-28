@@ -73,6 +73,21 @@ export const BUSTER3_FRAMES = {
     ],
 };
 
+// Charged shot level 3 (buster4) — 15 sine-wave projectiles (X1 Arms required)
+export const BUSTER4_FRAMES = {
+    loop: [
+        { sx: 324, sy: 377, sw: 16, sh: 15, dur: 2 },
+        { sx: 344, sy: 378, sw: 14, sh: 13, dur: 2 },
+        { sx: 362, sy: 379, sw: 13, sh: 11, dur: 2 },
+        { sx: 379, sy: 381, sw: 8,  sh: 7,  dur: 2 },
+    ],
+    fade: [
+        { sx: 402, sy: 379, sw: 12, sh: 12, dur: 2 },
+        { sx: 418, sy: 378, sw: 14, sh: 14, dur: 2 },
+        { sx: 436, sy: 377, sw: 16, sh: 16, dur: 2 },
+    ],
+};
+
 // Charge particle sprites (from effects.png) — 8 particles orbit player while charging
 export const CHARGE_PARTICLES = {
     // Level 1 charge particles (small, 2x2 shrinking to 1x1)
@@ -88,6 +103,13 @@ export const CHARGE_PARTICLES = {
         { sx: 127, sy: 328, sw: 3, sh: 3 },
         { sx: 121, sy: 329, sw: 2, sh: 2 },
         { sx: 116, sy: 330, sw: 1, sh: 1 },
+    ],
+    // Level 3 charge particles (pink/purple, from charge_part_3.json)
+    3: [
+        { sx: 131, sy: 383, sw: 5, sh: 5 },
+        { sx: 123, sy: 384, sw: 4, sh: 4 },
+        { sx: 116, sy: 385, sw: 3, sh: 3 },
+        { sx: 110, sy: 386, sw: 2, sh: 2 },
     ],
 };
 
