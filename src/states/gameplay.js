@@ -79,6 +79,9 @@ export class GameplayState {
 
         // Pause menu
         this.paused = false;
+        this.pauseSelectedTank = -1;  // -1 = no selection, 0-3 = tank index
+        this.pausePulseTimer = 0;
+        this.subTankDrain = null;     // { tankIndex, startFill, totalTicks, ticksDone, tickTimer }
 
         // Stage select return context (set by StageSelectState before transition)
         this._stageSelectLocations = null;
@@ -342,12 +345,20 @@ export class GameplayState {
     update(game) {
         // Toggle pause menu with Start/Enter
         if (game.input.pressed('start')) {
+            if (this.subTankDrain) return; // Block unpause during drain
             this.paused = !this.paused;
+            if (!this.paused) {
+                this.pauseSelectedTank = -1;
+            }
             return;
         }
 
-        // Skip all game logic while paused
-        if (this.paused) return;
+        // Pause menu input handling
+        if (this.paused) {
+            this.pausePulseTimer++;
+            this._updatePauseMenu(game);
+            return;
+        }
 
         // Return to stage select with Escape or gamepad Select button
         if ((game.input.rawKeys['Escape'] && !this._prevKeyEsc) || game.input.pressed('select')) {
@@ -554,6 +565,89 @@ export class GameplayState {
                 }
             }
         });
+    }
+
+    _updatePauseMenu(game) {
+        // Drain animation in progress — tick it and block other input
+        if (this.subTankDrain) {
+            this._updateSubTankDrain();
+            return;
+        }
+
+        const input = game.input;
+        const save = loadSave();
+        const ownedSubs = save.subTanks || 0;
+        if (ownedSubs <= 0) return;
+
+        // First directional/shoot press selects tank 0
+        if (this.pauseSelectedTank < 0) {
+            if (input.pressed('left') || input.pressed('right') ||
+                input.pressed('up') || input.pressed('down') || input.pressed('shoot')) {
+                this.pauseSelectedTank = 0;
+            }
+            return;
+        }
+
+        // Navigate 2x2 grid
+        const col = this.pauseSelectedTank % 2;
+        const row = Math.floor(this.pauseSelectedTank / 2);
+
+        if (input.pressed('left') && col > 0)
+            this.pauseSelectedTank--;
+        if (input.pressed('right') && col < 1 && this.pauseSelectedTank + 1 < ownedSubs)
+            this.pauseSelectedTank++;
+        if (input.pressed('up') && row > 0)
+            this.pauseSelectedTank -= 2;
+        if (input.pressed('down') && row < 1 && this.pauseSelectedTank + 2 < ownedSubs)
+            this.pauseSelectedTank += 2;
+
+        // Use sub tank
+        if (input.pressed('shoot')) {
+            this._tryUseSubTank();
+        }
+    }
+
+    _tryUseSubTank() {
+        const idx = this.pauseSelectedTank;
+        if (idx < 0) return;
+
+        const save = loadSave();
+        const fill = (save.subTankFills || [])[idx] || 0;
+        if (fill < 30) return; // Only usable when full
+        if (this.player.hp >= this.player.maxHp) return; // Already full HP
+
+        const healAmount = Math.floor(this.player.maxHp * 0.5);
+        const actualHeal = Math.min(healAmount, this.player.maxHp - Math.ceil(this.player.hp));
+
+        this.subTankDrain = {
+            tankIndex: idx,
+            startFill: fill,
+            totalTicks: actualHeal,
+            ticksDone: 0,
+            tickTimer: 0,
+        };
+    }
+
+    _updateSubTankDrain() {
+        const d = this.subTankDrain;
+        d.tickTimer++;
+        if (d.tickTimer < 3) return; // 1 HP per 3 frames (same rate as heal queue)
+        d.tickTimer = 0;
+
+        // Heal 1 HP
+        if (this.player.hp < this.player.maxHp) {
+            this.player.hp = Math.min(this.player.hp + 1, this.player.maxHp);
+        }
+        d.ticksDone++;
+
+        if (d.ticksDone >= d.totalTicks) {
+            // Done — empty the tank in save
+            updateSave(s => {
+                if (!s.subTankFills) s.subTankFills = [0, 0, 0, 0];
+                s.subTankFills[d.tankIndex] = 0;
+            });
+            this.subTankDrain = null;
+        }
     }
 
     _updateRespawn() {
@@ -949,17 +1043,37 @@ export class GameplayState {
             ];
             const ownedSubs = save.subTanks || 0;
             const fills = save.subTankFills || [0, 0, 0, 0];
+            const pulse = Math.sin(this.pausePulseTimer * 0.08) * 0.3 + 0.7;
             ctx.imageSmoothingEnabled = false;
             for (let i = 0; i < ownedSubs && i < subTankPositions.length; i++) {
                 const pos = subTankPositions[i];
+
+                // Selection glow (gold pulsing border, like shop cards)
+                if (this.pauseSelectedTank === i) {
+                    ctx.strokeStyle = `rgba(255, 221, 0, ${0.3 * pulse})`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(pos.x - 3, pos.y - 3, subFrame.sw + 6, subFrame.sh + 6);
+                    ctx.strokeStyle = `rgba(255, 221, 0, ${pulse})`;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(pos.x - 1, pos.y - 1, subFrame.sw + 2, subFrame.sh + 2);
+                }
+
                 // Draw container
                 ctx.drawImage(ef,
                     subFrame.sx, subFrame.sy, subFrame.sw, subFrame.sh,
                     pos.x, pos.y, subFrame.sw, subFrame.sh);
+
+                // Compute display fill (with drain animation override)
+                let displayFill = fills[i] || 0;
+                if (this.subTankDrain && this.subTankDrain.tankIndex === i) {
+                    const d = this.subTankDrain;
+                    const progress = (d.ticksDone + d.tickTimer / 3) / d.totalTicks;
+                    displayFill = Math.floor(d.startFill * (1 - progress));
+                }
+
                 // Draw fill bar (bottom-up, centered inside the 16x16 container)
-                const fill = fills[i] || 0;
-                if (fill > 0) {
-                    const fillH = Math.floor(subBar.sh * (fill / 30));
+                if (displayFill > 0) {
+                    const fillH = Math.floor(subBar.sh * (displayFill / 30));
                     const barX = pos.x + 6; // centered: (16-4)/2
                     const barY = pos.y + 1 + (subBar.sh - fillH); // top offset + empty portion
                     ctx.drawImage(ef,
