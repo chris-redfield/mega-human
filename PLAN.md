@@ -76,7 +76,8 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 
 ### Player
 - 10-state machine: warp_in, idle, run, jump, fall, land, wall_slide, dash, hurt, die
-- Buster shots (normal + 2 charge levels), sword combos (Zero/Sigma)
+- Buster shots (normal + 3 charge levels), sword combos (Zero/Sigma)
+- X1 Armor: Boots (+15% dash speed, visual overlay), Arms (1.5x charge speed, L3 charge shot with 15 sine-wave projectiles, visual overlay, pink/purple L3 particles)
 - Dash-jump momentum, wall sliding, warp-in animation
 - Respawn system with fade-out/hold/fade-in transitions
 
@@ -142,7 +143,8 @@ Weather control slope polygons contain slope surface AND ground beneath (unlike 
 All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Currency: RAM Memory.
 
 ### Status Key
-- **DONE** = in shop, visual only (no gameplay effect yet)
+- **DONE** = in shop + gameplay effect fully implemented
+- **SHOP** = in shop, visual only (no gameplay effect yet)
 - **TODO** = planned, sprite located
 - **LOAD** = needs new spritesheet loaded in index.html
 
@@ -161,8 +163,8 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 |------|----|---------------------------|------|-------------|--------|
 | X1 Helmet | `x1_helmet` | Headbutt on jump: 2 dmg (normal), 4 dmg (up-dash). Hitbox 14×4 px. | 1 | XHelmetMenu.png | TODO LOAD |
 | X1 Body | `x1_body` | 12.5% damage reduction (dmg/8). Flinch time ×0.75 (25% faster recovery). | 3 | XBodyMenu.png | TODO LOAD |
-| X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 3 sine-wave shots, 4 dmg each. | 4 | XArmMenu.png | **DONE** 20 RAM, offsetY:40 |
-| X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). | 2 | XBootsMenu.png | **DONE** 20 RAM, offsetY:0 |
+| X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 15 sine-wave shots (3 lines × 5), 4 dmg each. Pink/purple charge particles at L3. Overlay: `XArm.png`. | 4 | XArmMenu.png | **DONE** 20 RAM, offsetY:40 |
+| X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). Overlay: `XBoots.png`. | 2 | XBootsMenu.png | **DONE** 20 RAM, offsetY:0 |
 
 ### X2 Armor Parts (MMX2 — Giga Armor. Full set bonus: SHORYUKEN)
 
