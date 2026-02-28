@@ -462,13 +462,21 @@ export class GameplayState {
             pickup.update(game);
 
             // Check player overlap for collection
-            if (!this.player.dead && this.player.hp < this.player.maxHp) {
-                const pBox = this.player.getHitbox();
-                const pickBox = pickup.getHitbox();
-                if (boxOverlap(pBox, pickBox)) {
-                    pickup.active = false;
-                    this.player.healQueue = (this.player.healQueue || 0) + pickup.healAmount;
-                    if (this.audio) this.audio.play('heal');
+            if (!this.player.dead) {
+                const needsHp = this.player.hp < this.player.maxHp;
+                const hasSubTankRoom = this._hasSubTankRoom();
+                if (needsHp || hasSubTankRoom) {
+                    const pBox = this.player.getHitbox();
+                    const pickBox = pickup.getHitbox();
+                    if (boxOverlap(pBox, pickBox)) {
+                        pickup.active = false;
+                        if (needsHp) {
+                            this.player.healQueue = (this.player.healQueue || 0) + pickup.healAmount;
+                        } else {
+                            this._fillSubTanks(pickup.healAmount);
+                        }
+                        if (this.audio) this.audio.play('heal');
+                    }
                 }
             }
         }
@@ -499,7 +507,12 @@ export class GameplayState {
             if (this.healTickTimer >= 3) {
                 this.healTickTimer = 0;
                 this.player.healQueue--;
-                this.player.hp = Math.min(this.player.hp + 1, this.player.maxHp);
+                if (this.player.hp < this.player.maxHp) {
+                    this.player.hp = Math.min(this.player.hp + 1, this.player.maxHp);
+                } else {
+                    // HP full — overflow to sub tanks
+                    this._fillSubTanks(1);
+                }
             }
         } else {
             this.healTickTimer = 0;
@@ -515,6 +528,32 @@ export class GameplayState {
         }
 
         this.camera.follow(this.player);
+    }
+
+    _hasSubTankRoom() {
+        const save = loadSave();
+        const owned = save.subTanks || 0;
+        const fills = save.subTankFills || [0, 0, 0, 0];
+        for (let i = 0; i < owned; i++) {
+            if ((fills[i] || 0) < 30) return true;
+        }
+        return false;
+    }
+
+    _fillSubTanks(amount) {
+        updateSave(s => {
+            const owned = s.subTanks || 0;
+            if (!s.subTankFills) s.subTankFills = [0, 0, 0, 0];
+            let remaining = amount;
+            for (let i = 0; i < owned && remaining > 0; i++) {
+                const space = 30 - (s.subTankFills[i] || 0);
+                if (space > 0) {
+                    const add = Math.min(remaining, space);
+                    s.subTankFills[i] = (s.subTankFills[i] || 0) + add;
+                    remaining -= add;
+                }
+            }
+        });
     }
 
     _updateRespawn() {
@@ -877,28 +916,58 @@ export class GameplayState {
             ctx.fillText(`x${this.memoryCount}`, rx + iconW + 3, ry + iconH / 2);
         }
 
-        // Heart tank counter (right side, vertically centered)
+        // Item icons (right side, vertically centered)
         const ef = this.assets.getImage('effectsSprite');
         if (ef) {
             const save = loadSave();
+
+            // Heart tank counter
             const heartFrame = { sx: 476, sy: 147, sw: 14, sh: 15 };
-            const scale = 1;
-            const hw = heartFrame.sw * scale;
-            const hh = heartFrame.sh * scale;
-            const hx = fx + frameW - hw - 33;
-            const hy = fy + Math.floor(frameH / 2) - Math.floor(hh / 2) + 5;
+            const heartX = fx + 209;
+            const heartY = fy + 110;
 
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(ef,
                 heartFrame.sx, heartFrame.sy, heartFrame.sw, heartFrame.sh,
-                hx, hy, hw, hh);
+                heartX, heartY, heartFrame.sw, heartFrame.sh);
             ctx.imageSmoothingEnabled = true;
 
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 10px monospace';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(`x${save.heartTanks || 0}`, hx + hw + 3, hy + hh / 2);
+            ctx.fillText(`x${save.heartTanks || 0}`, heartX + heartFrame.sw + 3, heartY + heartFrame.sh / 2);
+
+            // Sub tanks (up to 4, each at a predefined position)
+            const subFrame = { sx: 621, sy: 145, sw: 16, sh: 16 };
+            const subBar = { sx: 612, sy: 146, sw: 4, sh: 14 };
+            const subTankPositions = [
+                { x: fx + 140, y: fy + 111 },
+                { x: fx + 172, y: fy + 111 },
+                { x: fx + 140, y: fy + 145 },
+                { x: fx + 172, y: fy + 145 },
+            ];
+            const ownedSubs = save.subTanks || 0;
+            const fills = save.subTankFills || [0, 0, 0, 0];
+            ctx.imageSmoothingEnabled = false;
+            for (let i = 0; i < ownedSubs && i < subTankPositions.length; i++) {
+                const pos = subTankPositions[i];
+                // Draw container
+                ctx.drawImage(ef,
+                    subFrame.sx, subFrame.sy, subFrame.sw, subFrame.sh,
+                    pos.x, pos.y, subFrame.sw, subFrame.sh);
+                // Draw fill bar (bottom-up, centered inside the 16x16 container)
+                const fill = fills[i] || 0;
+                if (fill > 0) {
+                    const fillH = Math.floor(subBar.sh * (fill / 30));
+                    const barX = pos.x + 6; // centered: (16-4)/2
+                    const barY = pos.y + 1 + (subBar.sh - fillH); // top offset + empty portion
+                    ctx.drawImage(ef,
+                        subBar.sx, subBar.sy + (subBar.sh - fillH), subBar.sw, fillH,
+                        barX, barY, subBar.sw, fillH);
+                }
+            }
+            ctx.imageSmoothingEnabled = true;
         }
 
         ctx.textAlign = 'left';

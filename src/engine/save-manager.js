@@ -12,6 +12,8 @@ function defaultSave() {
         memoryCount: 0,
         bossesDefeated: [],   // stage names, e.g. ['chill_penguin']
         heartTanks: 0,        // 0-8, each adds +1 max HP
+        subTanks: 0,          // 0-4, sub tanks purchased
+        subTankFills: [0, 0, 0, 0],  // fill level per tank (0-16 each)
     };
 }
 

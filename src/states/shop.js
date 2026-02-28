@@ -75,11 +75,11 @@ const IMAGE_ICONS = {
 // ── Shop Items ──
 const SHOP_ITEMS = [
     {
-        id: 'heart',
-        name: 'Heart',
-        description: 'Max HP +1',
-        price: 8,
-        icon: 'heart',
+        id: 'subtank',
+        name: 'Sub Tank',
+        description: 'Store 16 HP',
+        price: 16,
+        icon: 'subtank',
     },
     {
         id: 'subtank',
@@ -89,18 +89,18 @@ const SHOP_ITEMS = [
         icon: 'subtank',
     },
     {
-        id: 'x1_boots',
-        name: 'X1 Boots',
-        description: 'Dash +15%',
-        price: 20,
-        icon: 'x1_boots',
+        id: 'subtank',
+        name: 'Sub Tank',
+        description: 'Store 16 HP',
+        price: 16,
+        icon: 'subtank',
     },
     {
-        id: 'x1_arms',
-        name: 'X1 Arms',
-        description: 'Charge +50%',
-        price: 20,
-        icon: 'x1_arms',
+        id: 'subtank',
+        name: 'Sub Tank',
+        description: 'Store 16 HP',
+        price: 16,
+        icon: 'subtank',
     },
 ];
 
@@ -417,9 +417,14 @@ export class ShopState {
         const save = loadSave();
         // Remove one heart card per heart tank purchased
         let heartsToSkip = save.heartTanks || 0;
+        let subsToSkip = save.subTanks || 0;
         return SHOP_ITEMS.filter(item => {
             if (item.id === 'heart' && heartsToSkip > 0) {
                 heartsToSkip--;
+                return false;
+            }
+            if (item.id === 'subtank' && subsToSkip > 0) {
+                subsToSkip--;
                 return false;
             }
             return true;
@@ -441,6 +446,8 @@ export class ShopState {
         // Apply item effect
         if (item.id === 'heart') {
             updateSave(s => { s.heartTanks = Math.min((s.heartTanks || 0) + 1, MAX_HEART_TANKS); });
+        } else if (item.id === 'subtank') {
+            updateSave(s => { s.subTanks = Math.min((s.subTanks || 0) + 1, 4); });
         }
 
         // Start buy animation
