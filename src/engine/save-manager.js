@@ -14,6 +14,7 @@ function defaultSave() {
         heartTanks: 0,        // 0-8, each adds +1 max HP
         subTanks: 0,          // 0-4, sub tanks purchased
         subTankFills: [0, 0, 0, 0],  // fill level per tank (0-16 each)
+        armor: { boots: 0, body: 0, helmet: 0, arm: 0 },  // 0=none, 1=X1, 2=X2, 3=X3
     };
 }
 
@@ -24,7 +25,11 @@ export function loadSave() {
         if (!raw) return defaultSave();
         const data = JSON.parse(raw);
         // Merge with defaults so new fields are always present
-        return { ...defaultSave(), ...data };
+        const defaults = defaultSave();
+        const merged = { ...defaults, ...data };
+        // Deep-merge nested objects
+        merged.armor = { ...defaults.armor, ...(data.armor || {}) };
+        return merged;
     } catch {
         return defaultSave();
     }

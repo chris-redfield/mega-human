@@ -172,6 +172,10 @@ export class GameplayState {
         } else {
             player = new Player(x, y);
             player.spriteImage = this.assets.getImage('playerSprite');
+            // Armor overlay images (only X has armor upgrades)
+            player.armorImages = {
+                boots: [null, this.assets.getImage('xBootsOverlay'), null, null], // [none, X1, X2, X3]
+            };
         }
         player.effectsImage = this.assets.getImage('effectsSprite');
         return player;

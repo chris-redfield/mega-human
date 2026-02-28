@@ -59,6 +59,17 @@ export class Player extends Entity {
         this.hp = this.maxHp;
         this.characterId = 'x';
 
+        // Armor state from save (0=none, 1=X1, 2=X2, 3=X3)
+        const armor = save.armor || {};
+        this.armorBoots = armor.boots || 0;
+        this.armorBody = armor.body || 0;
+        this.armorHelmet = armor.helmet || 0;
+        this.armorArm = armor.arm || 0;
+        this.armorImages = null; // set by gameplay after construction
+
+        // Boots bonus: X1=+15% dash speed
+        this.dashSpeed = P.DASH_SPEED * (this.armorBoots >= 1 ? 1.15 : 1.0);
+
         this.hitboxX = P.HITBOX_X;
         this.hitboxY = P.HITBOX_Y;
         this.hitboxW = P.WIDTH;
@@ -223,7 +234,7 @@ export class Player extends Entity {
         // Dash
         if (input.pressed('dash') && this.dashCooldown <= 0) {
             this.dashTimer = P.DASH_DURATION;
-            this.vx = P.DASH_SPEED * this.facing;
+            this.vx = this.dashSpeed * this.facing;
             this.isDashing = true;
             this.dashDustTimer = 0;
             this._spawnDashSparks();
@@ -244,7 +255,7 @@ export class Player extends Entity {
 
     _airState(input, level) {
         // Horizontal movement — use dash speed if dash-jumping
-        const moveSpeed = this.isDashing ? P.DASH_SPEED : P.RUN_SPEED;
+        const moveSpeed = this.isDashing ? this.dashSpeed : P.RUN_SPEED;
         if (this.wallJumpLock <= 0) {
             if (input.held('left')) {
                 this.vx = -moveSpeed;
@@ -276,7 +287,7 @@ export class Player extends Entity {
         // Dash in air
         if (input.pressed('dash') && this.dashCooldown <= 0) {
             this.dashTimer = P.DASH_DURATION;
-            this.vx = P.DASH_SPEED * this.facing;
+            this.vx = this.dashSpeed * this.facing;
             this.vy = 0;
             this.isDashing = true;
             this.dashDustTimer = 0;
@@ -353,7 +364,7 @@ export class Player extends Entity {
 
     _dashState(input, level) {
         this.dashTimer--;
-        this.vx = P.DASH_SPEED * this.facing;
+        this.vx = this.dashSpeed * this.facing;
 
         // Spawn trailing dust every 6 frames
         this.dashDustTimer++;
@@ -381,7 +392,7 @@ export class Player extends Entity {
                 }
             } else {
                 // Air dash expired — keep isDashing for momentum through fall
-                const airSpeed = this.isDashing ? P.DASH_SPEED : P.RUN_SPEED;
+                const airSpeed = this.isDashing ? this.dashSpeed : P.RUN_SPEED;
                 this.vx = input.held('left') || input.held('right') ? airSpeed * this.facing : 0;
                 this.state = 'fall';
             }
@@ -1086,8 +1097,65 @@ export class Player extends Entity {
                 this.hitboxW, this.hitboxH);
         }
 
+        // Armor overlays — drawn on top of base sprite at same position/frame
+        this._renderArmorOverlays(ctx, frame, feetX, feetY, flipH, isChargeFlash);
+
         // Render projectiles
         this._renderShots(ctx, camera);
+    }
+
+    _renderArmorOverlays(ctx, frame, feetX, feetY, flipH, isChargeFlash) {
+        if (!this.armorImages) return;
+        const ox = frame.ox || 0;
+        const oy = frame.oy || 0;
+        const drawY = feetY - frame.sh + oy;
+
+        // Draw each armor layer: boots, body, helmet, arm (order matches reference)
+        const layers = [
+            { level: this.armorBoots,  key: 'boots' },
+        ];
+
+        for (const layer of layers) {
+            if (layer.level <= 0) continue;
+            const images = this.armorImages[layer.key];
+            if (!images) continue;
+            const img = images[layer.level];
+            if (!img) continue;
+
+            if (flipH) {
+                ctx.save();
+                ctx.translate(feetX, 0);
+                ctx.scale(-1, 1);
+                const drawX = -Math.floor(frame.sw / 2) + ox;
+                ctx.drawImage(img,
+                    frame.sx, frame.sy, frame.sw, frame.sh,
+                    drawX, drawY, frame.sw, frame.sh);
+                if (isChargeFlash) {
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.4;
+                    ctx.drawImage(img,
+                        frame.sx, frame.sy, frame.sw, frame.sh,
+                        drawX, drawY, frame.sw, frame.sh);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                ctx.restore();
+            } else {
+                const drawX = feetX - Math.floor(frame.sw / 2) + ox;
+                ctx.drawImage(img,
+                    frame.sx, frame.sy, frame.sw, frame.sh,
+                    drawX, drawY, frame.sw, frame.sh);
+                if (isChargeFlash) {
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.4;
+                    ctx.drawImage(img,
+                        frame.sx, frame.sy, frame.sw, frame.sh,
+                        drawX, drawY, frame.sw, frame.sh);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+            }
+        }
     }
 
     _renderChargeParticles(ctx, camera) {

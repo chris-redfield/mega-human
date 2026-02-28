@@ -415,6 +415,7 @@ export class ShopState {
 
     _buildItemList() {
         const save = loadSave();
+        const armor = save.armor || {};
         // Remove one heart card per heart tank purchased
         let heartsToSkip = save.heartTanks || 0;
         let subsToSkip = save.subTanks || 0;
@@ -427,6 +428,9 @@ export class ShopState {
                 subsToSkip--;
                 return false;
             }
+            // Hide armor items already purchased
+            if (item.id === 'x1_boots' && armor.boots >= 1) return false;
+            if (item.id === 'x1_arms' && armor.arm >= 1) return false;
             return true;
         });
     }
@@ -448,6 +452,10 @@ export class ShopState {
             updateSave(s => { s.heartTanks = Math.min((s.heartTanks || 0) + 1, MAX_HEART_TANKS); });
         } else if (item.id === 'subtank') {
             updateSave(s => { s.subTanks = Math.min((s.subTanks || 0) + 1, 4); });
+        } else if (item.id === 'x1_boots') {
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.boots = 1; });
+        } else if (item.id === 'x1_arms') {
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.arm = 1; });
         }
 
         // Start buy animation
