@@ -11,6 +11,7 @@ function defaultSave() {
     return {
         memoryCount: 0,
         bossesDefeated: [],   // stage names, e.g. ['chill_penguin']
+        heartTanks: 0,        // 0-8, each adds +1 max HP
     };
 }
 

@@ -9,6 +9,7 @@
 import { Entity } from './entity.js';
 import { resolveHorizontal, resolveSlopeHorizontal, resolveVertical, resolveSlopeVertical, checkWallContact, isSolid } from '../engine/collision.js';
 import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, CHARGE_PARTICLES, DASH_SPARK_FRAMES, DASH_DUST_FRAMES } from './sprite-data.js';
+import { loadSave } from '../engine/save-manager.js';
 
 // Physics constants (tuned to match Mega Man X feel)
 const P = {
@@ -53,8 +54,9 @@ export { P };
 export class Player extends Entity {
     constructor(x, y) {
         super(x, y);
-        this.maxHp = 16;
-        this.hp = 16;
+        const save = loadSave();
+        this.maxHp = 16 + (save.heartTanks || 0);
+        this.hp = this.maxHp;
         this.characterId = 'x';
 
         this.hitboxX = P.HITBOX_X;

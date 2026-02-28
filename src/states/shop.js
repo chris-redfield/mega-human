@@ -42,8 +42,14 @@ const COL_CARD_BG = '#151040';
 const COL_CARD_BORDER = '#2a2060';
 const COL_DIM = '#666688';
 
+// Max heart tanks (matches MMX)
+const MAX_HEART_TANKS = 8;
+
 // Pulse
 const PULSE_SPEED = 0.08;
+
+// Buy animation
+const BUY_ANIM_DURATION = 50; // frames (~0.83s)
 
 // Sprite frames from effects.png
 const ICON_FRAMES = {
@@ -76,25 +82,25 @@ const SHOP_ITEMS = [
         icon: 'heart',
     },
     {
-        id: 'subtank',
-        name: 'Sub Tank',
-        description: 'Store 16 HP',
-        price: 16,
-        icon: 'subtank',
+        id: 'heart',
+        name: 'Heart',
+        description: 'Max HP +1',
+        price: 8,
+        icon: 'heart',
     },
     {
-        id: 'x1_boots',
-        name: 'X1 Boots',
-        description: 'Dash +15%',
-        price: 20,
-        icon: 'x1_boots',
+        id: 'heart',
+        name: 'Heart',
+        description: 'Max HP +1',
+        price: 8,
+        icon: 'heart',
     },
     {
-        id: 'x1_arms',
-        name: 'X1 Arms',
-        description: 'Charge +50%',
-        price: 20,
-        icon: 'x1_arms',
+        id: 'heart',
+        name: 'Heart',
+        description: 'Max HP +1',
+        price: 8,
+        icon: 'heart',
     },
 ];
 
@@ -116,8 +122,11 @@ export class ShopState {
 
         // Selected item index
         this.selectedItem = 0;
-        // Items available in shop
-        this.items = SHOP_ITEMS;
+        // Items available in shop (filter out already-purchased one-time items)
+        this.items = this._buildItemList();
+
+        // Buy animation state
+        this.buyAnim = null; // { timer, itemIndex, item }
     }
 
     init(game) {
@@ -135,6 +144,19 @@ export class ShopState {
         if (this.animTimer >= ICON_ANIM_SPEED) {
             this.animTimer = 0;
             this.animFrame = (this.animFrame + 1) % 3;
+        }
+
+        // Buy animation in progress — block all input
+        if (this.buyAnim) {
+            this.buyAnim.timer++;
+            if (this.buyAnim.timer >= BUY_ANIM_DURATION) {
+                // Animation done — remove item from list
+                this.items = this._buildItemList();
+                this.selectedItem = Math.min(this.selectedItem, this.items.length - 1);
+                if (this.selectedItem < 0) this.selectedItem = 0;
+                this.buyAnim = null;
+            }
+            return;
         }
 
         const input = game.input;
@@ -225,45 +247,77 @@ export class ShopState {
             const y = CARDS_Y;
             const isSelected = this.selectedItem === i;
             const canAfford = save.memoryCount >= item.price;
+            const isBuying = this.buyAnim && this.buyAnim.itemIndex === i;
 
-            // Card background
-            ctx.fillStyle = isSelected ? '#1a1250' : COL_CARD_BG;
-            ctx.fillRect(x, y, CARD_W, CARD_H);
-
-            // Card border (gold pulse if selected, dim otherwise)
-            if (isSelected) {
-                // Outer glow
-                ctx.strokeStyle = `rgba(255, 221, 0, ${0.3 * pulse})`;
-                ctx.lineWidth = 4;
-                ctx.strokeRect(x - 2, y - 2, CARD_W + 4, CARD_H + 4);
-                // Main border
-                ctx.strokeStyle = `rgba(255, 221, 0, ${pulse})`;
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x, y, CARD_W, CARD_H);
-            } else {
-                ctx.strokeStyle = COL_CARD_BORDER;
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x, y, CARD_W, CARD_H);
+            // Buy animation: white flash then fade out
+            if (isBuying) {
+                const t = this.buyAnim.timer / BUY_ANIM_DURATION; // 0→1
+                if (t < 0.4) {
+                    // Phase 1: flash white (0→0.4)
+                    const flashAlpha = Math.sin((t / 0.4) * Math.PI);
+                    // Draw normal card underneath
+                    this._drawSingleCard(ctx, item, x, y, true, canAfford, pulse);
+                    // White overlay
+                    ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.7})`;
+                    ctx.fillRect(x, y, CARD_W, CARD_H);
+                } else {
+                    // Phase 2: fade out + scale up (0.4→1.0)
+                    const fadeT = (t - 0.4) / 0.6;
+                    const alpha = 1 - fadeT;
+                    const scale = 1 + fadeT * 0.3;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(x + CARD_W / 2, y + CARD_H / 2);
+                    ctx.scale(scale, scale);
+                    ctx.translate(-(x + CARD_W / 2), -(y + CARD_H / 2));
+                    this._drawSingleCard(ctx, item, x, y, true, canAfford, pulse);
+                    ctx.restore();
+                }
+                continue;
             }
 
-            // Item icon
-            const iconCX = x + CARD_W / 2;
-            const iconCY = y + 40;
-            this._drawItemIcon(ctx, item.icon, iconCX, iconCY, isSelected);
-
-            // Item name
-            ctx.font = 'bold 20px "Courier New", monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const nameColor = isSelected ? COL_HIGHLIGHT : COL_GOLD;
-            ctx.fillStyle = COL_SHADOW;
-            ctx.fillText(item.name, iconCX + 1, y + 85 + 1);
-            ctx.fillStyle = nameColor;
-            ctx.fillText(item.name, iconCX, y + 85);
-
-            // Price (RAM icon + amount)
-            this._drawItemPrice(ctx, item.price, iconCX, y + 118, canAfford, isSelected);
+            this._drawSingleCard(ctx, item, x, y, isSelected, canAfford, pulse);
         }
+    }
+
+    _drawSingleCard(ctx, item, x, y, isSelected, canAfford, pulse) {
+        // Card background
+        ctx.fillStyle = isSelected ? '#1a1250' : COL_CARD_BG;
+        ctx.fillRect(x, y, CARD_W, CARD_H);
+
+        // Card border (gold pulse if selected, dim otherwise)
+        if (isSelected) {
+            // Outer glow
+            ctx.strokeStyle = `rgba(255, 221, 0, ${0.3 * pulse})`;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x - 2, y - 2, CARD_W + 4, CARD_H + 4);
+            // Main border
+            ctx.strokeStyle = `rgba(255, 221, 0, ${pulse})`;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, CARD_W, CARD_H);
+        } else {
+            ctx.strokeStyle = COL_CARD_BORDER;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, CARD_W, CARD_H);
+        }
+
+        // Item icon
+        const iconCX = x + CARD_W / 2;
+        const iconCY = y + 40;
+        this._drawItemIcon(ctx, item.icon, iconCX, iconCY, isSelected);
+
+        // Item name
+        ctx.font = 'bold 20px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nameColor = isSelected ? COL_HIGHLIGHT : COL_GOLD;
+        ctx.fillStyle = COL_SHADOW;
+        ctx.fillText(item.name, iconCX + 1, y + 85 + 1);
+        ctx.fillStyle = nameColor;
+        ctx.fillText(item.name, iconCX, y + 85);
+
+        // Price (RAM icon + amount)
+        this._drawItemPrice(ctx, item.price, iconCX, y + 118, canAfford, isSelected);
     }
 
     _drawItemIcon(ctx, iconType, cx, cy, selected) {
@@ -359,11 +413,38 @@ export class ShopState {
 
     // ── Actions ──
 
+    _buildItemList() {
+        const save = loadSave();
+        // Remove one heart card per heart tank purchased
+        let heartsToSkip = save.heartTanks || 0;
+        return SHOP_ITEMS.filter(item => {
+            if (item.id === 'heart' && heartsToSkip > 0) {
+                heartsToSkip--;
+                return false;
+            }
+            return true;
+        });
+    }
+
     _tryBuyItem() {
-        // Visual-only for now — no purchase logic yet
+        if (this.buyAnim) return; // Already animating a purchase
+
         const item = this.items[this.selectedItem];
         if (!item) return;
-        // TODO: deduct RAM, apply item effect, play SFX
+
+        const save = loadSave();
+        if (save.memoryCount < item.price) return; // Can't afford
+
+        // Deduct RAM
+        updateSave(s => { s.memoryCount -= item.price; });
+
+        // Apply item effect
+        if (item.id === 'heart') {
+            updateSave(s => { s.heartTanks = Math.min((s.heartTanks || 0) + 1, MAX_HEART_TANKS); });
+        }
+
+        // Start buy animation
+        this.buyAnim = { timer: 0, itemIndex: this.selectedItem, item };
     }
 
     _goBack(game) {
