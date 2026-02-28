@@ -865,8 +865,8 @@ export class GameplayState {
         if (ramImg) {
             const iconW = Math.round(52 * 0.4);
             const iconH = Math.round(27 * 0.4);
-            const rx = fx + frameW - iconW - 40;
-            const ry = fy + frameH - iconH - 20;
+            const rx = fx + frameW - iconW - 41;
+            const ry = fy + frameH - iconH - 18;
 
             ctx.drawImage(ramImg, rx, ry, iconW, iconH);
 
@@ -875,6 +875,30 @@ export class GameplayState {
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText(`x${this.memoryCount}`, rx + iconW + 3, ry + iconH / 2);
+        }
+
+        // Heart tank counter (right side, vertically centered)
+        const ef = this.assets.getImage('effectsSprite');
+        if (ef) {
+            const save = loadSave();
+            const heartFrame = { sx: 476, sy: 147, sw: 14, sh: 15 };
+            const scale = 1;
+            const hw = heartFrame.sw * scale;
+            const hh = heartFrame.sh * scale;
+            const hx = fx + frameW - hw - 33;
+            const hy = fy + Math.floor(frameH / 2) - Math.floor(hh / 2) + 5;
+
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(ef,
+                heartFrame.sx, heartFrame.sy, heartFrame.sw, heartFrame.sh,
+                hx, hy, hw, hh);
+            ctx.imageSmoothingEnabled = true;
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`x${save.heartTanks || 0}`, hx + hw + 3, hy + hh / 2);
         }
 
         ctx.textAlign = 'left';
