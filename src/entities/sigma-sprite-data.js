@@ -106,6 +106,22 @@ export const SIGMA_ANIMATIONS = {
     proj_slash: { loop: false, frames: [
         {sx:240, sy:493, sw:79, sh:50, dur:4},
     ] },
+    // Ladder animations (from sigma_ladder_*.json on sigma_x1.png, non-optimized 1020x896 sheet)
+    ladder_start: { loop: false, frames: [
+        {sx:3, sy:342, sw:30, sh:58, dur:4, oy:10},
+    ] },
+    ladder_climb: { loop: true, frames: [
+        {sx:38,  sy:324, sw:32, sh:76, dur:6, oy:19},
+        {sx:75,  sy:340, sw:33, sh:60, dur:6, ox:-2, oy:12},
+        {sx:113, sy:340, sw:33, sh:60, dur:6, ox:-1, oy:12},
+        {sx:151, sy:324, sw:32, sh:76, dur:6, ox:-1, oy:19},
+        {sx:113, sy:340, sw:33, sh:60, dur:6, oy:12},
+        {sx:75,  sy:340, sw:33, sh:60, dur:6, ox:-1, oy:12},
+    ] },
+    ladder_end: { loop: false, frames: [
+        {sx:188, sy:352, sw:33, sh:48, dur:7, ox:1, oy:12},
+        {sx:226, sy:349, sw:29, sh:51, dur:7},
+    ] },
 };
 
 /**

@@ -1238,11 +1238,22 @@ export class GameplayState {
 
         for (let row = startRow; row <= endRow; row++) {
             for (let col = startCol; col <= endCol; col++) {
-                if (level.getTile(col, row) === 1) {
+                const tile = level.getTile(col, row);
+                if (tile >= 1) {
                     const sx = Math.floor(col * ts - cam.x);
                     const sy = Math.floor(row * ts - cam.y);
+                    if (tile === 2) {
+                        // One-way ladder-top tiles: cyan with dashed top line
+                        ctx.fillStyle = 'rgba(0, 200, 255, 0.15)';
+                        ctx.strokeStyle = 'rgba(0, 200, 255, 0.7)';
+                    }
                     ctx.fillRect(sx, sy, ts, ts);
                     ctx.strokeRect(sx + 0.5, sy + 0.5, ts - 1, ts - 1);
+                    if (tile === 2) {
+                        // Restore green for solid tiles
+                        ctx.fillStyle = 'rgba(0, 255, 80, 0.15)';
+                        ctx.strokeStyle = 'rgba(0, 255, 80, 0.7)';
+                    }
                 }
             }
         }
@@ -1285,6 +1296,26 @@ export class GameplayState {
             ctx.fillRect(sx, sy, tw + 4, 9);
             ctx.fillStyle = '#ffff00';
             ctx.fillText(text, sx + 2, sy + 1);
+        }
+
+        // Ladder zones (purple)
+        if (level.ladders && level.ladders.length > 0) {
+            ctx.strokeStyle = 'rgba(180, 80, 255, 0.8)';
+            ctx.fillStyle = 'rgba(180, 80, 255, 0.12)';
+            ctx.lineWidth = 1;
+            for (const lad of level.ladders) {
+                const sx = Math.floor(lad.x - cam.x);
+                const sy = Math.floor(lad.y - cam.y);
+                if (sx > SCREEN_W || sy > SCREEN_H || sx + lad.w < 0 || sy + lad.h < 0) continue;
+                ctx.fillRect(sx, sy, lad.w, lad.h);
+                ctx.strokeRect(sx + 0.5, sy + 0.5, lad.w - 1, lad.h - 1);
+                // Center line
+                const cx = Math.floor(lad.centerX - cam.x);
+                ctx.beginPath();
+                ctx.moveTo(cx, sy);
+                ctx.lineTo(cx, sy + lad.h);
+                ctx.stroke();
+            }
         }
     }
 
@@ -1360,6 +1391,10 @@ export class GameplayState {
         if (this.player.onSlope) {
             ctx.fillStyle = '#ffa000';
             ctx.fillText('[SLOPE]', SCREEN_W - 44, 30);
+        }
+        if (this.player.state === 'ladder_climb' || this.player.state === 'ladder_end') {
+            ctx.fillStyle = '#b450ff';
+            ctx.fillText('[LADDER]', SCREEN_W - 50, 40);
         }
     }
 

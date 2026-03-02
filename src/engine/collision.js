@@ -5,11 +5,9 @@
  */
 
 /**
- * Check if a point falls on a solid tile.
- * @param {object} level - Level object with getTile(col, row) and tileSize
- * @param {number} x - World X position
- * @param {number} y - World Y position
- * @returns {boolean}
+ * Check if a point falls on a fully solid tile (walls, platforms).
+ * Tile values: 0=empty, 1=solid, 2=ladder-top (one-way).
+ * Ladder-top tiles are NOT solid — they only act as ground from above.
  */
 export function isSolid(level, x, y) {
     const ts = level.tileSize;
@@ -18,7 +16,21 @@ export function isSolid(level, x, y) {
     if (col < 0 || row < 0 || col >= level.widthInTiles || row >= level.heightInTiles) {
         return true; // Treat out-of-bounds as solid
     }
-    return level.getTile(col, row) !== 0;
+    return level.getTile(col, row) === 1;
+}
+
+/**
+ * Check if a point falls on any ground tile (solid OR one-way ladder-top).
+ * Use this for landing/grounded checks where one-way platforms should count.
+ */
+export function isGround(level, x, y) {
+    const ts = level.tileSize;
+    const col = Math.floor(x / ts);
+    const row = Math.floor(y / ts);
+    if (col < 0 || row < 0 || col >= level.widthInTiles || row >= level.heightInTiles) {
+        return true;
+    }
+    return level.getTile(col, row) >= 1;
 }
 
 /**
@@ -53,9 +65,9 @@ export function resolveVertical(level, x, y, w, h, dy) {
     const newY = y + dy;
 
     if (dy > 0) {
-        // Moving down — check bottom edge
+        // Moving down — check bottom edge (isGround: land on both solid and one-way tiles)
         const bottom = newY + h;
-        if (isSolid(level, x + 1, bottom) || isSolid(level, x + w - 1, bottom)) {
+        if (isGround(level, x + 1, bottom) || isGround(level, x + w - 1, bottom)) {
             return {
                 y: Math.floor(bottom / ts) * ts - h - 0.01,
                 grounded: true,
@@ -243,6 +255,44 @@ export function resolveSlopeVertical(level, x, y, w, h, dy, wasGrounded, wasOnSl
     }
 
     return { y: result.y, grounded: result.grounded, onSlope: false };
+}
+
+/**
+ * Find a ladder zone overlapping the given point.
+ * Uses horizontal tolerance from ladder center (like original MMX).
+ * @param {object} level - Level with ladders array
+ * @param {number} px - Player center X
+ * @param {number} py - Player feet Y
+ * @param {number} tolerance - Max horizontal distance from ladder center (default 12)
+ * @returns {object|null} The ladder object, or null
+ */
+export function getLadderAt(level, px, py, tolerance = 12) {
+    for (const lad of level.ladders) {
+        if (py >= lad.topY && py <= lad.bottomY &&
+            Math.abs(px - lad.centerX) < tolerance) {
+            return lad;
+        }
+    }
+    return null;
+}
+
+/**
+ * Find a ladder zone directly below a point (for down-entry).
+ * Checks if any ladder's top is near/below the given Y.
+ * @param {object} level - Level with ladders array
+ * @param {number} px - Player center X
+ * @param {number} py - Player feet Y
+ * @param {number} tolerance - Horizontal tolerance (default 10)
+ * @returns {object|null} The ladder object, or null
+ */
+export function getLadderBelow(level, px, py, tolerance = 10) {
+    for (const lad of level.ladders) {
+        if (Math.abs(px - lad.centerX) < tolerance &&
+            py >= lad.topY - 4 && py <= lad.topY + 16) {
+            return lad;
+        }
+    }
+    return null;
 }
 
 /**

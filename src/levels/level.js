@@ -39,6 +39,9 @@ export class Level {
         // Slope segments extracted from collision polygons (diagonal ground edges)
         this.slopeSegments = [];
 
+        // Ladder zones — trigger rectangles for ladder climbing
+        this.ladders = [];
+
         // Debug: collision shape metadata (name + bounding box) for overlay labels
         this.collisionShapes = [];
     }
@@ -149,6 +152,19 @@ export function createLevelFromMap(mapData, customCollision) {
                 });
             } else if (inst.objectName === 'Spawn Point' && inst.pos) {
                 level.spawnPoints.push({ x: inst.pos.x, y: inst.pos.y });
+            } else if (inst.objectName === 'Ladder' && inst.points && inst.points.length >= 2) {
+                const xs = inst.points.map(p => p.x);
+                const ys = inst.points.map(p => p.y);
+                const x = Math.min(...xs);
+                const y = Math.min(...ys);
+                const w = Math.max(...xs) - x;
+                const h = Math.max(...ys) - y;
+                level.ladders.push({
+                    x, y, w, h,
+                    centerX: x + w / 2,
+                    topY: y,
+                    bottomY: y + h,
+                });
             } else if (inst.objectName === 'Large Health' && inst.pos) {
                 level.healthPickups.push({ x: inst.pos.x, y: inst.pos.y, size: 'large' });
             } else if (inst.objectName === 'Small Health' && inst.pos) {
@@ -170,6 +186,26 @@ export function createLevelFromMap(mapData, customCollision) {
     // Clear staircase tiles under slope segments (from both rasterized and custom collision)
     if (level.slopeSegments.length > 0) {
         _clearSlopeTiles(level);
+    }
+
+    // Fill one-way tiles (value 2) at ladder tops — solid from above, passthrough from below.
+    // Player can walk over them and land on them, but climb up through them.
+    for (const lad of level.ladders) {
+        // If topY isn't near the top edge of the tile row, the tile would
+        // extend above the ladder opening creating an invisible ledge.
+        // Use the next row down so the one-way tile aligns with the surface.
+        const offset = lad.topY % tileSize;
+        const topRow = offset <= tileSize / 2
+            ? Math.floor(lad.topY / tileSize)
+            : Math.floor(lad.topY / tileSize) + 1;
+        const startCol = Math.floor(lad.x / tileSize);
+        const endCol = Math.floor((lad.x + lad.w) / tileSize);
+        for (let col = startCol; col <= endCol; col++) {
+            // Only fill empty tiles — don't overwrite existing solid collision
+            if (level.getTile(col, topRow) === 0) {
+                level.setTile(col, topRow, 2);
+            }
+        }
     }
 
     return level;

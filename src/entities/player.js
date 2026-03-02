@@ -7,7 +7,7 @@
  */
 
 import { Entity } from './entity.js';
-import { resolveHorizontal, resolveSlopeHorizontal, resolveVertical, resolveSlopeVertical, checkWallContact, isSolid } from '../engine/collision.js';
+import { resolveHorizontal, resolveSlopeHorizontal, resolveVertical, resolveSlopeVertical, checkWallContact, isSolid, isGround, getLadderAt, getLadderBelow } from '../engine/collision.js';
 import { getAnim, BUSTER_FRAMES, BUSTER2_FRAMES, BUSTER3_FRAMES, BUSTER4_FRAMES, CHARGE_PARTICLES, DASH_SPARK_FRAMES, DASH_DUST_FRAMES } from './sprite-data.js';
 import { loadSave } from '../engine/save-manager.js';
 
@@ -36,6 +36,8 @@ const P = {
     CHARGE1_TIME:     45,     // Frames to reach charge level 1 (0.75s at 60fps)
     CHARGE2_TIME:     105,    // Frames to reach charge level 2 (1.75s at 60fps)
     CHARGE3_TIME:     180,    // Frames to reach charge level 3 (3.0s, ~2.0s with X1 Arms)
+
+    LADDER_CLIMB_SPEED: 1.25,  // pixels/frame (tuned to match MMX feel)
 
     HURT_VX:          2.0,
     HURT_VY:         -2.0,
@@ -128,6 +130,10 @@ export class Player extends Entity {
         this.warpBeamActive = true;      // Beam descending phase
         this.warpVisible = false;        // Player invisible during beam descent
 
+        // Ladder state
+        this.currentLadder = null;   // Reference to the ladder zone we're on
+        this.ladderAnimPaused = false; // True when idle on ladder (not climbing)
+
         // Death effect state
         this.dieTimer = 0;
         this.diePhase = 0;         // 0=pose, 1=explode, 2=done
@@ -169,6 +175,12 @@ export class Player extends Entity {
             case 'dash':
                 this._dashState(input, level);
                 break;
+            case 'ladder_climb':
+                this._ladderClimbState(input, level);
+                break;
+            case 'ladder_end':
+                this._ladderEndState(input, level);
+                break;
             case 'attack':
                 this._attackState(input, level);
                 break;
@@ -181,13 +193,15 @@ export class Player extends Entity {
         }
 
         // Shooting (available in most states)
-        const noShootStates = ['hurt', 'die', 'warp_in', 'attack'];
+        const noShootStates = ['hurt', 'die', 'warp_in', 'attack', 'ladder_end'];
         if (!noShootStates.includes(this.state)) {
             this._handleShooting(input);
         }
 
-        // Apply velocity and resolve collisions
-        this._moveAndCollide(level);
+        // Apply velocity and resolve collisions (skip on ladder — movement is direct)
+        if (this.state !== 'ladder_climb' && this.state !== 'ladder_end') {
+            this._moveAndCollide(level);
+        }
 
         // Update projectiles
         this._updateShots(level);
@@ -207,6 +221,28 @@ export class Player extends Entity {
     // --- State handlers ---
 
     _groundState(input, level) {
+        // Ladder entry: press UP while overlapping a ladder
+        if (input.held('up')) {
+            const px = this.x + this.hitboxX + this.hitboxW / 2;
+            const py = this.y + this.hitboxY + this.hitboxH;
+            const ladder = getLadderAt(level, px, py);
+            if (ladder) {
+                this._enterLadder(ladder, -10);
+                return;
+            }
+        }
+
+        // Ladder down-entry: press DOWN while standing on a platform above a ladder
+        if (input.pressed('down')) {
+            const px = this.x + this.hitboxX + this.hitboxW / 2;
+            const py = this.y + this.hitboxY + this.hitboxH;
+            const ladder = getLadderBelow(level, px, py);
+            if (ladder) {
+                this._enterLadder(ladder, 16);
+                return;
+            }
+        }
+
         // Horizontal movement
         if (this.wallJumpLock <= 0) {
             if (input.held('left')) {
@@ -255,6 +291,17 @@ export class Player extends Entity {
     }
 
     _airState(input, level) {
+        // Ladder grab: press UP while falling through a ladder zone
+        if (input.held('up')) {
+            const px = this.x + this.hitboxX + this.hitboxW / 2;
+            const py = this.y + this.hitboxY + this.hitboxH;
+            const ladder = getLadderAt(level, px, py);
+            if (ladder) {
+                this._enterLadder(ladder);
+                return;
+            }
+        }
+
         // Horizontal movement — use dash speed if dash-jumping
         const moveSpeed = this.isDashing ? this.dashSpeed : P.RUN_SPEED;
         if (this.wallJumpLock <= 0) {
@@ -506,6 +553,114 @@ export class Player extends Entity {
         } else {
             this.vx = 0;
         }
+    }
+
+    /**
+     * Enter ladder climbing state. Snap X to ladder center, stop velocity.
+     * @param {object} ladder - The ladder zone object
+     * @param {number} [incY=0] - Initial Y offset (negative = move up on entry)
+     */
+    _enterLadder(ladder, incY = 0) {
+        this.currentLadder = ladder;
+        this.state = 'ladder_climb';
+        this.vx = 0;
+        this.vy = 0;
+        this.grounded = false;
+        this.isDashing = false;
+        this.dashTimer = 0;
+        this.ladderAnimPaused = true;
+        // Snap X to ladder center
+        this.x = ladder.centerX - this.hitboxX - this.hitboxW / 2;
+        // Apply initial Y offset (move up slightly when entering from ground)
+        if (incY) {
+            this.y += incY;
+        }
+    }
+
+    _ladderClimbState(input, level) {
+        const ladder = this.currentLadder;
+        if (!ladder) {
+            this.state = 'fall';
+            return;
+        }
+
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+        this.ladderAnimPaused = true;
+
+        // Climb up
+        if (input.held('up')) {
+            this.y -= P.LADDER_CLIMB_SPEED;
+            this.ladderAnimPaused = false;
+
+            // Check if we've reached the top of the ladder
+            const newFeetY = this.y + this.hitboxY + this.hitboxH;
+            if (newFeetY <= ladder.topY + 12) {
+                // Transition to ladder_end animation at the top
+                this.state = 'ladder_end';
+                this.animFrame = 0;
+                this.animTimer = 0;
+                // Position so feet are at ladder top
+                this.y = ladder.topY - this.hitboxH - this.hitboxY;
+                return;
+            }
+        }
+
+        // Climb down
+        if (input.held('down')) {
+            this.y += P.LADDER_CLIMB_SPEED;
+            this.ladderAnimPaused = false;
+
+            // Check if we've reached the bottom and hit ground
+            const newFeetY = this.y + this.hitboxY + this.hitboxH;
+            if (newFeetY >= ladder.bottomY) {
+                // Check if there's ground below (solid or one-way ladder top)
+                const checkX = this.x + this.hitboxX + this.hitboxW / 2;
+                if (isGround(level, checkX, newFeetY + 1)) {
+                    // Snap to ground and go idle
+                    const ts = level.tileSize;
+                    const row = Math.floor(newFeetY / ts);
+                    this.y = row * ts - this.hitboxH - this.hitboxY - 0.01;
+                    this.grounded = true;
+                    this.currentLadder = null;
+                    this.state = 'idle';
+                    return;
+                }
+                // No ground — fell off ladder bottom
+                this.currentLadder = null;
+                this.state = 'fall';
+                return;
+            }
+        }
+
+        // Jump off ladder
+        if (input.pressed('jump') && this.shootAnimTimer <= 0) {
+            this.currentLadder = null;
+            this.state = 'fall';
+            this.vy = 0;
+            return;
+        }
+
+        // Keep X snapped to ladder center
+        this.x = ladder.centerX - this.hitboxX - this.hitboxW / 2;
+        this.vx = 0;
+        this.vy = 0;
+    }
+
+    _ladderEndState(input, level) {
+        // Play the ladder_end animation then transition to idle
+        const anim = this._getAnim('ladder_end');
+        if (this.animFrame >= anim.frames.length - 1 &&
+            this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1) {
+            this.currentLadder = null;
+            this.state = 'idle';
+            this.vx = 0;
+            // Small downward velocity so _moveAndCollide detects the one-way
+            // ladder-top tiles as ground (grounded detection quirk: dy must be > 0)
+            this.vy = P.GRAVITY;
+            return;
+        }
+        this.vx = 0;
+        this.vy = 0;
     }
 
     _dieState(input, level) {
@@ -1023,6 +1178,7 @@ export class Player extends Entity {
         this.state = 'hurt';
         this.dashTimer = 0;
         this.isDashing = false;
+        this.currentLadder = null;
         // X1 Helmet: keep charge through hits
         if (this.armorHelmet < 1) {
             this.chargeTime = 0;
@@ -1068,6 +1224,11 @@ export class Player extends Entity {
         // Clamp frame index to current animation length
         if (this.animFrame >= frames.length) {
             this.animFrame = anim.loop ? (anim.loopStart || 0) + (this.animFrame - (anim.loopStart || 0)) % (frames.length - (anim.loopStart || 0)) : frames.length - 1;
+        }
+
+        // Pause animation when idle on ladder (not moving up/down)
+        if (this.state === 'ladder_climb' && this.ladderAnimPaused && this.shootAnimTimer <= 0) {
+            return;
         }
 
         // Advance frame timer

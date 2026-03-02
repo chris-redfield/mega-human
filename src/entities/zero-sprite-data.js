@@ -200,6 +200,22 @@ export const ZERO_ANIMATIONS = {
         {sx:831, sy:1021, sw:49, sh:62, dur:2, ox:-5, oy:-1},
         {sx:884, sy:1020, sw:47, sh:63, dur:1, ox:-4, oy:-1},
     ] },
+    // Ladder animations (from zero_ladder_*.json on zero.png, non-optimized 1875x1908 sheet)
+    ladder_start: { loop: false, frames: [
+        {sx:6, sy:378, sw:36, sh:47, dur:4, ox:-4, oy:7},
+    ] },
+    ladder_climb: { loop: true, frames: [
+        {sx:48,  sy:368, sw:26, sh:57, dur:6, ox:2, oy:11},
+        {sx:78,  sy:374, sw:27, sh:47, dur:6, ox:-1, oy:6},
+        {sx:108, sy:374, sw:27, sh:47, dur:6, ox:-1, oy:6},
+        {sx:137, sy:368, sw:29, sh:57, dur:6, ox:-5, oy:11},
+        {sx:108, sy:374, sw:27, sh:47, dur:6, ox:-1, oy:6},
+        {sx:344, sy:128, sw:27, sh:47, dur:6, ox:-1, oy:6},
+    ] },
+    ladder_end: { loop: false, frames: [
+        {sx:169, sy:370, sw:27, sh:39, dur:7, ox:1, oy:2},
+        {sx:200, sy:370, sw:34, sh:43, dur:7, ox:-5, oy:3},
+    ] },
 };
 
 /**

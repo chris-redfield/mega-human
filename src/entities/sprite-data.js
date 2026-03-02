@@ -20,6 +20,7 @@ const SHOOT_ANIM_MAP = {
     fall: 'fall_shoot',
     dash: 'dash_shoot',
     wall_slide: 'wall_slide_shoot',
+    ladder_climb: 'ladder_shoot',
 };
 
 // Buster projectile sprite frames (from effects.png)
@@ -241,6 +242,25 @@ export const ANIMATIONS = {
     ] },
     crouch: { loop: false, frames: [
         {sx:392, sy:73, sw:34, sh:27, dur:4},
+    ] },
+    // Ladder animations (from mmx_ladder_*.json on XDefault.png, non-optimized 476x1786 sheet)
+    ladder_start: { loop: false, frames: [
+        {sx:7, sy:267, sw:21, sh:36, dur:4},
+    ] },
+    ladder_climb: { loop: true, frames: [
+        {sx:36,  sy:261, sw:18, sh:49, dur:6, oy:6},
+        {sx:60,  sy:266, sw:20, sh:40, dur:6, oy:2},
+        {sx:84,  sy:266, sw:20, sh:40, dur:6, oy:2},
+        {sx:111, sy:261, sw:18, sh:49, dur:6, oy:6},
+        {sx:84,  sy:266, sw:20, sh:40, dur:6, oy:2},
+        {sx:60,  sy:266, sw:20, sh:40, dur:6, oy:2},
+    ] },
+    ladder_shoot: { loop: false, frames: [
+        {sx:137, sy:261, sw:26, sh:48, dur:30, ox:4, oy:5, hx:15, hy:-23},
+    ] },
+    ladder_end: { loop: false, frames: [
+        {sx:169, sy:281, sw:21, sh:32, dur:7},
+        {sx:195, sy:274, sw:18, sh:34, dur:7},
     ] },
 };
 
