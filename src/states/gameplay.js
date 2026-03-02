@@ -342,16 +342,20 @@ export class GameplayState {
         const cx = boss.x + boss.hitboxX + boss.hitboxW / 2;
         const cy = boss.y + boss.hitboxY + boss.hitboxH;
 
-        // Guaranteed first drop
-        const mem1 = new MemoryPickup(cx, cy);
+        // Guaranteed 2 drops
+        const mem1 = new MemoryPickup(cx - 5, cy);
         mem1.image = ramImg;
         this.memoryPickups.push(mem1);
 
-        // 25% chance for a second drop, offset 10px to the right
+        const mem2 = new MemoryPickup(cx + 5, cy);
+        mem2.image = ramImg;
+        this.memoryPickups.push(mem2);
+
+        // 25% chance for a third drop
         if (Math.random() < 0.25) {
-            const mem2 = new MemoryPickup(cx + 10, cy);
-            mem2.image = ramImg;
-            this.memoryPickups.push(mem2);
+            const mem3 = new MemoryPickup(cx + 15, cy);
+            mem3.image = ramImg;
+            this.memoryPickups.push(mem3);
         }
     }
 
