@@ -164,7 +164,7 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 | Item | ID | Effect (from source code) | Cost | Spritesheet | Status |
 |------|----|---------------------------|------|-------------|--------|
 | X1 Helmet | `x1_helmet` | Reduce flinch: don't lose buster charge when hit. | 1 | XHelmetMenu.png | **DONE** 20 RAM, offsetY:75 |
-| X1 Body | `x1_body` | 12.5% damage reduction (dmg/8). Flinch time ×0.75 (25% faster recovery). | 3 | XBodyMenu.png | TODO LOAD |
+| X1 Body | `x1_body` | 12.5% damage reduction (dmg/8). Flinch time ×0.75 (25% faster recovery). | 3 | XBodyMenu.png | **DONE** 20 RAM, offsetY:50 |
 | X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 15 sine-wave shots (3 lines × 5), 4 dmg each. Pink/purple charge particles at L3. Overlay: `XArm.png`. | 4 | XArmMenu.png | **DONE** 20 RAM, offsetY:40 |
 | X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). Overlay: `XBoots.png`. | 2 | XBootsMenu.png | **DONE** 20 RAM, offsetY:0 |
 
@@ -200,6 +200,7 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 - Armor sprites are 118×186 full-body portraits (too tall for current 146px shop cards — scale or adjust layout)
 - Enhancement Chip is 8×8 — needs heavy upscaling or custom rendering
 - Armor slot indices in code: 0=Boots, 1=Body, 2=Helmet, 3=Arms
+- **Helmet overlay render order:** XHelmet.png contains full-body character sprites (not just the helmet piece). It MUST be drawn FIRST in the overlay layer order, otherwise it covers boots/body overlays. Current order: helmet → boots → body → arm.
 - Armor generation indices: 1=X1, 2=X2, 3=X3, 15=Chip enhanced
 
 ---

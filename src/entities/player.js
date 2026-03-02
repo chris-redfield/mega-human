@@ -1011,9 +1011,12 @@ export class Player extends Entity {
     takeDamage(amount, fromDirection) {
         if (this.invincibleTimer > 0 || this.state === 'hurt') return;
 
-        this.hp -= amount;
+        // X1 Body: 12.5% damage reduction (ceil so even small hits are reduced by at least 1)
+        const dmg = this.armorBody >= 1 ? Math.max(1, amount - Math.ceil(amount / 8)) : amount;
+        this.hp -= dmg;
         this.invincibleTimer = P.INVINCIBLE_TIME;
-        this.hurtTimer = P.HURT_DURATION;
+        // X1 Body: 25% faster flinch recovery
+        this.hurtTimer = this.armorBody >= 1 ? Math.floor(P.HURT_DURATION * 0.75) : P.HURT_DURATION;
         this.vx = P.HURT_VX * -fromDirection;
         this.vy = P.HURT_VY;
         this.grounded = false;
@@ -1194,10 +1197,11 @@ export class Player extends Entity {
         const oy = frame.oy || 0;
         const drawY = feetY - frame.sh + oy;
 
-        // Draw each armor layer: boots, body, helmet, arm (order matches reference)
+        // Draw helmet first (full-body sprite), then partial overlays on top
         const layers = [
-            { level: this.armorBoots,  key: 'boots' },
             { level: this.armorHelmet, key: 'helmet' },
+            { level: this.armorBoots,  key: 'boots' },
+            { level: this.armorBody,   key: 'body' },
             { level: this.armorArm,    key: 'arm' },
         ];
 

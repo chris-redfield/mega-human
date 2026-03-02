@@ -175,6 +175,7 @@ export class GameplayState {
             // Armor overlay images (only X has armor upgrades)
             player.armorImages = {
                 boots:  [null, this.assets.getImage('xBootsOverlay'), null, null], // [none, X1, X2, X3]
+                body:   [null, this.assets.getImage('xBodyOverlay'), null, null],
                 helmet: [null, this.assets.getImage('xHelmetOverlay'), null, null],
                 arm:    [null, this.assets.getImage('xArmOverlay'), null, null],
             };

@@ -69,8 +69,9 @@ const ICON_ANIM_SPEED = 14; // frames per animation step
 // Standalone image icons (asset key → crop rect, or null for full image)
 const IMAGE_ICONS = {
     x1_boots:  { asset: 'x1Boots',  sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 0 },
-    x1_arms:   { asset: 'x1Arms',   sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 40 },
-    x1_helmet: { asset: 'x1Helmet', sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 75 },
+    x1_arms:   { asset: 'x1Arms',   sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 60, scale: 1.4 },
+    x1_helmet: { asset: 'x1Helmet', sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 145, scale: 1.7 },
+    x1_body:   { asset: 'x1Body',   sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 62, scale: 1.2 },
 };
 
 // ── Shop Items ──
@@ -95,6 +96,13 @@ const SHOP_ITEMS = [
         description: 'Keep charge',
         price: 20,
         icon: 'x1_helmet',
+    },
+    {
+        id: 'x1_body',
+        name: 'X1 Body',
+        description: 'Dmg -12.5%',
+        price: 20,
+        icon: 'x1_body',
     },
     {
         id: 'x1_boots',
@@ -354,7 +362,8 @@ export class ShopState {
             const img = this.assets.getImage(imgIcon.asset);
             if (!img) return;
             const maxH = 115;
-            const scale = Math.min(maxH / imgIcon.sh, 1);
+            const baseScale = Math.min(maxH / imgIcon.sh, 1);
+            const scale = baseScale * (imgIcon.scale || 1);
             const dw = imgIcon.sw * scale;
             const dh = imgIcon.sh * scale;
             // Align bottom edge above the name row, with per-icon offset
@@ -440,6 +449,7 @@ export class ShopState {
             if (item.id === 'x1_boots' && armor.boots >= 1) return false;
             if (item.id === 'x1_arms' && armor.arm >= 1) return false;
             if (item.id === 'x1_helmet' && armor.helmet >= 1) return false;
+            if (item.id === 'x1_body' && armor.body >= 1) return false;
             return true;
         });
     }
@@ -467,6 +477,8 @@ export class ShopState {
             updateSave(s => { if (!s.armor) s.armor = {}; s.armor.arm = 1; });
         } else if (item.id === 'x1_helmet') {
             updateSave(s => { if (!s.armor) s.armor = {}; s.armor.helmet = 1; });
+        } else if (item.id === 'x1_body') {
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.body = 1; });
         }
 
         // Start buy animation
