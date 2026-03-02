@@ -17,6 +17,7 @@ import { MemoryPickup } from '../entities/memory-pickup.js';
 import { ChillPenguin } from '../entities/chill-penguin.js';
 import { StormEagle } from '../entities/storm-eagle.js';
 import { FlameMammoth } from '../entities/flame-mammoth.js';
+import { LaunchOctopus } from '../entities/launch-octopus.js';
 import { createLevelFromMap } from '../levels/level.js';
 import { loadSave, updateSave } from '../engine/save-manager.js';
 
@@ -282,6 +283,7 @@ export class GameplayState {
             frozentown:     { x: 1650, y: 150 },
             highway:        { x: 2470, y: 50 },
             robotjunkyard:  { x: 1350, y: 400 },
+            deepseabase:    { x: 1730, y: 650 },
         };
         if (bossSpawns[this.stageName]) {
             const pos = bossSpawns[this.stageName];
@@ -292,6 +294,9 @@ export class GameplayState {
             } else if (this.stageName === 'robotjunkyard') {
                 boss = new FlameMammoth(pos.x, pos.y);
                 boss.activationX = 750;
+            } else if (this.stageName === 'deepseabase') {
+                boss = new LaunchOctopus(pos.x, pos.y);
+                boss.activationX = 1500;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
             }
