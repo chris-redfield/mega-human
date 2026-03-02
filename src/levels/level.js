@@ -94,8 +94,8 @@ export function createLevelFromMap(mapData, customCollision) {
     // Custom collision may specify a different tile size (e.g. 8 for finer precision)
     const tileSize = (customCollision && customCollision.tileSize) || 16;
     const widthInTiles = Math.ceil(mapData.width / tileSize);
-    // Extend height slightly beyond visual area to include pit collision walls
-    const maxY = Math.max(mapData.height, mapData.killY || mapData.height);
+    // Extend height past killY so the player can fall through and trigger death
+    const maxY = Math.max(mapData.height, (mapData.killY || mapData.height) + 200);
     const heightInTiles = Math.ceil(maxY / tileSize);
 
     const level = new Level(widthInTiles, heightInTiles, tileSize);
