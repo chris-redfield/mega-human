@@ -16,6 +16,7 @@ import { HealthPickup } from '../entities/health-pickup.js';
 import { MemoryPickup } from '../entities/memory-pickup.js';
 import { ChillPenguin } from '../entities/chill-penguin.js';
 import { StormEagle } from '../entities/storm-eagle.js';
+import { FlameMammoth } from '../entities/flame-mammoth.js';
 import { createLevelFromMap } from '../levels/level.js';
 import { loadSave, updateSave } from '../engine/save-manager.js';
 
@@ -278,8 +279,9 @@ export class GameplayState {
 
         // Boss spawn
         const bossSpawns = {
-            frozentown: { x: 1650, y: 150 },
-            highway:    { x: 2470, y: 50 },
+            frozentown:     { x: 1650, y: 150 },
+            highway:        { x: 2470, y: 50 },
+            robotjunkyard:  { x: 1350, y: 400 },
         };
         if (bossSpawns[this.stageName]) {
             const pos = bossSpawns[this.stageName];
@@ -287,6 +289,9 @@ export class GameplayState {
             if (this.stageName === 'highway') {
                 boss = new StormEagle(pos.x, pos.y);
                 boss.activationX = 1800;
+            } else if (this.stageName === 'robotjunkyard') {
+                boss = new FlameMammoth(pos.x, pos.y);
+                boss.activationX = 750;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
             }

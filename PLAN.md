@@ -69,6 +69,7 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 **Current bosses:**
 - **Chill Penguin** (`chill-penguin.js`): 32 HP, 6 AI states (idle, shoot, slide, blow, hurt, dying). Frozentown stage at (1650, 150).
 - **Storm Eagle** (`storm-eagle.js`): Highway stage at (2470, 50), activates at x=1800.
+- **Flame Mammoth** (`flame-mammoth.js`): 32 HP, 6 AI states (idle, shoot, oil, stomp, hurt, dying). Robot Junkyard stage at (1150, 480). Signature mechanic: oil-fire combo (oil puddle + fireball = big fire hazard).
 
 **Boss drops:** 100% guaranteed 1 RAM memory + 25% chance of second (offset 10px right). Implemented in `_spawnBossDrop()`.
 
