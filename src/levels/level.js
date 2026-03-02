@@ -16,12 +16,16 @@ export class Level {
         this.tileSize = tileSize;
         this.width = widthInTiles * tileSize;
         this.height = heightInTiles * tileSize;
+        this.visualHeight = this.height; // camera bound — set to mapData.height in createLevelFromMap
 
         // Collision grid: 0 = empty, 1 = solid
         this.collision = new Uint8Array(widthInTiles * heightInTiles);
 
         // Kill zones — rectangular regions that instantly kill the player
         this.killZones = [];
+
+        // No Scroll zones — camera cannot enter these areas (from original MMX map data)
+        this.noScrollZones = [];
 
         // Fallback killY for stages without explicit kill zones (below map = death)
         this.killY = this.height + 100;
@@ -95,6 +99,7 @@ export function createLevelFromMap(mapData, customCollision) {
     const heightInTiles = Math.ceil(maxY / tileSize);
 
     const level = new Level(widthInTiles, heightInTiles, tileSize);
+    level.visualHeight = mapData.height; // camera bound — tightened below after parsing kill zones
 
     // Parse instances for non-collision data (kill zones, spawns, pickups)
     // and collision shapes (only if no custom collision provided)
@@ -132,6 +137,16 @@ export function createLevelFromMap(mapData, customCollision) {
                 if (!customCollision) {
                     _rasterizePolygon(level, polygon, tileSize, widthInTiles, heightInTiles);
                 }
+            } else if (inst.objectName === 'No Scroll' && inst.points && inst.points.length >= 2) {
+                const xs = inst.points.map(p => p.x);
+                const ys = inst.points.map(p => p.y);
+                level.noScrollZones.push({
+                    x: Math.min(...xs),
+                    y: Math.min(...ys),
+                    w: Math.max(...xs) - Math.min(...xs),
+                    h: Math.max(...ys) - Math.min(...ys),
+                    freeDir: (inst.properties && inst.properties.freeDir) || 'up',
+                });
             } else if (inst.objectName === 'Spawn Point' && inst.pos) {
                 level.spawnPoints.push({ x: inst.pos.x, y: inst.pos.y });
             } else if (inst.objectName === 'Large Health' && inst.pos) {

@@ -94,7 +94,8 @@ export class GameplayState {
         const mapData = this.assets.getJSON(`${this.stageName}_map`);
         const customCollision = this.assets.getJSON(`${this.stageName}_collision`);
         this.level = createLevelFromMap(mapData, customCollision);
-        this.camera = new Camera(this.level.width, this.level.height);
+        this.camera = new Camera(this.level.width, this.level.visualHeight);
+        this.camera.noScrollZones = this.level.noScrollZones;
 
         // Load stage images
         this.backgroundImg = this.assets.getImage(`${this.stageName}_background`);

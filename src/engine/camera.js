@@ -13,6 +13,7 @@ export class Camera {
         this.y = 0;
         this.levelWidth = levelWidth;
         this.levelHeight = levelHeight;
+        this.noScrollZones = []; // set by gameplay after construction
     }
 
     /** Follow a target entity. Mega Man X uses near-instant horizontal follow. */
@@ -33,5 +34,21 @@ export class Camera {
         // Clamp to level bounds
         this.x = Math.max(0, Math.min(this.x, this.levelWidth - SCREEN_W));
         this.y = Math.max(0, Math.min(this.y, this.levelHeight - SCREEN_H));
+
+        // No Scroll zones — push camera out if viewport overlaps a restricted area
+        for (const ns of this.noScrollZones) {
+            const viewR = this.x + SCREEN_W;
+            const viewB = this.y + SCREEN_H;
+            const overlapX = this.x < ns.x + ns.w && viewR > ns.x;
+            const overlapY = this.y < ns.y + ns.h && viewB > ns.y;
+            if (!overlapX || !overlapY) continue;
+
+            switch (ns.freeDir) {
+                case 'up':    this.y = Math.min(this.y, ns.y - SCREEN_H); break;
+                case 'down':  this.y = Math.max(this.y, ns.y + ns.h); break;
+                case 'left':  this.x = Math.min(this.x, ns.x - SCREEN_W); break;
+                case 'right': this.x = Math.max(this.x, ns.x + ns.w); break;
+            }
+        }
     }
 }
