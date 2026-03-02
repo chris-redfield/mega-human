@@ -1020,10 +1020,13 @@ export class Player extends Entity {
         this.state = 'hurt';
         this.dashTimer = 0;
         this.isDashing = false;
-        this.chargeTime = 0;
-        this.chargeLevel = 0;
-        this.chargeFlashTimer = 0;
-        if (this.audio) this.audio.stopAllLoops();
+        // X1 Helmet: keep charge through hits
+        if (this.armorHelmet < 1) {
+            this.chargeTime = 0;
+            this.chargeLevel = 0;
+            this.chargeFlashTimer = 0;
+            if (this.audio) this.audio.stopAllLoops();
+        }
 
         if (this.hp <= 0) {
             this.hp = 0;
@@ -1194,6 +1197,7 @@ export class Player extends Entity {
         // Draw each armor layer: boots, body, helmet, arm (order matches reference)
         const layers = [
             { level: this.armorBoots,  key: 'boots' },
+            { level: this.armorHelmet, key: 'helmet' },
             { level: this.armorArm,    key: 'arm' },
         ];
 

@@ -174,8 +174,9 @@ export class GameplayState {
             player.spriteImage = this.assets.getImage('playerSprite');
             // Armor overlay images (only X has armor upgrades)
             player.armorImages = {
-                boots: [null, this.assets.getImage('xBootsOverlay'), null, null], // [none, X1, X2, X3]
-                arm: [null, this.assets.getImage('xArmOverlay'), null, null],
+                boots:  [null, this.assets.getImage('xBootsOverlay'), null, null], // [none, X1, X2, X3]
+                helmet: [null, this.assets.getImage('xHelmetOverlay'), null, null],
+                arm:    [null, this.assets.getImage('xArmOverlay'), null, null],
             };
         }
         player.effectsImage = this.assets.getImage('effectsSprite');
@@ -448,6 +449,7 @@ export class GameplayState {
 
         // Sword hitbox ↔ enemies collision (Zero/Sigma)
         this._checkSwordVsEnemies();
+
 
         // Remove dead enemies, spawn drops
         for (const enemy of this.enemies) {

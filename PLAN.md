@@ -6,6 +6,8 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 
 **Goal:** A playable browser game with authentic MMX gameplay — not an emulator wrapper.
 
+**Local MMX-Deathmatch source:** `MMX-Online-Deathmatch/LevelEditor/assets/` (spritesheets, maps, sprites — all relative to project root)
+
 ---
 
 ## How to Import a New Stage Map
@@ -161,7 +163,7 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 
 | Item | ID | Effect (from source code) | Cost | Spritesheet | Status |
 |------|----|---------------------------|------|-------------|--------|
-| X1 Helmet | `x1_helmet` | Headbutt on jump: 2 dmg (normal), 4 dmg (up-dash). Hitbox 14×4 px. | 1 | XHelmetMenu.png | TODO LOAD |
+| X1 Helmet | `x1_helmet` | Reduce flinch: don't lose buster charge when hit. | 1 | XHelmetMenu.png | **DONE** 20 RAM, offsetY:75 |
 | X1 Body | `x1_body` | 12.5% damage reduction (dmg/8). Flinch time ×0.75 (25% faster recovery). | 3 | XBodyMenu.png | TODO LOAD |
 | X1 Arms | `x1_arms` | Charge speed ×1.5 (50% faster). Unlocks L3 charge: 15 sine-wave shots (3 lines × 5), 4 dmg each. Pink/purple charge particles at L3. Overlay: `XArm.png`. | 4 | XArmMenu.png | **DONE** 20 RAM, offsetY:40 |
 | X1 Boots | `x1_boots` | Ground dash speed ×1.15 (15% faster). Overlay: `XBoots.png`. | 2 | XBootsMenu.png | **DONE** 20 RAM, offsetY:0 |
@@ -170,7 +172,7 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 
 | Item | ID | Effect (from source code) | Cost | Spritesheet | Status |
 |------|----|---------------------------|------|-------------|--------|
-| X2 Helmet | `x2_helmet` | Scan beam: tag enemies within 150px. Tagged enemies show HP bar through walls. | 1 | XHelmetMenu2.png | TODO LOAD |
+| X2 Helmet | `x2_helmet` | Increase enemy drop % chance by 5%. | 1 | XHelmetMenu2.png | TODO LOAD |
 | X2 Body | `x2_body` | 12.5% damage reduction + Giga Crush weapon: 12 dmg AoE, invincible during anim, costs 32 ammo. | 3 | XBodyMenu2.png | TODO LOAD |
 | X2 Arms | `x2_arms` | Stocked charge shot: L3 charge fires, then a second auto-fires on next press. 4 dmg each. | 4 | XArmMenu2.png | TODO LOAD |
 | X2 Boots | `x2_boots` | Air dash duration ×1.15 (15% longer/farther: 0.6s → 0.69s). | 2 | XBootsMenu2.png | TODO LOAD |
@@ -179,7 +181,7 @@ All sprites sourced from `MMX-Online-Deathmatch/LevelEditor/assets/sprites/`. Cu
 
 | Item | ID | Effect (from source code) | Chip Enhancement | Cost | Spritesheet | Status |
 |------|----|---------------------------|------------------|------|-------------|--------|
-| X3 Helmet | `x3_helmet` | Radar HUD: shows enemy positions on minimap. | +HP regen: 1 HP/sec after 4s no damage (max 32 HP total healed per life). | 1 | XHelmetMenu3.png | TODO LOAD |
+| X3 Helmet | `x3_helmet` | Reduce buster charge time by 10% (faster charging). | +HP regen: 1 HP/sec after 4s no damage (max 32 HP total healed per life). | 1 | XHelmetMenu3.png | TODO LOAD |
 | X3 Body | `x3_body` | Barrier on damage: 25% dmg reduction for 0.75–1.5s, no cooldown. | +Orange barrier: 50% dmg reduction instead of 25%. | 3 | XBodyMenu3.png | TODO LOAD |
 | X3 Arms | `x3_arms` | Hyper Buster weapon: X3 charge shot (4 dmg, accelerating) + Cross Shot. 8 ammo/shot. | +Half ammo: all weapon ammo costs ×0.5. | 4 | XArmMenu3.png | TODO LOAD |
 | X3 Boots | `x3_boots` | Upward air dash: press Up+Dash in air for vertical dash. | +Double air dash: can air-dash twice per jump. | 2 | XBootsMenu3.png | TODO LOAD |

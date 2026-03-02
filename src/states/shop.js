@@ -68,25 +68,33 @@ const ICON_ANIM_SPEED = 14; // frames per animation step
 
 // Standalone image icons (asset key → crop rect, or null for full image)
 const IMAGE_ICONS = {
-    x1_boots: { asset: 'x1Boots', sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 0 },
-    x1_arms:  { asset: 'x1Arms',  sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 40 },
+    x1_boots:  { asset: 'x1Boots',  sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 0 },
+    x1_arms:   { asset: 'x1Arms',   sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 40 },
+    x1_helmet: { asset: 'x1Helmet', sx: 0, sy: 0, sw: 118, sh: 186, offsetY: 75 },
 };
 
 // ── Shop Items ──
 const SHOP_ITEMS = [
+    // {
+    //     id: 'heart',
+    //     name: 'Heart',
+    //     description: 'Max HP +1',
+    //     price: 8,
+    //     icon: 'heart',
+    // },
+    // {
+    //     id: 'subtank',
+    //     name: 'Sub Tank',
+    //     description: 'Store 16 HP',
+    //     price: 16,
+    //     icon: 'subtank',
+    // },
     {
-        id: 'heart',
-        name: 'Heart',
-        description: 'Max HP +1',
-        price: 8,
-        icon: 'heart',
-    },
-    {
-        id: 'subtank',
-        name: 'Sub Tank',
-        description: 'Store 16 HP',
-        price: 16,
-        icon: 'subtank',
+        id: 'x1_helmet',
+        name: 'X1 Helmet',
+        description: 'Keep charge',
+        price: 20,
+        icon: 'x1_helmet',
     },
     {
         id: 'x1_boots',
@@ -431,6 +439,7 @@ export class ShopState {
             // Hide armor items already purchased
             if (item.id === 'x1_boots' && armor.boots >= 1) return false;
             if (item.id === 'x1_arms' && armor.arm >= 1) return false;
+            if (item.id === 'x1_helmet' && armor.helmet >= 1) return false;
             return true;
         });
     }
@@ -456,6 +465,8 @@ export class ShopState {
             updateSave(s => { if (!s.armor) s.armor = {}; s.armor.boots = 1; });
         } else if (item.id === 'x1_arms') {
             updateSave(s => { if (!s.armor) s.armor = {}; s.armor.arm = 1; });
+        } else if (item.id === 'x1_helmet') {
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.helmet = 1; });
         }
 
         // Start buy animation
