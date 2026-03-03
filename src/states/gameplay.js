@@ -20,6 +20,7 @@ import { FlameMammoth } from '../entities/flame-mammoth.js';
 import { LaunchOctopus } from '../entities/launch-octopus.js';
 import { SparkMandrill } from '../entities/spark-mandrill.js';
 import { BoomerKuwanger } from '../entities/boomer-kuwanger.js';
+import { ArmoredArmadillo } from '../entities/armored-armadillo.js';
 import { createLevelFromMap } from '../levels/level.js';
 import { loadSave, updateSave } from '../engine/save-manager.js';
 
@@ -289,6 +290,7 @@ export class GameplayState {
             deepseabase:    { x: 1730, y: 650 },
             volcaniczone:   { x: 1200, y: 130 },
             tower:          { x: 920, y: 140 },
+            shipyard:       { x: 850, y: 860 },
         };
         if (bossSpawns[this.stageName]) {
             const pos = bossSpawns[this.stageName];
@@ -308,6 +310,9 @@ export class GameplayState {
             } else if (this.stageName === 'tower') {
                 boss = new BoomerKuwanger(pos.x, pos.y);
                 boss.activationX = 800;
+            } else if (this.stageName === 'shipyard') {
+                boss = new ArmoredArmadillo(pos.x, pos.y);
+                boss.activationX = 700;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
             }
