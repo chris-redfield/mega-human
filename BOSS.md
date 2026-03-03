@@ -11,12 +11,14 @@ All boss sprites sourced from [MMX-Online-Deathmatch](https://github.com/gamemak
 
 | Boss | Game | Stage | Spawn | ActivationX | File | States |
 |------|------|-------|-------|-------------|------|--------|
-| Chill Penguin | X1 | frozentown | (1650, 150) | — | `src/entities/chill-penguin.js` | idle, shoot, slide, blow, hurt, dying |
+| Chill Penguin | X1 | frozentown | (1650, 150) | — | `src/entities/chill-penguin.js` | idle, shoot, slide, blow, jump_start, jump, land, hurt, dying |
 | Storm Eagle | X1 | highway | (2470, 50) | 1800 | `src/entities/storm-eagle.js` | idle, shoot, dive, flap, hurt, dying |
 | Flame Mammoth | X1 | robotjunkyard | (1350, 400) | 750 | `src/entities/flame-mammoth.js` | idle, shoot, oil, stomp, hurt, dying |
 | Launch Octopus | X1 | deepseabase | (1730, 650) | 1500 | `src/entities/launch-octopus.js` | idle, shoot, torpedo, spin, hurt, dying |
+| Spark Mandrill | X1 | volcaniczone | (1200, 130) | 1000 | `src/entities/spark-mandrill.js` | idle, shoot, punch, dash_punch, jump_start, jump, land, hurt, dying |
+| Boomer Kuwanger | X1 | tower | (920, 140) | 800 | `src/entities/boomer-kuwanger.js` | idle, shoot, dash, deadlift, teleport, jump_start, jump, land, hurt, dying |
 
-All 4 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded as `effectsSprite`). 32 HP each.
+All 6 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded as `effectsSprite`). 32 HP each.
 
 ---
 
@@ -30,9 +32,9 @@ All 4 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded 
 | Storm Eagle | `storme` | 20 | egg shot, baby birds, gust, dive, fly | YES |
 | Flame Mammoth | `flamem` | 16 | fireball, oil ball, oil spill, shockwave, stomp | YES |
 | Launch Octopus | `launcho` | 18 | missile spread, homing torpedo, spin (armor), whirlpool, drain | YES |
-| Spark Mandrill | `sparkm` | 14 | punch, dash punch, spark projectile, climb, freeze | NO |
+| Spark Mandrill | `sparkm` | 14 | punch, dash punch, spark projectile, climb, freeze | YES |
 | Armored Armadillo | `armoreda` | 31 | shoot, roll (enter/exit), block, charge/release, armor shedding (na_ variants) | NO |
-| Boomer Kuwanger | `boomerk` | 25 | boomerang horn, dash, deadlift, catch, teleport, bald form (bald_ variants) | NO |
+| Boomer Kuwanger | `boomerk` | 25 | boomerang horn, dash, deadlift, catch, teleport, bald form (bald_ variants) | YES |
 | Sting Chameleon | `stingc` | 23 | tongue (5 variants), spike projectile, chameleon sting, cling shoot, hang, climb | NO |
 | Velguarder | `velg` | 18 | fire/ice projectiles, pounce, wall kick/slide | NO |
 

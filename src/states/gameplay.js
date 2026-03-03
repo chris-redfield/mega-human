@@ -18,6 +18,8 @@ import { ChillPenguin } from '../entities/chill-penguin.js';
 import { StormEagle } from '../entities/storm-eagle.js';
 import { FlameMammoth } from '../entities/flame-mammoth.js';
 import { LaunchOctopus } from '../entities/launch-octopus.js';
+import { SparkMandrill } from '../entities/spark-mandrill.js';
+import { BoomerKuwanger } from '../entities/boomer-kuwanger.js';
 import { createLevelFromMap } from '../levels/level.js';
 import { loadSave, updateSave } from '../engine/save-manager.js';
 
@@ -227,6 +229,7 @@ export class GameplayState {
                 tanks:   [{ x: 150, y: 800 }, { x: 200, y: 600 }, { x: 880, y: 160 }],
                 hoppers: [{ x: 190, y: 800 }, { x: 150, y: 400 }, { x: 615, y: 150 }],
                 birds:   [{ x: 150, y: 670 }, { x: 150, y: 350 }, { x: 910, y: 90 }],
+                tanks: [], hoppers: [], birds: [],
             },
             sigma2: {
                 tanks:   [{ x: 245, y: 110 }, { x: 1060, y: 100 }, { x: 1800, y: 100 }],
@@ -234,7 +237,7 @@ export class GameplayState {
                 birds:   [{ x: 400, y: 60 },  { x: 1200, y: 50 },  { x: 2100, y: 55 }],
             },
             volcaniczone: {
-                tanks:   [{ x: 500, y: 500 }, { x: 900, y: 400 }, { x: 1300, y: 170 }],
+                tanks:   [{ x: 500, y: 500 }, { x: 900, y: 400 }, { x: 1300, y: 140 }],
                 hoppers: [{ x: 700, y: 490 }, { x: 1050, y: 300 }, { x: 1400, y: 500 }],
                 birds:   [{ x: 400, y: 450 }, { x: 800, y: 350 }, { x: 1200, y: 150 }],
             },
@@ -284,6 +287,8 @@ export class GameplayState {
             highway:        { x: 2470, y: 50 },
             robotjunkyard:  { x: 1350, y: 400 },
             deepseabase:    { x: 1730, y: 650 },
+            volcaniczone:   { x: 1200, y: 130 },
+            tower:          { x: 920, y: 140 },
         };
         if (bossSpawns[this.stageName]) {
             const pos = bossSpawns[this.stageName];
@@ -297,6 +302,12 @@ export class GameplayState {
             } else if (this.stageName === 'deepseabase') {
                 boss = new LaunchOctopus(pos.x, pos.y);
                 boss.activationX = 1500;
+            } else if (this.stageName === 'volcaniczone') {
+                boss = new SparkMandrill(pos.x, pos.y);
+                boss.activationX = 1000;
+            } else if (this.stageName === 'tower') {
+                boss = new BoomerKuwanger(pos.x, pos.y);
+                boss.activationX = 800;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
             }
