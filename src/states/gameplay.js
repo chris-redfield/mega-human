@@ -319,6 +319,7 @@ export class GameplayState {
                 boss.activationX = 2500;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
+                boss.activationX = 900;
             }
             boss.spriteImage = this.assets.getImage('mavericksSprite');
             boss.effectsImage = this.assets.getImage('effectsSprite');

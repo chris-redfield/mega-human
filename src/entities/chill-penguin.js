@@ -182,6 +182,10 @@ export class ChillPenguin extends Entity {
         // Hit flash
         this.hitFlashTimer = 0;
 
+        // Activation
+        this.activated = false;
+        this.activationX = 0;
+
         // Sprite images (set externally)
         this.spriteImage = null;   // mavericks.png
         this.effectsImage = null;  // effects.png
@@ -224,6 +228,14 @@ export class ChillPenguin extends Entity {
             this.vx = 0;
             this._setAnim('idle');
             return;
+        }
+
+        // Wait for player to cross activation threshold
+        if (!this.activated) {
+            this.vx = 0;
+            this._setAnim('idle');
+            if (this.activationX > 0 && player.x < this.activationX) return;
+            this.activated = true;
         }
 
         // Face player
