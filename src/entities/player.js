@@ -376,6 +376,10 @@ export class Player extends Entity {
 
         // Wall jump
         if (input.pressed('jump')) {
+            // Dash + wall jump gives dash speed (like original MMX)
+            if (input.held('dash')) {
+                this.isDashing = true;
+            }
             this.vx = P.WALL_JUMP_VX * -this.wallContact;
             this.vy = P.WALL_JUMP_VY;
             this.facing = -this.wallContact;
