@@ -72,7 +72,7 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 - **Flame Mammoth** (`flame-mammoth.js`): 32 HP, 6 AI states (idle, shoot, oil, stomp, hurt, dying). Robot Junkyard stage at (1150, 480). Signature mechanic: oil-fire combo (oil puddle + fireball = big fire hazard).
 - **Launch Octopus** (`launch-octopus.js`): 32 HP, 6 AI states (idle, shoot, torpedo, spin, hurt, dying). Deep Sea Base stage at (1730, 700). Attacks: 3-way missile spread, 4 homing torpedoes, spin push (armored).
 
-**Boss drops:** 100% guaranteed 1 RAM memory + 25% chance of second (offset 10px right). Implemented in `_spawnBossDrop()`.
+**Boss drops:** 100% guaranteed 2 RAM memory + 25% chance of second (offset 10px right). Implemented in `_spawnBossDrop()`.
 
 ---
 

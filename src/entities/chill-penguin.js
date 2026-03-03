@@ -2,8 +2,8 @@
  * chill-penguin.js
  * Chill Penguin boss — first Maverick boss fight.
  *
- * AI States: idle, shoot, slide, blow, hurt, dying
- * Attacks: ice shot projectile, belly slide (wall bounce), ice blow (push wind)
+ * AI States: idle, shoot, slide, blow, jump_start, jump, land, hurt, dying
+ * Attacks: ice shot projectile, belly slide (wall bounce), ice blow (push wind), jump attack
  * Sprites from mavericks.png, death explosion from effects.png.
  */
 
@@ -30,6 +30,11 @@ const CP = {
     ICE_LIFETIME:     45,
     ICE_SPAWN_X:      18,       // from POI data
     ICE_SPAWN_Y:     -22,
+
+    // Jump attack
+    JUMP_VY:         -7.5,
+    JUMP_VX:          4.5,
+    JUMP_DAMAGE:      3,
 
     // Ice blow (wind push)
     BLOW_PUSH:        2.5,
@@ -88,6 +93,11 @@ const PENGUIN_ANIMS = {
         { sx: 128, sy: 76,  sw: 43, sh: 37, dur: 5, ox: -6 },
         { sx: 48,  sy: 129, sw: 43, sh: 35, dur: 4, ox: 2 },
         { sx: 91,  sy: 129, sw: 42, sh: 35, dur: 4, ox: 2 },
+    ]},
+    jump_start: { loop: false, frames: [
+        { sx: 131, sy: 175, sw: 38, sh: 32, dur: 4 },
+        { sx: 221, sy: 77,  sw: 38, sh: 36, dur: 4 },
+        { sx: 221, sy: 127, sw: 36, sh: 38, dur: 4, ox: -1 },
     ]},
     jump: { loop: false, frames: [
         { sx: 181, sy: 127, sw: 37, sh: 38, dur: 999, ox: 1 },
@@ -187,12 +197,15 @@ export class ChillPenguin extends Entity {
         const level = game.level;
 
         switch (this.state) {
-            case 'idle':  this._idleState(player, level);   break;
-            case 'shoot': this._shootState(player, level);  break;
-            case 'slide': this._slideState(player, level);  break;
-            case 'blow':  this._blowState(player, level);   break;
-            case 'hurt':  this._hurtState(player, level);   break;
-            case 'dying': this._dyingState(); return;
+            case 'idle':       this._idleState(player, level);   break;
+            case 'shoot':      this._shootState(player, level);  break;
+            case 'slide':      this._slideState(player, level);  break;
+            case 'blow':       this._blowState(player, level);   break;
+            case 'jump_start': this._jumpStartState(player, level); break;
+            case 'jump':       this._jumpState(player, level);  break;
+            case 'land':       this._landState(player, level);  break;
+            case 'hurt':       this._hurtState(player, level);  break;
+            case 'dying':      this._dyingState(); return;
         }
 
         // Gravity (MUST always apply for grounded detection)
@@ -235,7 +248,7 @@ export class ChillPenguin extends Entity {
     }
 
     _pickAttack() {
-        const attacks = ['shoot', 'slide', 'blow'];
+        const attacks = ['shoot', 'slide', 'blow', 'jump'];
         const pick = attacks[Math.floor(Math.random() * attacks.length)];
         this.vx = 0;
 
@@ -258,6 +271,10 @@ export class ChillPenguin extends Entity {
                 this.blowTimer = 0;
                 this._setAnim('blow');
                 if (this.audio) this.audio.play('chillpBlizzard');
+                break;
+            case 'jump':
+                this.state = 'jump_start';
+                this._setAnim('jump_start');
                 break;
         }
     }
@@ -343,6 +360,46 @@ export class ChillPenguin extends Entity {
                 );
                 player.x = newHitX - player.hitboxX;
             }
+        }
+    }
+
+    _jumpStartState(player, level) {
+        this.vx = 0;
+
+        // Wait for jump_start animation to finish, then launch
+        const anim = PENGUIN_ANIMS.jump_start;
+        if (this.animFrame >= anim.frames.length - 1 &&
+            this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1) {
+            this.state = 'jump';
+            this.vy = CP.JUMP_VY;
+            this.vx = CP.JUMP_VX * this.facing;
+            this.grounded = false;
+            this._setAnim('jump');
+        }
+    }
+
+    _jumpState(player, level) {
+        // Switch to fall animation when descending
+        if (this.vy > 0) {
+            this._setAnim('fall');
+        }
+
+        // Landed
+        if (this.grounded && this.vy === 0) {
+            this.vx = 0;
+            this.state = 'land';
+            this._setAnim('land');
+        }
+    }
+
+    _landState(player, level) {
+        this.vx = 0;
+
+        // Wait for land animation to finish
+        const anim = PENGUIN_ANIMS.land;
+        if (this.animFrame >= anim.frames.length - 1 &&
+            this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1) {
+            this._enterIdle();
         }
     }
 
