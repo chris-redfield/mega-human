@@ -17,7 +17,7 @@ const SC = {
     RUN_SPEED:        2.0,
 
     // Jump
-    JUMP_VY:         -7.5,
+    JUMP_VY:         -9.0,
     JUMP_VX:          4.0,
 
     // Spike projectile
