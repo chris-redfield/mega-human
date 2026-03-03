@@ -18,7 +18,7 @@ All boss sprites sourced from [MMX-Online-Deathmatch](https://github.com/gamemak
 | Spark Mandrill | X1 | volcaniczone | (1200, 130) | 1000 | `src/entities/spark-mandrill.js` | idle, shoot, punch, dash_punch, jump_start, jump, land, hurt, dying |
 | Boomer Kuwanger | X1 | tower | (920, 140) | 800 | `src/entities/boomer-kuwanger.js` | idle, shoot, dash, deadlift, teleport, jump_start, jump, land, hurt, dying |
 | Armored Armadillo | X1 | shipyard | (850, 860) | 700 | `src/entities/armored-armadillo.js` | idle, shoot, roll_enter, roll, roll_exit, block, jump_start, jump, land, hurt, dying |
-| Sting Chameleon | X1 | aircraftcarrier | (2700, 130) | 2500 | `src/entities/sting-chameleon.js` | idle, shoot, tongue1, tongue2, tongue3, jump_start, jump, land, hurt, dying |
+| Sting Chameleon | X1 | aircraftcarrier | (2700, 100) | 2500 | `src/entities/sting-chameleon.js` | idle, shoot, tongue1, tongue2, tongue3, jump_start, jump, land, hurt, dying |
 
 All 8 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded as `effectsSprite`). 32 HP each.
 
