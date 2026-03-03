@@ -257,6 +257,7 @@ export class ChillPenguin extends Entity {
                 this.state = 'blow';
                 this.blowTimer = 0;
                 this._setAnim('blow');
+                if (this.audio) this.audio.play('chillpBlizzard');
                 break;
         }
     }
@@ -381,7 +382,7 @@ export class ChillPenguin extends Entity {
             active: true,
             life: CP.ICE_LIFETIME,
         });
-        if (this.audio) this.audio.play('chillpBlizzard');
+        if (this.audio) this.audio.play('shotgunIce');
     }
 
     _setSlideHitbox() {

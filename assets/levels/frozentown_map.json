@@ -1548,32 +1548,6 @@
       ]
     },
     {
-      "name": "No Scroll2",
-      "properties": {
-        "freeDir": "left"
-      },
-      "objectName": "No Scroll",
-      "mirrorEnabled": 0,
-      "points": [
-        {
-          "x": 305,
-          "y": 557
-        },
-        {
-          "x": 333,
-          "y": 557
-        },
-        {
-          "x": 333,
-          "y": 759
-        },
-        {
-          "x": 305,
-          "y": 759
-        }
-      ]
-    },
-    {
       "name": "Ladder1",
       "properties": {},
       "objectName": "Ladder",
