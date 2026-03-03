@@ -21,6 +21,7 @@ import { LaunchOctopus } from '../entities/launch-octopus.js';
 import { SparkMandrill } from '../entities/spark-mandrill.js';
 import { BoomerKuwanger } from '../entities/boomer-kuwanger.js';
 import { ArmoredArmadillo } from '../entities/armored-armadillo.js';
+import { StingChameleon } from '../entities/sting-chameleon.js';
 import { createLevelFromMap } from '../levels/level.js';
 import { loadSave, updateSave } from '../engine/save-manager.js';
 
@@ -66,7 +67,6 @@ export class GameplayState {
         this._prevKeyTab = false;
 
         // HP bar layout: 'vertical' (classic MMX) or 'horizontal' (rotated 90° CW, top-left)
-        this.hpBarLayout = 'vertical';
 
         // Debug overlay (toggled with P key)
         this.debugMode = false;
@@ -210,6 +210,7 @@ export class GameplayState {
                 tanks:   [{ x: 350, y: 1000 }, { x: 800, y: 980 }, { x: 1400, y: 1000 }],
                 hoppers: [{ x: 530, y: 980 }, { x: 1200, y: 1000 }, { x: 1900, y: 480 }],
                 birds:   [{ x: 700, y: 700 }, { x: 1300, y: 650 }, { x: 2100, y: 400 }],
+                // tanks: [], hoppers: [], birds: [],
             },
             crystalmine: {
                 tanks:   [{ x: 400, y: 470 }, { x: 800, y: 400 }, { x: 1100, y: 400 }],
@@ -230,7 +231,6 @@ export class GameplayState {
                 tanks:   [{ x: 150, y: 800 }, { x: 200, y: 600 }, { x: 880, y: 160 }],
                 hoppers: [{ x: 190, y: 800 }, { x: 150, y: 400 }, { x: 615, y: 150 }],
                 birds:   [{ x: 150, y: 670 }, { x: 150, y: 350 }, { x: 910, y: 90 }],
-                tanks: [], hoppers: [], birds: [],
             },
             sigma2: {
                 tanks:   [{ x: 245, y: 110 }, { x: 1060, y: 100 }, { x: 1800, y: 100 }],
@@ -291,6 +291,7 @@ export class GameplayState {
             volcaniczone:   { x: 1200, y: 130 },
             tower:          { x: 920, y: 140 },
             shipyard:       { x: 850, y: 860 },
+            aircraftcarrier: { x: 2700, y: 100 },
         };
         if (bossSpawns[this.stageName]) {
             const pos = bossSpawns[this.stageName];
@@ -313,6 +314,9 @@ export class GameplayState {
             } else if (this.stageName === 'shipyard') {
                 boss = new ArmoredArmadillo(pos.x, pos.y);
                 boss.activationX = 700;
+            } else if (this.stageName === 'aircraftcarrier') {
+                boss = new StingChameleon(pos.x, pos.y);
+                boss.activationX = 2500;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
             }
@@ -415,11 +419,6 @@ export class GameplayState {
         }
         this._prevKeyEsc = !!game.input.rawKeys['Escape'];
 
-        // Toggle HP bar layout with L key
-        if (game.input.rawKeys['KeyL'] && !this._prevKeyL) {
-            this.hpBarLayout = this.hpBarLayout === 'vertical' ? 'horizontal' : 'vertical';
-        }
-        this._prevKeyL = !!game.input.rawKeys['KeyL'];
 
         // Toggle character with Tab key (respawns as new character)
         if (game.input.rawKeys['Tab'] && !this._prevKeyTab) {
@@ -977,11 +976,7 @@ export class GameplayState {
         const ef = this.assets.getImage('effectsSprite');
 
         if (ef) {
-            if (this.hpBarLayout === 'horizontal') {
-                this._renderHealthBarHorizontal(ctx, ef, player);
-            } else {
-                this._renderHealthBar(ctx, ef, player);
-            }
+            this._renderHealthBar(ctx, ef, player);
 
             // Boss HP bar (right side, only when boss is near/on screen)
             if (this.boss && this.boss.active && this.boss.state !== 'dying' &&
@@ -1177,53 +1172,6 @@ export class GameplayState {
      * Base piece on the left, cells extend right, cap on the right end.
      * Each sprite is individually rotated 90° CW so its original height becomes width.
      */
-    _renderHealthBarHorizontal(ctx, ef, player) {
-        const BASE  = { sx: 2,  sy: 55, sw: 14, sh: 16 };
-        const FULL  = { sx: 2,  sy: 51, sw: 14, sh: 2 };
-        const EMPTY = { sx: 2,  sy: 37, sw: 14, sh: 2 };
-        const CAP   = { sx: 34, sy: 13, sw: 14, sh: 4 };
-
-        const maxHp = player.maxHp;
-        const curHp = Math.ceil(player.hp);
-
-        // After 90° CW rotation, sprite dimensions swap:
-        // Base: 14×16 → appears 16w×14h on screen
-        // Cell: 14×2  → appears 2w×14h on screen
-        // Cap:  14×4  → appears 4w×14h on screen
-        const barY = 8;  // top margin
-        let x = 8;       // left margin, advances rightward
-
-        // Helper: draw a sprite rotated 90° CW at position (x, y)
-        // where (x, y) is the top-left of the rotated sprite on screen.
-        const drawRotatedCW = (spr, destX, destY) => {
-            // Rotated dimensions: rw = spr.sh, rh = spr.sw
-            const rw = spr.sh;
-            const rh = spr.sw;
-            ctx.save();
-            // Move to center of destination rect
-            ctx.translate(destX + rw / 2, destY + rh / 2);
-            ctx.rotate(Math.PI / 2); // 90° CW
-            // Draw centered at origin (in un-rotated sprite space)
-            ctx.drawImage(ef, spr.sx, spr.sy, spr.sw, spr.sh,
-                -spr.sw / 2, -spr.sh / 2, spr.sw, spr.sh);
-            ctx.restore();
-        };
-
-        // Base piece (leftmost)
-        drawRotatedCW(BASE, x, barY);
-        x += BASE.sh; // advance by original height (now width)
-
-        // Health cells left-to-right
-        for (let i = 0; i < maxHp; i++) {
-            const cell = i < curHp ? FULL : EMPTY;
-            drawRotatedCW(cell, x, barY);
-            x += cell.sh;
-        }
-
-        // Top cap (rightmost)
-        drawRotatedCW(CAP, x, barY);
-    }
-
     _isBossNearScreen() {
         if (!this.boss) return false;
         const margin = 64; // Show bar slightly before boss is fully on screen

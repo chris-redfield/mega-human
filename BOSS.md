@@ -17,9 +17,10 @@ All boss sprites sourced from [MMX-Online-Deathmatch](https://github.com/gamemak
 | Launch Octopus | X1 | deepseabase | (1730, 650) | 1500 | `src/entities/launch-octopus.js` | idle, shoot, torpedo, spin, hurt, dying |
 | Spark Mandrill | X1 | volcaniczone | (1200, 130) | 1000 | `src/entities/spark-mandrill.js` | idle, shoot, punch, dash_punch, jump_start, jump, land, hurt, dying |
 | Boomer Kuwanger | X1 | tower | (920, 140) | 800 | `src/entities/boomer-kuwanger.js` | idle, shoot, dash, deadlift, teleport, jump_start, jump, land, hurt, dying |
-| Armored Armadillo | X1 | shipyard | (850, 860) | 800 | `src/entities/armored-armadillo.js` | idle, shoot, roll_enter, roll, roll_exit, block, jump_start, jump, land, hurt, dying |
+| Armored Armadillo | X1 | shipyard | (850, 860) | 700 | `src/entities/armored-armadillo.js` | idle, shoot, roll_enter, roll, roll_exit, block, jump_start, jump, land, hurt, dying |
+| Sting Chameleon | X1 | aircraftcarrier | (2700, 130) | 2500 | `src/entities/sting-chameleon.js` | idle, shoot, tongue1, tongue2, tongue3, jump_start, jump, land, hurt, dying |
 
-All 7 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded as `effectsSprite`). 32 HP each.
+All 8 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded as `effectsSprite`). 32 HP each.
 
 ---
 
@@ -36,7 +37,7 @@ All 7 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded 
 | Spark Mandrill | `sparkm` | 14 | punch, dash punch, spark projectile, climb, freeze | YES |
 | Armored Armadillo | `armoreda` | 31 | shoot, roll (enter/exit), block, charge/release, armor shedding (na_ variants) | YES |
 | Boomer Kuwanger | `boomerk` | 25 | boomerang horn, dash, deadlift, catch, teleport, bald form (bald_ variants) | YES |
-| Sting Chameleon | `stingc` | 23 | tongue (5 variants), spike projectile, chameleon sting, cling shoot, hang, climb | NO |
+| Sting Chameleon | `stingc` | 23 | tongue (5 variants), spike projectile, chameleon sting, cling shoot, hang, climb | YES |
 | Velguarder | `velg` | 18 | fire/ice projectiles, pounce, wall kick/slide | NO |
 
 ### MMX2 — `mavericksX2.png` (1570x1639, NOT yet in `assets/`)

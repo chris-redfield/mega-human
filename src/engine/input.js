@@ -9,9 +9,9 @@ const DEFAULT_BINDINGS = {
     right: ['ArrowRight', 'KeyD'],
     up:    ['ArrowUp', 'KeyW'],
     down:  ['ArrowDown', 'KeyS'],
-    jump:  ['Numpad5', 'Space'],
-    shoot: ['Numpad4'],
-    dash:  ['Numpad6', 'ShiftLeft'],
+    jump:  ['Numpad5', 'Space', 'KeyK'],
+    shoot: ['Numpad4', 'KeyJ'],
+    dash:  ['Numpad6', 'ShiftLeft', 'KeyL'],
     start: ['Enter'],
     select: ['Backspace'],
 };
