@@ -42,6 +42,14 @@ const LO = {
     HP:               32,
     INVINCIBLE_TIME:  70,
 
+    // Recovery (swim back up only near killzone)
+    RECOVER_SPEED:    -5.0,   // upward swim velocity (strong enough to escape pits)
+    KILLZONE_MARGIN:  100,    // px above killY to trigger swim-up
+
+    // Jump (climb between platforms)
+    JUMP_VY:  -6.0,
+    JUMP_VX:   2.5,
+
     // AI timing
     IDLE_MIN:  40,
     IDLE_MAX:  80,
@@ -175,6 +183,10 @@ export class LaunchOctopus extends Entity {
         // Spin state
         this.spinTimer = 0;
 
+        // Track last ground level + killzone recovery
+        this.groundY = 0;
+        this.recovering = false;
+
         // Animation
         this.animFrame = 0;
         this.animTimer = 0;
@@ -210,15 +222,58 @@ export class LaunchOctopus extends Entity {
             case 'shoot':   this._shootState(player, level);   break;
             case 'torpedo': this._torpedoState(player, level); break;
             case 'spin':    this._spinState(player, level);    break;
+            case 'jump':    this._jumpState(player, level);    break;
+            case 'land':    this._landState(player, level);    break;
             case 'hurt':    this._hurtState(player, level);    break;
             case 'dying':   this._dyingState(); return;
         }
 
-        // Gravity (MUST always apply for grounded detection)
-        this.vy += LO.GRAVITY;
-        if (this.vy > LO.MAX_FALL_SPEED) this.vy = LO.MAX_FALL_SPEED;
+        // Track ground level
+        if (this.grounded) {
+            this.groundY = this.y + this.hitboxY + this.hitboxH;
+        }
 
+        // Gravity — skip during recovery (boss is flying upward)
+        if (!this.recovering) {
+            this.vy += LO.GRAVITY;
+            if (this.vy > LO.MAX_FALL_SPEED) this.vy = LO.MAX_FALL_SPEED;
+        }
+
+        // Killzone recovery: fly up and toward player to escape pits
+        if (level && this.state !== 'dying' && !this.grounded) {
+            const feetY = this.y + this.hitboxY + this.hitboxH;
+            if (!this.recovering && feetY > level.killY - LO.KILLZONE_MARGIN) {
+                // Start flying up — record where recovery started
+                this.recovering = true;
+                this.recoverStartY = feetY;
+                this.vy = LO.RECOVER_SPEED;
+            }
+            if (this.recovering) {
+                // After gaining some altitude, also swim horizontally toward player
+                if (feetY < this.recoverStartY - 60 && player && !player.dead) {
+                    const playerCX = player.x + player.hitboxX + player.hitboxW / 2;
+                    const myCX = this.x + this.hitboxX + this.hitboxW / 2;
+                    this.vx = playerCX > myCX ? LO.JUMP_VX : -LO.JUMP_VX;
+                    this.facing = this.vx > 0 ? 1 : -1;
+                }
+                if (this.groundY > 0 && feetY <= this.groundY - 100) {
+                    // Reached target altitude — stop recovery
+                    this.recovering = false;
+                    this.vy = 0;
+                }
+            }
+        }
+        if (this.grounded) {
+            this.recovering = false;
+        }
+
+        const prevY = this.y;
         this._moveAndCollide(level);
+
+        // End recovery if stuck against ceiling (position didn't change while flying up)
+        if (this.recovering && Math.abs(this.y - prevY) < 0.5) {
+            this.recovering = false;
+        }
         this._updateAnimation();
         this._updateProjectiles(level, player);
     }
@@ -263,7 +318,16 @@ export class LaunchOctopus extends Entity {
 
     _pickAttack(player) {
         this.vx = 0;
-        const attacks = ['shoot', 'torpedo', 'spin'];
+
+        // Jump toward player if they're significantly higher
+        const playerFeetY = player.y + player.hitboxY + player.hitboxH;
+        const myFeetY = this.y + this.hitboxY + this.hitboxH;
+        if (playerFeetY < myFeetY - 60) {
+            this._startJump(player);
+            return;
+        }
+
+        const attacks = ['shoot', 'torpedo', 'spin', 'jump'];
         const pick = attacks[Math.floor(Math.random() * attacks.length)];
 
         switch (pick) {
@@ -282,6 +346,38 @@ export class LaunchOctopus extends Entity {
                 this.spinTimer = LO.SPIN_DURATION;
                 this._setAnim('spin');
                 break;
+            case 'jump':
+                this._startJump(player);
+                break;
+        }
+    }
+
+    _startJump(player) {
+        const playerCX = player.x + player.hitboxX + player.hitboxW / 2;
+        const myCX = this.x + this.hitboxX + this.hitboxW / 2;
+        this.facing = playerCX > myCX ? 1 : -1;
+        this.state = 'jump';
+        this.vy = LO.JUMP_VY;
+        this.vx = LO.JUMP_VX * this.facing;
+        this.grounded = false;
+        this._setAnim('idle');  // tentacles wiggling = swimming upward
+    }
+
+    _jumpState(player, level) {
+        // Land when touching ground and descending
+        if (this.grounded && this.vy === 0) {
+            this.vx = 0;
+            this.state = 'land';
+            this._setAnim('land');
+        }
+    }
+
+    _landState(player, level) {
+        this.vx = 0;
+        const anim = OCTOPUS_ANIMS.land;
+        if (this.animFrame >= anim.frames.length - 1 &&
+            this.animTimer >= anim.frames[anim.frames.length - 1].dur - 1) {
+            this._enterIdle();
         }
     }
 
