@@ -79,47 +79,48 @@ const IMAGE_ICONS = {
 };
 
 // ── Shop Items ──
+// Heart & subtank prices are computed dynamically in _buildItemList()
 const SHOP_ITEMS = [
     {
         id: 'heart',
         name: 'Heart',
         description: 'Max HP +1',
-        price: 8,
+        price: 4, // base price; increases by 2 per purchase
         icon: 'heart',
     },
     {
         id: 'subtank',
         name: 'Sub Tank',
         description: 'Store 16 HP',
-        price: 16,
+        price: 10, // base price; increases by 2 per purchase
         icon: 'subtank',
     },
     {
         id: 'x1_helmet',
         name: 'X1 Helmet',
         description: 'Keep charge',
-        price: 20,
+        price: 10,
         icon: 'x1_helmet',
     },
     {
         id: 'x1_body',
         name: 'X1 Body',
         description: 'Dmg -12.5%',
-        price: 20,
+        price: 10,
         icon: 'x1_body',
     },
     {
         id: 'x1_boots',
         name: 'X1 Boots',
         description: 'Dash +15%',
-        price: 20,
+        price: 10,
         icon: 'x1_boots',
     },
     {
         id: 'x1_arms',
         name: 'X1 Arms',
         description: 'Charge +50%',
-        price: 20,
+        price: 10,
         icon: 'x1_arms',
     },
 ];
@@ -480,25 +481,33 @@ export class ShopState {
     _buildItemList() {
         const save = loadSave();
         const armor = save.armor || {};
-        // Remove one heart card per heart tank purchased
-        let heartsToSkip = save.heartTanks || 0;
-        let subsToSkip = save.subTanks || 0;
-        return SHOP_ITEMS.filter(item => {
-            if (item.id === 'heart' && heartsToSkip > 0) {
-                heartsToSkip--;
-                return false;
+        const heartsBought = save.heartTanks || 0;
+        const subsBought = save.subTanks || 0;
+
+        const items = [];
+        for (const item of SHOP_ITEMS) {
+            // Heart: show one with escalating price until all 8 bought
+            if (item.id === 'heart') {
+                if (heartsBought < MAX_HEART_TANKS) {
+                    items.push({ ...item, price: 4 + heartsBought * 2 });
+                }
+                continue;
             }
-            if (item.id === 'subtank' && subsToSkip > 0) {
-                subsToSkip--;
-                return false;
+            // Sub Tank: show one with escalating price until all 4 bought
+            if (item.id === 'subtank') {
+                if (subsBought < 4) {
+                    items.push({ ...item, price: 10 + subsBought * 2 });
+                }
+                continue;
             }
             // Hide armor items already purchased
-            if (item.id === 'x1_boots' && armor.boots >= 1) return false;
-            if (item.id === 'x1_arms' && armor.arm >= 1) return false;
-            if (item.id === 'x1_helmet' && armor.helmet >= 1) return false;
-            if (item.id === 'x1_body' && armor.body >= 1) return false;
-            return true;
-        });
+            if (item.id === 'x1_boots' && armor.boots >= 1) continue;
+            if (item.id === 'x1_arms' && armor.arm >= 1) continue;
+            if (item.id === 'x1_helmet' && armor.helmet >= 1) continue;
+            if (item.id === 'x1_body' && armor.body >= 1) continue;
+            items.push(item);
+        }
+        return items;
     }
 
     _tryBuyItem() {
