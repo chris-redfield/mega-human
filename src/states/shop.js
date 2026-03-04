@@ -23,6 +23,10 @@ const PANEL_Y = 838;
 const PANEL_W = 980;
 const PANEL_H = 170;
 
+// Carousel
+const MAX_VISIBLE = 5;
+const ARROW_W = 36;
+
 // Item cards (centered in panel)
 const CARDS_Y = PANEL_Y + 12;
 const CARD_W = 150;
@@ -136,8 +140,9 @@ export class ShopState {
         this.animFrame = 0;
         this.animTimer = 0;
 
-        // Selected item index
+        // Selected item index & carousel scroll offset
         this.selectedItem = 0;
+        this.scrollOffset = 0;
         // Items available in shop (filter out already-purchased one-time items)
         this.items = this._buildItemList();
 
@@ -170,6 +175,10 @@ export class ShopState {
                 this.items = this._buildItemList();
                 this.selectedItem = Math.min(this.selectedItem, this.items.length - 1);
                 if (this.selectedItem < 0) this.selectedItem = 0;
+                // Clamp scroll offset
+                const maxOffset = Math.max(0, this.items.length - MAX_VISIBLE);
+                this.scrollOffset = Math.min(this.scrollOffset, maxOffset);
+                if (this.selectedItem < this.scrollOffset) this.scrollOffset = this.selectedItem;
                 this.buyAnim = null;
             }
             return;
@@ -177,13 +186,19 @@ export class ShopState {
 
         const input = game.input;
 
-        // Left/Right: browse items
+        // Left/Right: browse items (carousel)
         if (this.items.length > 0) {
             if (input.pressed('left')) {
                 this.selectedItem = Math.max(0, this.selectedItem - 1);
             }
             if (input.pressed('right')) {
                 this.selectedItem = Math.min(this.items.length - 1, this.selectedItem + 1);
+            }
+            // Keep selection visible in carousel window
+            if (this.selectedItem < this.scrollOffset) {
+                this.scrollOffset = this.selectedItem;
+            } else if (this.selectedItem >= this.scrollOffset + MAX_VISIBLE) {
+                this.scrollOffset = this.selectedItem - MAX_VISIBLE + 1;
             }
         }
 
@@ -253,13 +268,29 @@ export class ShopState {
         const pulse = Math.sin(this.pulseTimer * PULSE_SPEED) * 0.3 + 0.7;
         const save = loadSave();
 
-        // Center the cards row within the panel
-        const totalCardsW = this.items.length * CARD_W + (this.items.length - 1) * CARD_GAP;
-        const cardsStartX = PANEL_X + (PANEL_W - totalCardsW) / 2;
+        const hasOverflow = this.items.length > MAX_VISIBLE;
+        const showLeftArrow = hasOverflow && this.scrollOffset > 0;
+        const showRightArrow = hasOverflow && this.scrollOffset + MAX_VISIBLE < this.items.length;
 
-        for (let i = 0; i < this.items.length; i++) {
-            const item = this.items[i];
-            const x = cardsStartX + i * (CARD_W + CARD_GAP);
+        // Visible slice
+        const visibleCount = Math.min(this.items.length, MAX_VISIBLE);
+        const visibleItems = this.items.slice(this.scrollOffset, this.scrollOffset + visibleCount);
+
+        // Card area (shrink if arrows are present)
+        const leftPad = hasOverflow ? ARROW_W : 0;
+        const rightPad = hasOverflow ? ARROW_W : 0;
+        const cardAreaW = PANEL_W - leftPad - rightPad;
+        const totalCardsW = visibleCount * CARD_W + (visibleCount - 1) * CARD_GAP;
+        const cardsStartX = PANEL_X + leftPad + (cardAreaW - totalCardsW) / 2;
+
+        // Draw arrows
+        if (showLeftArrow) this._drawArrow(ctx, 'left', PANEL_X, pulse);
+        if (showRightArrow) this._drawArrow(ctx, 'right', PANEL_X + PANEL_W - ARROW_W, pulse);
+
+        for (let vi = 0; vi < visibleItems.length; vi++) {
+            const i = this.scrollOffset + vi; // real index
+            const item = visibleItems[vi];
+            const x = cardsStartX + vi * (CARD_W + CARD_GAP);
             const y = CARDS_Y;
             const isSelected = this.selectedItem === i;
             const canAfford = save.memoryCount >= item.price;
@@ -269,15 +300,11 @@ export class ShopState {
             if (isBuying) {
                 const t = this.buyAnim.timer / BUY_ANIM_DURATION; // 0→1
                 if (t < 0.4) {
-                    // Phase 1: flash white (0→0.4)
                     const flashAlpha = Math.sin((t / 0.4) * Math.PI);
-                    // Draw normal card underneath
                     this._drawSingleCard(ctx, item, x, y, true, canAfford, pulse);
-                    // White overlay
                     ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.7})`;
                     ctx.fillRect(x, y, CARD_W, CARD_H);
                 } else {
-                    // Phase 2: fade out + scale up (0.4→1.0)
                     const fadeT = (t - 0.4) / 0.6;
                     const alpha = 1 - fadeT;
                     const scale = 1 + fadeT * 0.3;
@@ -294,6 +321,26 @@ export class ShopState {
 
             this._drawSingleCard(ctx, item, x, y, isSelected, canAfford, pulse);
         }
+    }
+
+    _drawArrow(ctx, direction, x, pulse) {
+        const cy = CARDS_Y + CARD_H / 2;
+        const arrowH = 20;
+        const arrowW = 12;
+
+        ctx.fillStyle = `rgba(200, 168, 64, ${pulse})`;
+        ctx.beginPath();
+        if (direction === 'left') {
+            ctx.moveTo(x + ARROW_W / 2 + arrowW / 2, cy - arrowH);
+            ctx.lineTo(x + ARROW_W / 2 - arrowW / 2, cy);
+            ctx.lineTo(x + ARROW_W / 2 + arrowW / 2, cy + arrowH);
+        } else {
+            ctx.moveTo(x + ARROW_W / 2 - arrowW / 2, cy - arrowH);
+            ctx.lineTo(x + ARROW_W / 2 + arrowW / 2, cy);
+            ctx.lineTo(x + ARROW_W / 2 - arrowW / 2, cy + arrowH);
+        }
+        ctx.closePath();
+        ctx.fill();
     }
 
     _drawSingleCard(ctx, item, x, y, isSelected, canAfford, pulse) {
