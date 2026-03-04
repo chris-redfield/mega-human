@@ -76,20 +76,20 @@ const IMAGE_ICONS = {
 
 // ── Shop Items ──
 const SHOP_ITEMS = [
-    // {
-    //     id: 'heart',
-    //     name: 'Heart',
-    //     description: 'Max HP +1',
-    //     price: 8,
-    //     icon: 'heart',
-    // },
-    // {
-    //     id: 'subtank',
-    //     name: 'Sub Tank',
-    //     description: 'Store 16 HP',
-    //     price: 16,
-    //     icon: 'subtank',
-    // },
+    {
+        id: 'heart',
+        name: 'Heart',
+        description: 'Max HP +1',
+        price: 8,
+        icon: 'heart',
+    },
+    {
+        id: 'subtank',
+        name: 'Sub Tank',
+        description: 'Store 16 HP',
+        price: 16,
+        icon: 'subtank',
+    },
     {
         id: 'x1_helmet',
         name: 'X1 Helmet',
