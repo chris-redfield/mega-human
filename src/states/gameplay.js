@@ -258,6 +258,11 @@ export class GameplayState {
                 hoppers: [{ x: 350, y: 260 }, { x: 750, y: 1000 }, { x: 1400, y: 870 }],
                 birds:   [{ x: 400, y: 300 }, { x: 1000, y: 900 }, { x: 1550, y: 650 }],
             },
+            desertbase: {
+                tanks:   [{ x: 700, y: 450 }, { x: 1345, y: 50 }, { x: 1700, y: 430 }],
+                hoppers: [{ x: 800, y: 450 }, { x: 1300, y: 50 }, { x: 2030, y: 570 }],
+                birds:   [{ x: 370, y: 320 }, { x: 1340, y: 130 }, { x: 2030, y: 350 }],
+            },
         };
 
         const layout = layouts[this.stageName] || layouts.highway;
