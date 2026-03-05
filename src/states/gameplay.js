@@ -129,6 +129,7 @@ export class GameplayState {
             shipyard: { x: 213, y: 80 },
             mountain: { x: 507, y: 407 },
             deepseabase: { x: 99, y: 330 },
+            desertbase: {x: 110, y: 330},
         };
 
         let spawnX = 100, spawnY = 80;
