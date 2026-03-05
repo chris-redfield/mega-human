@@ -130,6 +130,7 @@ export class GameplayState {
             mountain: { x: 507, y: 407 },
             deepseabase: { x: 99, y: 330 },
             desertbase: {x: 110, y: 330},
+            desertbase2: { x: 100, y: 80 },
         };
 
         let spawnX = 100, spawnY = 80;
@@ -262,6 +263,11 @@ export class GameplayState {
                 tanks:   [{ x: 700, y: 450 }, { x: 1345, y: 50 }, { x: 1700, y: 430 }],
                 hoppers: [{ x: 800, y: 450 }, { x: 1300, y: 50 }, { x: 2030, y: 570 }],
                 birds:   [{ x: 370, y: 320 }, { x: 1340, y: 130 }, { x: 2030, y: 350 }],
+            },
+            desertbase2: {
+                tanks:   [{ x: 500, y: 120 }, { x: 1200, y: 120 }, { x: 2200, y: 120 }],
+                hoppers: [{ x: 800, y: 120 }, { x: 1600, y: 120 }, { x: 2600, y: 120 }],
+                birds:   [{ x: 600, y: 60 },  { x: 1400, y: 50 },  { x: 2400, y: 55 }],
             },
         };
 
