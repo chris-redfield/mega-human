@@ -20,6 +20,7 @@ const STAGE_OPTIONAL_LAYERS = {
     shipyard:        ['parallax'],
     mountain:        ['parallax', 'foreground'],
     deepseabase:     ['parallax', 'foreground'],
+    desertbase:      ['parallax', 'foreground'],
 };
 
 export class AssetLoader {

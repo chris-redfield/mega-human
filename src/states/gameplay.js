@@ -901,10 +901,12 @@ export class GameplayState {
             const parallaxOverrides = {
                 robotjunkyard: { y: 50, scaleY: 1.1 },
                 tower: { y: 100, scaleY: 1.2 },
+                desertbase: { y: 0, speedY: 0 },
             };
             const pOvr = parallaxOverrides[this.stageName];
             const px = Math.floor(-this.camera.x * 0.5);
-            const py = Math.floor(-this.camera.y * 0.5) + (pOvr ? pOvr.y : 0);
+            const vSpeedY = pOvr && pOvr.speedY !== undefined ? pOvr.speedY : 0.5;
+            const py = Math.floor(-this.camera.y * vSpeedY) + (pOvr ? pOvr.y : 0);
             if (pOvr && pOvr.scaleY) {
                 ctx.drawImage(this.parallaxImg, px, py, this.parallaxImg.width, Math.floor(this.parallaxImg.height * pOvr.scaleY));
             } else {

@@ -70,5 +70,11 @@
     "y": 790,
     "stage": "deepseabase",
     "name": "Deep Sea Base"
+  },
+  {
+    "x": 348,
+    "y": 498,
+    "stage": "desertbase",
+    "name": "Desert Base"
   }
 ]
