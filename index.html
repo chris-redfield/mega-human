@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MEGAGAME 2026</title>
+    <title>Mega Human</title>
     <style>
         * { margin: 0; padding: 0; }
         body {
@@ -39,7 +39,7 @@
     </style>
 </head>
 <body>
-    <div id="loading">MEGAGAME 2026 — Loading...</div>
+    <div id="loading">Mega Human — Loading...</div>
     <canvas id="game" style="display:none"></canvas>
     <div id="controls" style="display:none">
         Arrows/WASD: Move &nbsp;|&nbsp; Num5/Space: Jump &nbsp;|&nbsp; Num4: Shoot &nbsp;|&nbsp; Num6/Shift: Dash &nbsp;|&nbsp; Tab: Switch Character &nbsp;|&nbsp; Esc: Stage Select
@@ -57,7 +57,7 @@
 
         async function init() {
             try {
-                loading.textContent = 'MEGAGAME 2026 — Loading stages...';
+                loading.textContent = 'Mega Human — Loading stages...';
                 const assets = new AssetLoader();
 
                 // Load all stage assets
@@ -78,7 +78,7 @@
                     assets.loadStage('desertbase2'),
                 ]);
 
-                loading.textContent = 'MEGAGAME 2026 — Loading sprites...';
+                loading.textContent = 'Mega Human — Loading sprites...';
                 // Load player spritesheet, effects, enemy sprites, and stage select assets
                 await Promise.all([
                     assets.loadImage('playerSprite', './assets/XDefault.png'),
@@ -107,7 +107,7 @@
                 const game = new Game(canvas);
 
                 // Load audio assets
-                loading.textContent = 'MEGAGAME 2026 — Loading audio...';
+                loading.textContent = 'Mega Human — Loading audio...';
                 await game.audio.loadAll({
                     // Common SFX
                     jump:        './assets/sounds/common/jump.wav',
