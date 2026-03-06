@@ -16,12 +16,15 @@ export class AudioManager {
         this.musicMeta = {};     // name → { loopStart, loopEnd }
         this.sfxGain = null;     // GainNode for all SFX
         this.musicGain = null;   // GainNode for music
+        this.chargeGain = null;  // GainNode for buster charge sounds
         this.musicSource = null; // Currently playing music source
         this.musicName = '';
         this.looping = {};       // name → AudioBufferSourceNode (for charge loop etc.)
         this._lastPlay = {};     // name → timestamp (duplicate guard)
         this._resumed = false;
         this._pendingMusic = ''; // music to start once ctx is ready
+        // Sound names routed through the charge gain node
+        this._chargeSounds = new Set(['chargeStart', 'chargeLoop']);
     }
 
     /**
@@ -37,6 +40,9 @@ export class AudioManager {
         this.musicGain = this.ctx.createGain();
         this.musicGain.gain.value = 0.35;
         this.musicGain.connect(this.ctx.destination);
+        this.chargeGain = this.ctx.createGain();
+        this.chargeGain.gain.value = 0.2;
+        this.chargeGain.connect(this.ctx.destination);
 
         // Decode all pre-fetched raw buffers now that we have a context
         for (const [name, arrayBuf] of Object.entries(this._rawBuffers)) {
@@ -119,12 +125,13 @@ export class AudioManager {
 
         const source = this.ctx.createBufferSource();
         source.buffer = this.buffers[name];
+        const destGain = this._chargeSounds.has(name) ? this.chargeGain : this.sfxGain;
         if (opts && opts.volume !== undefined) {
             const g = this.ctx.createGain();
             g.gain.value = opts.volume;
-            source.connect(g).connect(this.sfxGain);
+            source.connect(g).connect(destGain);
         } else {
-            source.connect(this.sfxGain);
+            source.connect(destGain);
         }
         source.start();
     }
@@ -138,7 +145,8 @@ export class AudioManager {
         const source = this.ctx.createBufferSource();
         source.buffer = this.buffers[name];
         source.loop = true;
-        source.connect(this.sfxGain);
+        const destGain = this._chargeSounds.has(name) ? this.chargeGain : this.sfxGain;
+        source.connect(destGain);
         source.start();
         this.looping[name] = source;
     }
@@ -193,7 +201,6 @@ export class AudioManager {
         source.start();
         this.musicSource = source;
         this.musicName = name;
-        this.musicGain.gain.value = 0.35;
     }
 
     /**
@@ -228,5 +235,10 @@ export class AudioManager {
     /** Set music volume (0-1). */
     setMusicVolume(v) {
         if (this.musicGain) this.musicGain.gain.value = v;
+    }
+
+    /** Set buster charge volume (0-1). */
+    setChargeVolume(v) {
+        if (this.chargeGain) this.chargeGain.gain.value = v;
     }
 }

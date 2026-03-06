@@ -6,6 +6,7 @@
  */
 
 import { loadSave, updateSave } from '../engine/save-manager.js';
+import { MenuOverlay } from '../ui/menu-overlay.js';
 
 const SHOP_W = 1536;
 const SHOP_H = 1024;
@@ -15,6 +16,7 @@ const CORNER_LABELS = [
     { x: 69,  y: 35,  w: 169, h: 76, text: 'SHOP' },
     { x: 69,  y: 735, w: 169, h: 76, text: 'EQUIP' },
     { x: 1295,  y: 35,  w: 169, h: 76, text: 'MAP' },
+    { x: 1295,  y: 725, w: 179, h: 202, text: 'MENU' },
 ];
 
 // ── Menu Panel Layout ──
@@ -48,6 +50,9 @@ const COL_DIM = '#666688';
 
 // Max heart tanks (matches MMX)
 const MAX_HEART_TANKS = 8;
+
+// Cursor padding around corner labels
+const CURSOR_PAD = 4;
 
 // Pulse
 const PULSE_SPEED = 0.08;
@@ -149,6 +154,11 @@ export class ShopState {
 
         // Buy animation state
         this.buyAnim = null; // { timer, itemIndex, item }
+
+        // Focus area: 'items', 'map', or 'menu'
+        this.focus = 'items';
+
+        this.menuOverlay = new MenuOverlay();
     }
 
     init(game) {
@@ -156,6 +166,8 @@ export class ShopState {
         this.bgImage = this.assets.getImage('shopBg');
         this.ramImg = this.assets.getImage('ramMemory');
         this.effectsImg = this.assets.getImage('effectsSprite');
+        this.menuOverlay.setAudio(game.audio);
+        this.menuOverlay.setInput(game.input);
 
         if (game.audio) game.audio.stopMusic();
     }
@@ -187,25 +199,65 @@ export class ShopState {
 
         const input = game.input;
 
-        // Left/Right: browse items (carousel)
-        if (this.items.length > 0) {
-            if (input.pressed('left')) {
-                this.selectedItem = Math.max(0, this.selectedItem - 1);
+        // Menu overlay intercepts all input when active
+        if (this.menuOverlay.active) {
+            const result = this.menuOverlay.update(input);
+            if (result === 'resume' || result === 'close') {
+                this.menuOverlay.close();
             }
-            if (input.pressed('right')) {
-                this.selectedItem = Math.min(this.items.length - 1, this.selectedItem + 1);
-            }
-            // Keep selection visible in carousel window
-            if (this.selectedItem < this.scrollOffset) {
-                this.scrollOffset = this.selectedItem;
-            } else if (this.selectedItem >= this.scrollOffset + MAX_VISIBLE) {
-                this.scrollOffset = this.selectedItem - MAX_VISIBLE + 1;
+            return;
+        }
+
+        // Up/Down: switch focus between items, map, and menu
+        if (input.pressed('up')) {
+            if (this.focus === 'items') this.focus = 'map';
+            else if (this.focus === 'menu') this.focus = 'map';
+        }
+        if (input.pressed('down')) {
+            if (this.focus === 'map') this.focus = 'items';
+            else if (this.focus === 'items') this.focus = 'menu';
+        }
+        if (input.pressed('left')) {
+            if (this.focus === 'map') this.focus = 'items';
+            else if (this.focus === 'menu') this.focus = 'items';
+        }
+        if (input.pressed('right')) {
+            if (this.focus === 'items' && this.selectedItem >= this.items.length - 1) {
+                this.focus = 'menu';
             }
         }
 
-        // Shoot: buy selected item
-        if (input.pressed('shoot')) {
-            this._tryBuyItem();
+        if (this.focus === 'items') {
+            // Left/Right: browse items (carousel)
+            if (this.items.length > 0) {
+                if (input.pressed('left')) {
+                    this.selectedItem = Math.max(0, this.selectedItem - 1);
+                }
+                if (input.pressed('right')) {
+                    this.selectedItem = Math.min(this.items.length - 1, this.selectedItem + 1);
+                }
+                // Keep selection visible in carousel window
+                if (this.selectedItem < this.scrollOffset) {
+                    this.scrollOffset = this.selectedItem;
+                } else if (this.selectedItem >= this.scrollOffset + MAX_VISIBLE) {
+                    this.scrollOffset = this.selectedItem - MAX_VISIBLE + 1;
+                }
+            }
+
+            // Shoot: buy selected item
+            if (input.pressed('shoot')) {
+                this._tryBuyItem();
+            }
+        } else if (this.focus === 'map') {
+            // Confirm on MAP → go back to stage select
+            if (input.pressed('shoot') || input.pressed('jump') || input.pressed('start')) {
+                this._goBack(game);
+            }
+        } else if (this.focus === 'menu') {
+            // Confirm on MENU → open menu overlay
+            if (input.pressed('shoot') || input.pressed('jump') || input.pressed('start')) {
+                this.menuOverlay.open();
+            }
         }
 
         // Debug: + key adds 10 RAM memories
@@ -242,11 +294,37 @@ export class ShopState {
             ctx.fillText(label.text, label.x + label.w / 2, label.y + label.h / 2);
         }
 
+        // Pulsing cursor on focused corner label
+        if (this.focus === 'map') {
+            this._drawCornerCursor(ctx, CORNER_LABELS[2]);
+        } else if (this.focus === 'menu') {
+            this._drawCornerCursor(ctx, CORNER_LABELS[3]);
+        }
+
         // Menu panel
         this._drawPanel(ctx);
 
         // RAM counter
         this._drawRamCounter(ctx);
+
+        // Menu overlay (drawn last, on top of everything)
+        this.menuOverlay.render(ctx, SHOP_W, SHOP_H);
+    }
+
+    _drawCornerCursor(ctx, label) {
+        const pulse = Math.sin(this.pulseTimer * PULSE_SPEED) * 0.3 + 0.7;
+        const x = label.x - CURSOR_PAD;
+        const y = label.y - CURSOR_PAD;
+        const w = label.w + CURSOR_PAD * 2;
+        const h = label.h + CURSOR_PAD * 2;
+
+        ctx.strokeStyle = `rgba(255, 221, 0, ${0.3 * pulse})`;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+
+        ctx.strokeStyle = `rgba(255, 221, 0, ${pulse})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
     }
 
     // ── Panel ──
@@ -293,7 +371,7 @@ export class ShopState {
             const item = visibleItems[vi];
             const x = cardsStartX + vi * (CARD_W + CARD_GAP);
             const y = CARDS_Y;
-            const isSelected = this.selectedItem === i;
+            const isSelected = this.focus === 'items' && this.selectedItem === i;
             const canAfford = save.memoryCount >= item.price;
             const isBuying = this.buyAnim && this.buyAnim.itemIndex === i;
 

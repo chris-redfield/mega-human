@@ -7,6 +7,7 @@
 import { Input } from './input.js';
 import { AudioManager } from './audio.js';
 import { SCREEN_W, SCREEN_H } from './camera.js';
+import { applySoundSettings } from './sound-settings.js';
 
 const TIMESTEP = 1000 / 60;
 const MAX_FRAME_SKIP = 5;
@@ -31,7 +32,10 @@ export class Game {
         this.state = null;
 
         // AudioContext must be created/resumed inside a user gesture handler.
-        const resumeAudio = () => { this.audio.resume(); };
+        const resumeAudio = () => {
+            this.audio.resume();
+            applySoundSettings(this.audio);
+        };
         window.addEventListener('keydown', resumeAudio);
         window.addEventListener('mousedown', resumeAudio);
 

@@ -7,6 +7,7 @@
 
 import { GameplayState } from './gameplay.js';
 import { ShopState } from './shop.js';
+import { MenuOverlay } from '../ui/menu-overlay.js';
 
 const SELECT_W = 1536;
 const SELECT_H = 1024;
@@ -27,16 +28,23 @@ const CORNER_LABELS = [
     { x: 69,  y: 35,  w: 169, h: 76, text: 'SHOP' },
     { x: 69,  y: 735, w: 169, h: 76, text: 'EQUIP' },
     { x: 1295,  y: 35,  w: 169, h: 76, text: 'MAP' },
+    { x: 1295,  y: 725, w: 179, h: 202, text: 'MENU' },
 ];
 
 // SHOP label treated as a navigable point at its center
 const SHOP_NAV_X = 67 + 172 / 2;   // 153
 const SHOP_NAV_Y = 40 + 76 / 2;    // 78
 
-// selectedIndex = -1 means SHOP is selected
-const SHOP_INDEX = -1;
+// MENU label navigable point at its center
+const MENU_LABEL = CORNER_LABELS[3];
+const MENU_NAV_X = MENU_LABEL.x + MENU_LABEL.w / 2;
+const MENU_NAV_Y = MENU_LABEL.y + MENU_LABEL.h / 2;
 
-// Cursor padding around the SHOP label
+// Special indices for non-stage selections
+const SHOP_INDEX = -1;
+const MENU_INDEX = -2;
+
+// Cursor padding around corner labels
 const CURSOR_PAD = 4;
 
 export class StageSelectState {
@@ -51,11 +59,14 @@ export class StageSelectState {
 
         this.pulseTimer = 0;
         this.bgImage = null;
+        this.menuOverlay = new MenuOverlay();
     }
 
     init(game) {
         this.bgImage = this.assets.getImage('stageSelect');
         this.game = game;
+        this.menuOverlay.setAudio(game.audio);
+        this.menuOverlay.setInput(game.input);
 
         // Stop any playing music
         if (game.audio) game.audio.stopMusic();
@@ -64,6 +75,15 @@ export class StageSelectState {
     update(game) {
         const input = game.input;
         this.pulseTimer++;
+
+        // Menu overlay intercepts all input when active
+        if (this.menuOverlay.active) {
+            const result = this.menuOverlay.update(input);
+            if (result === 'resume' || result === 'close') {
+                this.menuOverlay.close();
+            }
+            return;
+        }
 
         if (this.locations.length === 0) return;
 
@@ -77,6 +97,8 @@ export class StageSelectState {
         if (input.pressed('jump') || input.pressed('start')) {
             if (this.selectedIndex === SHOP_INDEX) {
                 this._openShop(game);
+            } else if (this.selectedIndex === MENU_INDEX) {
+                this._openMenu(game);
             } else {
                 const loc = this.locations[this.selectedIndex];
                 if (loc) {
@@ -89,13 +111,16 @@ export class StageSelectState {
         }
     }
 
-    /** Find nearest dot (or SHOP label) in the given direction. */
+    /** Find nearest dot (or corner label) in the given direction. */
     _navigate(dirX, dirY) {
-        // Current position: either a stage dot or the SHOP label center
+        // Current position: stage dot or corner label center
         let curX, curY;
         if (this.selectedIndex === SHOP_INDEX) {
             curX = SHOP_NAV_X;
             curY = SHOP_NAV_Y;
+        } else if (this.selectedIndex === MENU_INDEX) {
+            curX = MENU_NAV_X;
+            curY = MENU_NAV_Y;
         } else {
             const cur = this.locations[this.selectedIndex];
             if (!cur) return;
@@ -122,16 +147,21 @@ export class StageSelectState {
             }
         }
 
-        // Also check SHOP label as a candidate (if not already on it)
-        if (this.selectedIndex !== SHOP_INDEX) {
-            const dx = SHOP_NAV_X - curX;
-            const dy = SHOP_NAV_Y - curY;
+        // Check corner labels as candidates
+        const cornerNavs = [
+            { idx: SHOP_INDEX, x: SHOP_NAV_X, y: SHOP_NAV_Y },
+            { idx: MENU_INDEX, x: MENU_NAV_X, y: MENU_NAV_Y },
+        ];
+        for (const nav of cornerNavs) {
+            if (this.selectedIndex === nav.idx) continue;
+            const dx = nav.x - curX;
+            const dy = nav.y - curY;
 
             if (this._isInDirection(dx, dy, dirX, dirY)) {
                 const dist = dx * dx + dy * dy;
                 if (dist < bestDist) {
                     bestDist = dist;
-                    bestIdx = SHOP_INDEX;
+                    bestIdx = nav.idx;
                 }
             }
         }
@@ -155,6 +185,10 @@ export class StageSelectState {
             locations: this.locations,
             selectedIndex: this._lastStageIndex(),
         }));
+    }
+
+    _openMenu(game) {
+        this.menuOverlay.open();
     }
 
     /** Return the last valid stage index (for returning from shop). */
@@ -184,9 +218,11 @@ export class StageSelectState {
             ctx.fillText(label.text, label.x + label.w / 2, label.y + label.h / 2);
         }
 
-        // Pulsing yellow cursor on SHOP when selected
+        // Pulsing yellow cursor on selected corner label
         if (this.selectedIndex === SHOP_INDEX) {
-            this._drawShopCursor(ctx);
+            this._drawCornerCursor(ctx, CORNER_LABELS[0]);
+        } else if (this.selectedIndex === MENU_INDEX) {
+            this._drawCornerCursor(ctx, CORNER_LABELS[3]);
         }
 
         // Location dots
@@ -198,15 +234,17 @@ export class StageSelectState {
 
         // Bottom banner — stage name or "SHOP"
         this._drawBanner(ctx);
+
+        // Menu overlay (drawn last, on top of everything)
+        this.menuOverlay.render(ctx, SELECT_W, SELECT_H);
     }
 
-    _drawShopCursor(ctx) {
-        const shop = CORNER_LABELS[0];
+    _drawCornerCursor(ctx, label) {
         const pulse = Math.sin(this.pulseTimer * PULSE_SPEED) * 0.3 + 0.7;
-        const x = shop.x - CURSOR_PAD;
-        const y = shop.y - CURSOR_PAD;
-        const w = shop.w + CURSOR_PAD * 2;
-        const h = shop.h + CURSOR_PAD * 2;
+        const x = label.x - CURSOR_PAD;
+        const y = label.y - CURSOR_PAD;
+        const w = label.w + CURSOR_PAD * 2;
+        const h = label.h + CURSOR_PAD * 2;
 
         // Outer glow
         ctx.strokeStyle = `rgba(255, 221, 0, ${0.3 * pulse})`;
@@ -262,10 +300,12 @@ export class StageSelectState {
         ctx.fillStyle = '#0c0828';
         ctx.fillRect(BANNER_X, BANNER_Y, BANNER_W, BANNER_H);
 
-        // Show "SHOP" when shop is selected, otherwise stage name
+        // Show label name for corner selections, otherwise stage name
         let name;
         if (this.selectedIndex === SHOP_INDEX) {
             name = 'SHOP';
+        } else if (this.selectedIndex === MENU_INDEX) {
+            name = 'MENU';
         } else {
             const loc = this.locations[this.selectedIndex];
             name = loc ? loc.name : '';
