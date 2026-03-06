@@ -266,7 +266,7 @@ export class GameplayState {
             },
             desertbase2: {
                 tanks:   [{ x: 500, y: 120 }, { x: 1200, y: 120 }, { x: 2200, y: 120 }],
-                hoppers: [{ x: 800, y: 120 }, { x: 1600, y: 120 }, { x: 2600, y: 120 }],
+                hoppers: [{ x: 800, y: 120 }, { x: 1600, y: 110 }, { x: 2600, y: 120 }],
                 birds:   [{ x: 600, y: 60 },  { x: 1400, y: 50 },  { x: 2400, y: 55 }],
             },
         };
