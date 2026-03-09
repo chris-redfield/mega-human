@@ -187,6 +187,9 @@ export class AudioManager {
 
         this._stopMusicImmediate();
 
+        // Cancel any pending fade-out automation from stopMusic() and restore gain
+        this.musicGain.gain.cancelScheduledValues(0);
+
         const source = this.ctx.createBufferSource();
         source.buffer = this.buffers[name];
 
