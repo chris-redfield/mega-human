@@ -618,13 +618,13 @@ export class ShopState {
         } else if (item.id === 'subtank') {
             updateSave(s => { s.subTanks = Math.min((s.subTanks || 0) + 1, 4); });
         } else if (item.id === 'x1_boots') {
-            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.boots = 1; });
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.boots = 1; if (!s.equipped) s.equipped = {}; s.equipped.boots = 1; });
         } else if (item.id === 'x1_arms') {
-            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.arm = 1; });
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.arm = 1; if (!s.equipped) s.equipped = {}; s.equipped.arm = 1; });
         } else if (item.id === 'x1_helmet') {
-            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.helmet = 1; });
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.helmet = 1; if (!s.equipped) s.equipped = {}; s.equipped.helmet = 1; });
         } else if (item.id === 'x1_body') {
-            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.body = 1; });
+            updateSave(s => { if (!s.armor) s.armor = {}; s.armor.body = 1; if (!s.equipped) s.equipped = {}; s.equipped.body = 1; });
         }
 
         // Start buy animation

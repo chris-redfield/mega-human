@@ -4,6 +4,7 @@
  * Canvas runs at native image resolution (1536×1024).
  */
 
+import { loadSave, updateSave } from '../engine/save-manager.js';
 import { MenuOverlay } from '../ui/menu-overlay.js';
 
 const EQUIP_W = 1536;
@@ -38,11 +39,17 @@ const SLOT_BOX_H = 40;
 const SLOT_BOX_X = VIEW_X + VIEW_W - SLOT_BOX_W - 30; // right side of viewport
 
 const ARMOR_SLOTS = [
-    { id: 'helmet', label: 'HELMET', originY: bodyY(0.07), boxY: bodyY(0.02) },
-    { id: 'body',   label: 'BODY',   originY: bodyY(0.27), boxY: bodyY(0.27) },
-    { id: 'arm',    label: 'ARM',    originY: bodyY(0.51), boxY: bodyY(0.55) },
-    { id: 'boots',  label: 'BOOTS',  originY: bodyY(0.83), boxY: bodyY(0.83) },
+    { id: 'helmet', saveKey: 'helmet', label: 'HELMET', originY: bodyY(0.07), boxY: bodyY(0.02) },
+    { id: 'body',   saveKey: 'body',   label: 'BODY',   originY: bodyY(0.27), boxY: bodyY(0.27) },
+    { id: 'arm',    saveKey: 'arm',    label: 'ARM',    originY: bodyY(0.51), boxY: bodyY(0.55) },
+    { id: 'boots',  saveKey: 'boots',  label: 'BOOTS',  originY: bodyY(0.83), boxY: bodyY(0.83) },
 ];
+
+// Equipment names per armor level (0=none, 1=X1)
+const EQUIP_NAMES = {
+    0: 'None',
+    1: 'X1',
+};
 
 // Colors
 const COL_EQUIP_BG = '#40a880';
@@ -70,8 +77,18 @@ export class EquipState {
         this.playerImg = null;
         this.pulseTimer = 0;
 
-        // Focus area: 'panel', 'map', or 'menu'
-        this.focus = 'panel';
+        // Focus area: 'slots', 'map', or 'menu'
+        this.focus = 'slots';
+        this.selectedSlot = 0; // 0-3 index into ARMOR_SLOTS
+
+        // Load current equipment from save (equipped = what's worn, armor = what's owned)
+        const save = loadSave();
+        this.equipped = {
+            helmet: save.equipped.helmet,
+            body:   save.equipped.body,
+            arm:    save.equipped.arm,
+            boots:  save.equipped.boots,
+        };
 
         this.menuOverlay = new MenuOverlay();
     }
@@ -101,19 +118,36 @@ export class EquipState {
 
         // Navigation between focus areas
         if (input.pressed('up')) {
-            if (this.focus === 'panel') this.focus = 'map';
-            else if (this.focus === 'menu') this.focus = 'map';
+            if (this.focus === 'slots') {
+                if (this.selectedSlot > 0) {
+                    this.selectedSlot--;
+                } else {
+                    this.focus = 'map';
+                }
+            } else if (this.focus === 'menu') this.focus = 'map';
         }
         if (input.pressed('down')) {
-            if (this.focus === 'map') this.focus = 'panel';
-            else if (this.focus === 'panel') this.focus = 'menu';
+            if (this.focus === 'slots') {
+                if (this.selectedSlot < ARMOR_SLOTS.length - 1) {
+                    this.selectedSlot++;
+                } else {
+                    this.focus = 'menu';
+                }
+            } else if (this.focus === 'map') {
+                this.focus = 'slots';
+                this.selectedSlot = 0;
+            }
         }
         if (input.pressed('left')) {
-            if (this.focus === 'map') this.focus = 'panel';
-            else if (this.focus === 'menu') this.focus = 'panel';
+            if (this.focus === 'slots') {
+                this._cycleEquip(-1);
+            } else if (this.focus === 'map') this.focus = 'slots';
+            else if (this.focus === 'menu') this.focus = 'slots';
         }
         if (input.pressed('right')) {
-            if (this.focus === 'panel') this.focus = 'menu';
+            if (this.focus === 'slots') {
+                this._cycleEquip(1);
+            }
         }
 
         if (this.focus === 'map') {
@@ -185,16 +219,18 @@ export class EquipState {
 
     _drawArmorSlots(ctx) {
         const lineStartX = PLAYER_CX + (118 * PLAYER_SCALE) / 2 + 10; // right edge of player + gap
+        const pulse = Math.sin(this.pulseTimer * PULSE_SPEED) * 0.3 + 0.7;
 
-        for (const slot of ARMOR_SLOTS) {
+        for (let i = 0; i < ARMOR_SLOTS.length; i++) {
+            const slot = ARMOR_SLOTS[i];
+            const isSelected = this.focus === 'slots' && this.selectedSlot === i;
             const boxX = SLOT_BOX_X;
             const boxY = slot.boxY - SLOT_BOX_H / 2;
             const boxCY = slot.boxY;
 
             // Line from player body part to box
-            // Diagonal segment to midpoint X (height transition), then horizontal to box
             const midX = lineStartX + (boxX - lineStartX) / 2;
-            ctx.strokeStyle = COL_LINE;
+            ctx.strokeStyle = isSelected ? `rgba(255, 221, 0, ${pulse})` : COL_LINE;
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(lineStartX, slot.originY);
@@ -203,7 +239,7 @@ export class EquipState {
             ctx.stroke();
 
             // Small dot at line origin
-            ctx.fillStyle = COL_LINE;
+            ctx.fillStyle = isSelected ? `rgba(255, 221, 0, ${pulse})` : COL_LINE;
             ctx.beginPath();
             ctx.arc(lineStartX, slot.originY, 4, 0, Math.PI * 2);
             ctx.fill();
@@ -212,24 +248,70 @@ export class EquipState {
             ctx.fillStyle = COL_SLOT_BG;
             ctx.fillRect(boxX, boxY, SLOT_BOX_W, SLOT_BOX_H);
 
-            // Box border
-            ctx.strokeStyle = COL_SLOT_BORDER;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(boxX, boxY, SLOT_BOX_W, SLOT_BOX_H);
+            // Box border — pulsing yellow if selected
+            if (isSelected) {
+                ctx.strokeStyle = `rgba(255, 221, 0, ${0.3 * pulse})`;
+                ctx.lineWidth = 4;
+                ctx.strokeRect(boxX - 2, boxY - 2, SLOT_BOX_W + 4, SLOT_BOX_H + 4);
+                ctx.strokeStyle = `rgba(255, 221, 0, ${pulse})`;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(boxX, boxY, SLOT_BOX_W, SLOT_BOX_H);
+            } else {
+                ctx.strokeStyle = COL_SLOT_BORDER;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(boxX, boxY, SLOT_BOX_W, SLOT_BOX_H);
+            }
 
             // Slot label (top line, small)
             ctx.font = 'bold 14px "Courier New", monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillStyle = COL_GOLD;
+            ctx.fillStyle = isSelected ? `rgba(255, 221, 0, ${pulse})` : COL_GOLD;
             ctx.fillText(slot.label, boxX + SLOT_BOX_W / 2, boxY + 4);
 
             // Equipped item name
+            const equipLevel = this.equipped[slot.saveKey];
+            const equipName = EQUIP_NAMES[equipLevel] || 'None';
             ctx.font = 'bold 18px "Courier New", monospace';
             ctx.textBaseline = 'bottom';
-            ctx.fillStyle = '#aaaacc';
-            ctx.fillText('None', boxX + SLOT_BOX_W / 2, boxY + SLOT_BOX_H - 4);
+            ctx.fillStyle = isSelected ? '#ffffff' : '#aaaacc';
+            ctx.fillText(equipName, boxX + SLOT_BOX_W / 2, boxY + SLOT_BOX_H - 4);
+
+            // Left/right arrows when selected and has options
+            if (isSelected) {
+                const save = loadSave();
+                const owned = save.armor[slot.saveKey] || 0;
+                if (owned > 0) {
+                    ctx.font = 'bold 20px "Courier New", monospace';
+                    ctx.fillStyle = `rgba(255, 221, 0, ${pulse})`;
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'right';
+                    ctx.fillText('<', boxX - 8, boxCY);
+                    ctx.textAlign = 'left';
+                    ctx.fillText('>', boxX + SLOT_BOX_W + 8, boxCY);
+                }
+            }
         }
+    }
+
+    /** Cycle equipment on the selected slot. dir = -1 or +1. */
+    _cycleEquip(dir) {
+        const slot = ARMOR_SLOTS[this.selectedSlot];
+        const save = loadSave();
+        const owned = save.armor[slot.saveKey] || 0; // max tier owned (0=none, 1=X1)
+
+        // Options: [0, 1, ..., owned] — only tiers the player has bought
+        const current = this.equipped[slot.saveKey];
+        const options = [0];
+        for (let i = 1; i <= owned; i++) options.push(i);
+        if (options.length <= 1) return; // nothing to cycle (only "None")
+
+        const idx = options.indexOf(current);
+        const newIdx = (idx + dir + options.length) % options.length;
+        this.equipped[slot.saveKey] = options[newIdx];
+
+        // Persist to save (write to equipped, not armor)
+        updateSave(s => { s.equipped[slot.saveKey] = this.equipped[slot.saveKey]; });
     }
 
     _drawCornerCursor(ctx, label) {

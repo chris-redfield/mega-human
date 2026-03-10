@@ -62,12 +62,12 @@ export class Player extends Entity {
         this.hp = this.maxHp;
         this.characterId = 'x';
 
-        // Armor state from save (0=none, 1=X1, 2=X2, 3=X3)
-        const armor = save.armor || {};
-        this.armorBoots = armor.boots || 0;
-        this.armorBody = armor.body || 0;
-        this.armorHelmet = armor.helmet || 0;
-        this.armorArm = armor.arm || 0;
+        // Armor state from save — use equipped (what's worn), not armor (what's owned)
+        const equipped = save.equipped || {};
+        this.armorBoots = equipped.boots || 0;
+        this.armorBody = equipped.body || 0;
+        this.armorHelmet = equipped.helmet || 0;
+        this.armorArm = equipped.arm || 0;
         this.armorImages = null; // set by gameplay after construction
 
         // Boots bonus: X1=+15% dash speed
