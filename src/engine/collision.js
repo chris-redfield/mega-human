@@ -258,17 +258,18 @@ export function resolveSlopeVertical(level, x, y, w, h, dy, wasGrounded, wasOnSl
 }
 
 /**
- * Find a ladder zone overlapping the given point.
- * Uses horizontal tolerance from ladder center (like original MMX).
+ * Find a ladder zone overlapping the player's hitbox rectangle.
+ * Uses full hitbox height (not just feet) like the original MMX.
  * @param {object} level - Level with ladders array
  * @param {number} px - Player center X
- * @param {number} py - Player feet Y
+ * @param {number} topY - Player hitbox top Y
+ * @param {number} bottomY - Player hitbox bottom Y (feet)
  * @param {number} tolerance - Max horizontal distance from ladder center (default 12)
  * @returns {object|null} The ladder object, or null
  */
-export function getLadderAt(level, px, py, tolerance = 12) {
+export function getLadderAt(level, px, topY, bottomY, tolerance = 12) {
     for (const lad of level.ladders) {
-        if (py >= lad.topY && py <= lad.bottomY &&
+        if (topY < lad.bottomY && bottomY > lad.topY &&
             Math.abs(px - lad.centerX) < tolerance) {
             return lad;
         }

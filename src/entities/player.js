@@ -133,6 +133,7 @@ export class Player extends Entity {
         // Ladder state
         this.currentLadder = null;   // Reference to the ladder zone we're on
         this.ladderAnimPaused = false; // True when idle on ladder (not climbing)
+        this.ladderReentryBlocked = false; // Block re-entry until UP is released
 
         // Death effect state
         this.dieTimer = 0;
@@ -152,6 +153,9 @@ export class Player extends Entity {
         if (this.invincibleTimer > 0) this.invincibleTimer--;
         if (this.shotCooldown > 0) this.shotCooldown--;
         if (this.shootAnimTimer > 0) this.shootAnimTimer--;
+        if (this.ladderReentryBlocked && !input.held('up')) {
+            this.ladderReentryBlocked = false;
+        }
 
         // State machine
         switch (this.state) {
@@ -222,11 +226,13 @@ export class Player extends Entity {
 
     _groundState(input, level) {
         // Ladder entry: press UP while overlapping a ladder
-        if (input.held('up')) {
+        // Skip if feet are at the ladder top (standing on platform above) — use DOWN there
+        if (input.held('up') && !this.ladderReentryBlocked) {
             const px = this.x + this.hitboxX + this.hitboxW / 2;
-            const py = this.y + this.hitboxY + this.hitboxH;
-            const ladder = getLadderAt(level, px, py);
-            if (ladder) {
+            const topY = this.y + this.hitboxY;
+            const bottomY = this.y + this.hitboxY + this.hitboxH;
+            const ladder = getLadderAt(level, px, topY, bottomY);
+            if (ladder && bottomY > ladder.topY + 4) {
                 this._enterLadder(ladder, -10);
                 return;
             }
@@ -292,10 +298,11 @@ export class Player extends Entity {
 
     _airState(input, level) {
         // Ladder grab: press UP while falling through a ladder zone
-        if (input.held('up')) {
+        if (input.held('up') && !this.ladderReentryBlocked) {
             const px = this.x + this.hitboxX + this.hitboxW / 2;
-            const py = this.y + this.hitboxY + this.hitboxH;
-            const ladder = getLadderAt(level, px, py);
+            const topY = this.y + this.hitboxY;
+            const bottomY = this.y + this.hitboxY + this.hitboxH;
+            const ladder = getLadderAt(level, px, topY, bottomY);
             if (ladder) {
                 this._enterLadder(ladder);
                 return;
@@ -661,6 +668,8 @@ export class Player extends Entity {
             // Small downward velocity so _moveAndCollide detects the one-way
             // ladder-top tiles as ground (grounded detection quirk: dy must be > 0)
             this.vy = P.GRAVITY;
+            // Prevent immediate re-entry while UP is still held
+            this.ladderReentryBlocked = true;
             return;
         }
         this.vx = 0;
