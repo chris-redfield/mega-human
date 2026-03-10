@@ -7,6 +7,7 @@
 
 import { GameplayState } from './gameplay.js';
 import { ShopState } from './shop.js';
+import { EquipState } from './equip.js';
 import { MenuOverlay } from '../ui/menu-overlay.js';
 
 const SELECT_W = 1536;
@@ -35,6 +36,11 @@ const CORNER_LABELS = [
 const SHOP_NAV_X = 67 + 172 / 2;   // 153
 const SHOP_NAV_Y = 40 + 76 / 2;    // 78
 
+// EQUIP label navigable point at its center
+const EQUIP_LABEL = CORNER_LABELS[1];
+const EQUIP_NAV_X = EQUIP_LABEL.x + EQUIP_LABEL.w / 2;
+const EQUIP_NAV_Y = EQUIP_LABEL.y + EQUIP_LABEL.h / 2;
+
 // MENU label navigable point at its center
 const MENU_LABEL = CORNER_LABELS[3];
 const MENU_NAV_X = MENU_LABEL.x + MENU_LABEL.w / 2;
@@ -43,6 +49,7 @@ const MENU_NAV_Y = MENU_LABEL.y + MENU_LABEL.h / 2;
 // Special indices for non-stage selections
 const SHOP_INDEX = -1;
 const MENU_INDEX = -2;
+const EQUIP_INDEX = -3;
 
 // Cursor padding around corner labels
 const CURSOR_PAD = 4;
@@ -97,6 +104,8 @@ export class StageSelectState {
         if (input.pressed('jump') || input.pressed('start')) {
             if (this.selectedIndex === SHOP_INDEX) {
                 this._openShop(game);
+            } else if (this.selectedIndex === EQUIP_INDEX) {
+                this._openEquip(game);
             } else if (this.selectedIndex === MENU_INDEX) {
                 this._openMenu(game);
             } else {
@@ -118,6 +127,9 @@ export class StageSelectState {
         if (this.selectedIndex === SHOP_INDEX) {
             curX = SHOP_NAV_X;
             curY = SHOP_NAV_Y;
+        } else if (this.selectedIndex === EQUIP_INDEX) {
+            curX = EQUIP_NAV_X;
+            curY = EQUIP_NAV_Y;
         } else if (this.selectedIndex === MENU_INDEX) {
             curX = MENU_NAV_X;
             curY = MENU_NAV_Y;
@@ -150,6 +162,7 @@ export class StageSelectState {
         // Check corner labels as candidates
         const cornerNavs = [
             { idx: SHOP_INDEX, x: SHOP_NAV_X, y: SHOP_NAV_Y },
+            { idx: EQUIP_INDEX, x: EQUIP_NAV_X, y: EQUIP_NAV_Y },
             { idx: MENU_INDEX, x: MENU_NAV_X, y: MENU_NAV_Y },
         ];
         for (const nav of cornerNavs) {
@@ -182,6 +195,13 @@ export class StageSelectState {
 
     _openShop(game) {
         game.setState(new ShopState(this.assets, {
+            locations: this.locations,
+            selectedIndex: this._lastStageIndex(),
+        }));
+    }
+
+    _openEquip(game) {
+        game.setState(new EquipState(this.assets, {
             locations: this.locations,
             selectedIndex: this._lastStageIndex(),
         }));
@@ -221,6 +241,8 @@ export class StageSelectState {
         // Pulsing yellow cursor on selected corner label
         if (this.selectedIndex === SHOP_INDEX) {
             this._drawCornerCursor(ctx, CORNER_LABELS[0]);
+        } else if (this.selectedIndex === EQUIP_INDEX) {
+            this._drawCornerCursor(ctx, CORNER_LABELS[1]);
         } else if (this.selectedIndex === MENU_INDEX) {
             this._drawCornerCursor(ctx, CORNER_LABELS[3]);
         }
@@ -304,6 +326,8 @@ export class StageSelectState {
         let name;
         if (this.selectedIndex === SHOP_INDEX) {
             name = 'SHOP';
+        } else if (this.selectedIndex === EQUIP_INDEX) {
+            name = 'EQUIP';
         } else if (this.selectedIndex === MENU_INDEX) {
             name = 'MENU';
         } else {
