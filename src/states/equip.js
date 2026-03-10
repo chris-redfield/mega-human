@@ -185,8 +185,25 @@ export class EquipState {
             const dh = this.playerImg.height * scale;
             const cx = VIEW_X + VIEW_W / 4;
             const cy = VIEW_Y + VIEW_H / 2;
+            const dx = Math.floor(cx - dw / 2);
+            const dy = Math.floor(cy - dh / 2);
             ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(this.playerImg, Math.floor(cx - dw / 2), Math.floor(cy - dh / 2), dw, dh);
+            ctx.drawImage(this.playerImg, dx, dy, dw, dh);
+
+            // Armor overlays (same 118x186 sheets, drawn at same position)
+            const armorLayers = [
+                { key: 'boots',  asset: 'x1Boots' },
+                { key: 'body',   asset: 'x1Body' },
+                { key: 'helmet', asset: 'x1Helmet' },
+                { key: 'arm',    asset: 'x1Arms' },
+            ];
+            for (const layer of armorLayers) {
+                if (this.equipped[layer.key] >= 1) {
+                    const img = this.assets.getImage(layer.asset);
+                    if (img) ctx.drawImage(img, dx, dy, dw, dh);
+                }
+            }
+
             ctx.imageSmoothingEnabled = true;
         }
 
