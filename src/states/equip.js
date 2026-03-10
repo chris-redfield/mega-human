@@ -5,6 +5,7 @@
  */
 
 import { loadSave, updateSave } from '../engine/save-manager.js';
+import { ShopState } from './shop.js';
 import { MenuOverlay } from '../ui/menu-overlay.js';
 
 const EQUIP_W = 1536;
@@ -117,14 +118,20 @@ export class EquipState {
         }
 
         // Navigation between focus areas
+        // Top row: SHOP (left) ↔ MAP (right)
+        // Middle: slots (up/down between them, left/right cycles equipment)
+        // Bottom: MENU
         if (input.pressed('up')) {
             if (this.focus === 'slots') {
                 if (this.selectedSlot > 0) {
                     this.selectedSlot--;
                 } else {
-                    this.focus = 'map';
+                    this.focus = 'shop';
                 }
-            } else if (this.focus === 'menu') this.focus = 'map';
+            } else if (this.focus === 'menu') {
+                this.focus = 'slots';
+                this.selectedSlot = ARMOR_SLOTS.length - 1;
+            }
         }
         if (input.pressed('down')) {
             if (this.focus === 'slots') {
@@ -133,7 +140,7 @@ export class EquipState {
                 } else {
                     this.focus = 'menu';
                 }
-            } else if (this.focus === 'map') {
+            } else if (this.focus === 'shop' || this.focus === 'map') {
                 this.focus = 'slots';
                 this.selectedSlot = 0;
             }
@@ -141,16 +148,24 @@ export class EquipState {
         if (input.pressed('left')) {
             if (this.focus === 'slots') {
                 this._cycleEquip(-1);
-            } else if (this.focus === 'map') this.focus = 'slots';
-            else if (this.focus === 'menu') this.focus = 'slots';
+            } else if (this.focus === 'map') {
+                this.focus = 'shop';
+            }
         }
         if (input.pressed('right')) {
             if (this.focus === 'slots') {
                 this._cycleEquip(1);
+            } else if (this.focus === 'shop') {
+                this.focus = 'map';
             }
         }
 
-        if (this.focus === 'map') {
+        // Confirm actions
+        if (this.focus === 'shop') {
+            if (input.pressed('shoot') || input.pressed('jump') || input.pressed('start')) {
+                this._openShop(game);
+            }
+        } else if (this.focus === 'map') {
             if (input.pressed('shoot') || input.pressed('jump') || input.pressed('start')) {
                 this._goBack(game);
             }
@@ -224,7 +239,9 @@ export class EquipState {
         }
 
         // Pulsing cursor on focused corner label
-        if (this.focus === 'map') {
+        if (this.focus === 'shop') {
+            this._drawCornerCursor(ctx, CORNER_LABELS[0]);
+        } else if (this.focus === 'map') {
             this._drawCornerCursor(ctx, CORNER_LABELS[2]);
         } else if (this.focus === 'menu') {
             this._drawCornerCursor(ctx, CORNER_LABELS[3]);
@@ -345,6 +362,13 @@ export class EquipState {
         ctx.strokeStyle = `rgba(255, 221, 0, ${pulse})`;
         ctx.lineWidth = 3;
         ctx.strokeRect(x, y, w, h);
+    }
+
+    _openShop(game) {
+        game.setState(new ShopState(this.assets, {
+            locations: this._stageSelectLocations,
+            selectedIndex: this._stageSelectIndex,
+        }));
     }
 
     _goBack(game) {
