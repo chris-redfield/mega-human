@@ -52,6 +52,20 @@ const EQUIP_NAMES = {
     1: 'X1',
 };
 
+// Equipment effect descriptions per slot + level
+const EQUIP_DESCRIPTIONS = {
+    helmet: { 1: "Keep buster charge when hit" },
+    body:   { 1: "Dmg -12.5%, Flinch -25%" },
+    arm:    { 1: "Charge +50% speed, L3 charge shot" },
+    boots:  { 1: "Dash speed +15%" },
+};
+
+// Info banner (same position as stage-select banner)
+const BANNER_X = 511;
+const BANNER_Y = 885;
+const BANNER_W = 500;
+const BANNER_H = 62;
+
 // Colors
 const COL_EQUIP_BG = '#40a880';
 const COL_LABEL_BG = '#0c0828';
@@ -247,8 +261,37 @@ export class EquipState {
             this._drawCornerCursor(ctx, CORNER_LABELS[3]);
         }
 
+        // Info banner at bottom
+        this._drawBanner(ctx);
+
         // Menu overlay (drawn last, on top of everything)
         this.menuOverlay.render(ctx, EQUIP_W, EQUIP_H);
+    }
+
+    _drawBanner(ctx) {
+        // Dark background (same as stage-select banner)
+        ctx.fillStyle = COL_LABEL_BG;
+        ctx.fillRect(BANNER_X, BANNER_Y, BANNER_W, BANNER_H);
+
+        // Only show description when focused on a slot with equipment
+        if (this.focus !== 'slots') return;
+        const slot = ARMOR_SLOTS[this.selectedSlot];
+        const level = this.equipped[slot.saveKey];
+        if (!level) return; // None equipped — leave empty
+
+        const desc = (EQUIP_DESCRIPTIONS[slot.saveKey] || {})[level] || '';
+        if (!desc) return;
+
+        const cx = BANNER_X + BANNER_W / 2;
+        const cy = BANNER_Y + BANNER_H / 2;
+
+        ctx.font = 'bold 24px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = COL_SHADOW;
+        ctx.fillText(desc, cx + 2, cy + 2);
+        ctx.fillStyle = COL_GOLD;
+        ctx.fillText(desc, cx, cy);
     }
 
     _drawArmorSlots(ctx) {
