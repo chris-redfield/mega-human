@@ -23,11 +23,35 @@ const VIEW_Y = 86; //86 -> original
 const VIEW_W = 935;
 const VIEW_H = 744; //744 original
 
+// Player sprite layout (118x186 at 3x scale, centered in left half)
+const PLAYER_SCALE = 3;
+const PLAYER_CX = VIEW_X + VIEW_W / 4;                // ~534
+const PLAYER_CY = VIEW_Y + VIEW_H / 2;                // ~458
+const PLAYER_TOP = PLAYER_CY - (186 * PLAYER_SCALE) / 2; // ~179
+
+// Body part Y positions (proportion of 186px sprite height, scaled)
+function bodyY(fraction) { return PLAYER_TOP + fraction * 186 * PLAYER_SCALE; }
+
+// Armor slot definitions: line origin on sprite → box on right side
+const SLOT_BOX_W = 180;
+const SLOT_BOX_H = 40;
+const SLOT_BOX_X = VIEW_X + VIEW_W - SLOT_BOX_W - 30; // right side of viewport
+
+const ARMOR_SLOTS = [
+    { id: 'helmet', label: 'HELMET', originY: bodyY(0.07), boxY: bodyY(0.02) },
+    { id: 'body',   label: 'BODY',   originY: bodyY(0.27), boxY: bodyY(0.27) },
+    { id: 'arm',    label: 'ARM',    originY: bodyY(0.51), boxY: bodyY(0.55) },
+    { id: 'boots',  label: 'BOOTS',  originY: bodyY(0.83), boxY: bodyY(0.83) },
+];
+
 // Colors
 const COL_EQUIP_BG = '#40a880';
 const COL_LABEL_BG = '#0c0828';
 const COL_GOLD = '#c8a840';
 const COL_SHADOW = '#3a2a08';
+const COL_SLOT_BG = '#0c0828';
+const COL_SLOT_BORDER = '#2a2060';
+const COL_LINE = '#c8a840';
 
 // Cursor padding around corner labels
 const CURSOR_PAD = 4;
@@ -132,6 +156,9 @@ export class EquipState {
             ctx.imageSmoothingEnabled = true;
         }
 
+        // Armor slots — lines from player body parts to labeled boxes on the right
+        this._drawArmorSlots(ctx);
+
         // Corner label overlays
         for (const label of CORNER_LABELS) {
             ctx.fillStyle = COL_LABEL_BG;
@@ -154,6 +181,55 @@ export class EquipState {
 
         // Menu overlay (drawn last, on top of everything)
         this.menuOverlay.render(ctx, EQUIP_W, EQUIP_H);
+    }
+
+    _drawArmorSlots(ctx) {
+        const lineStartX = PLAYER_CX + (118 * PLAYER_SCALE) / 2 + 10; // right edge of player + gap
+
+        for (const slot of ARMOR_SLOTS) {
+            const boxX = SLOT_BOX_X;
+            const boxY = slot.boxY - SLOT_BOX_H / 2;
+            const boxCY = slot.boxY;
+
+            // Line from player body part to box
+            // Diagonal segment to midpoint X (height transition), then horizontal to box
+            const midX = lineStartX + (boxX - lineStartX) / 2;
+            ctx.strokeStyle = COL_LINE;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(lineStartX, slot.originY);
+            ctx.lineTo(midX, boxCY);
+            ctx.lineTo(boxX, boxCY);
+            ctx.stroke();
+
+            // Small dot at line origin
+            ctx.fillStyle = COL_LINE;
+            ctx.beginPath();
+            ctx.arc(lineStartX, slot.originY, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Box background
+            ctx.fillStyle = COL_SLOT_BG;
+            ctx.fillRect(boxX, boxY, SLOT_BOX_W, SLOT_BOX_H);
+
+            // Box border
+            ctx.strokeStyle = COL_SLOT_BORDER;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(boxX, boxY, SLOT_BOX_W, SLOT_BOX_H);
+
+            // Slot label (top line, small)
+            ctx.font = 'bold 14px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = COL_GOLD;
+            ctx.fillText(slot.label, boxX + SLOT_BOX_W / 2, boxY + 4);
+
+            // Equipped item name
+            ctx.font = 'bold 18px "Courier New", monospace';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = '#aaaacc';
+            ctx.fillText('None', boxX + SLOT_BOX_W / 2, boxY + SLOT_BOX_H - 4);
+        }
     }
 
     _drawCornerCursor(ctx, label) {

@@ -6,6 +6,7 @@
  */
 
 import { loadSave, updateSave } from '../engine/save-manager.js';
+import { EquipState } from './equip.js';
 import { MenuOverlay } from '../ui/menu-overlay.js';
 
 const SHOP_W = 1536;
@@ -208,21 +209,25 @@ export class ShopState {
             return;
         }
 
-        // Up/Down: switch focus between items, map, and menu
+        // Up/Down: switch focus between items, equip, map, and menu
         if (input.pressed('up')) {
             if (this.focus === 'items') this.focus = 'map';
             else if (this.focus === 'menu') this.focus = 'map';
+            else if (this.focus === 'equip') this.focus = 'items';
         }
         if (input.pressed('down')) {
             if (this.focus === 'map') this.focus = 'items';
-            else if (this.focus === 'items') this.focus = 'menu';
+            else if (this.focus === 'items') this.focus = 'equip';
+            else if (this.focus === 'equip') this.focus = 'menu';
         }
         if (input.pressed('left')) {
             if (this.focus === 'map') this.focus = 'items';
-            else if (this.focus === 'menu') this.focus = 'items';
+            else if (this.focus === 'menu') this.focus = 'equip';
+            else if (this.focus === 'items' && this.selectedItem <= 0) this.focus = 'equip';
         }
         if (input.pressed('right')) {
-            if (this.focus === 'items' && this.selectedItem >= this.items.length - 1) {
+            if (this.focus === 'equip') this.focus = 'menu';
+            else if (this.focus === 'items' && this.selectedItem >= this.items.length - 1) {
                 this.focus = 'menu';
             }
         }
@@ -252,6 +257,11 @@ export class ShopState {
             // Confirm on MAP → go back to stage select
             if (input.pressed('shoot') || input.pressed('jump') || input.pressed('start')) {
                 this._goBack(game);
+            }
+        } else if (this.focus === 'equip') {
+            // Confirm on EQUIP → open equipment screen
+            if (input.pressed('shoot') || input.pressed('jump') || input.pressed('start')) {
+                this._openEquip(game);
             }
         } else if (this.focus === 'menu') {
             // Confirm on MENU → open menu overlay
@@ -297,6 +307,8 @@ export class ShopState {
         // Pulsing cursor on focused corner label
         if (this.focus === 'map') {
             this._drawCornerCursor(ctx, CORNER_LABELS[2]);
+        } else if (this.focus === 'equip') {
+            this._drawCornerCursor(ctx, CORNER_LABELS[1]);
         } else if (this.focus === 'menu') {
             this._drawCornerCursor(ctx, CORNER_LABELS[3]);
         }
@@ -617,6 +629,13 @@ export class ShopState {
 
         // Start buy animation
         this.buyAnim = { timer: 0, itemIndex: this.selectedItem, item };
+    }
+
+    _openEquip(game) {
+        game.setState(new EquipState(this.assets, {
+            locations: this._stageSelectLocations,
+            selectedIndex: this._stageSelectIndex,
+        }));
     }
 
     _goBack(game) {
