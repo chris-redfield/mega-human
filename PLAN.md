@@ -66,11 +66,15 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 5. Boss is stored in `this.boss` (separate from `this.enemies[]`)
 6. Integration uses existing systems: `checkPlayerCollision()`, `_checkPlayerShotsVsBoss()`, boss HP bar rendering
 
-**Current bosses:**
-- **Chill Penguin** (`chill-penguin.js`): 32 HP, 6 AI states (idle, shoot, slide, blow, hurt, dying). Frozentown stage at (1650, 150).
-- **Storm Eagle** (`storm-eagle.js`): Highway stage at (2470, 50), activates at x=1800.
-- **Flame Mammoth** (`flame-mammoth.js`): 32 HP, 6 AI states (idle, shoot, oil, stomp, hurt, dying). Robot Junkyard stage at (1150, 480). Signature mechanic: oil-fire combo (oil puddle + fireball = big fire hazard).
-- **Launch Octopus** (`launch-octopus.js`): 32 HP, 6 AI states (idle, shoot, torpedo, spin, hurt, dying). Deep Sea Base stage at (1730, 700). Attacks: 3-way missile spread, 4 homing torpedoes, spin push (armored).
+**Current bosses (all 8 MMX1 Mavericks):**
+- **Chill Penguin** (`chill-penguin.js`): 32 HP, 6 AI states (idle, shoot, slide, blow, hurt, dying). Frozentown stage at (1650, 150), activationX: 900.
+- **Storm Eagle** (`storm-eagle.js`): Highway stage at (2470, 50), activationX: 1800.
+- **Flame Mammoth** (`flame-mammoth.js`): 32 HP, 6 AI states (idle, shoot, oil, stomp, hurt, dying). Robot Junkyard stage at (1350, 400), activationX: 750. Signature mechanic: oil-fire combo (oil puddle + fireball = big fire hazard).
+- **Launch Octopus** (`launch-octopus.js`): 32 HP, 6 AI states (idle, shoot, torpedo, spin, hurt, dying). Deep Sea Base stage at (1730, 650), activationX: 1500. Attacks: 3-way missile spread, 4 homing torpedoes, spin push (armored).
+- **Spark Mandrill** (`spark-mandrill.js`): 32 HP, AI states (idle, shoot, punch, dash_punch, jump, hurt, dying). Volcanic Zone stage at (1200, 130), activationX: 1000.
+- **Boomer Kuwanger** (`boomer-kuwanger.js`): 32 HP, AI states (idle, shoot, dash, deadlift, teleport, hurt, dying). Tower stage at (920, 140), activationX: 800.
+- **Armored Armadillo** (`armored-armadillo.js`): 32 HP, AI states (idle, shoot, roll_enter, roll, roll_exit, block, hurt, dying). Shipyard stage at (850, 860), activationX: 700.
+- **Sting Chameleon** (`sting-chameleon.js`): 32 HP, AI states (idle, shoot, tongue, hurt, dying). Aircraft Carrier stage at (2700, 100), activationX: 2500.
 
 **Boss drops:** 100% guaranteed 2 RAM memory + 25% chance of second (offset 10px right). Implemented in `_spawnBossDrop()`.
 
