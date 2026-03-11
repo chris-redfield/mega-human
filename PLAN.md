@@ -66,7 +66,7 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 5. Boss is stored in `this.boss` (separate from `this.enemies[]`)
 6. Integration uses existing systems: `checkPlayerCollision()`, `_checkPlayerShotsVsBoss()`, boss HP bar rendering
 
-**Current bosses (all 8 MMX1 Mavericks):**
+**Current bosses (all 8 MMX1 Mavericks + 1 MMX2):**
 - **Chill Penguin** (`chill-penguin.js`): 32 HP, 6 AI states (idle, shoot, slide, blow, hurt, dying). Frozentown stage at (1650, 150), activationX: 900.
 - **Storm Eagle** (`storm-eagle.js`): Highway stage at (2470, 50), activationX: 1800.
 - **Flame Mammoth** (`flame-mammoth.js`): 32 HP, 6 AI states (idle, shoot, oil, stomp, hurt, dying). Robot Junkyard stage at (1350, 400), activationX: 750. Signature mechanic: oil-fire combo (oil puddle + fireball = big fire hazard).
@@ -75,6 +75,7 @@ A Mega Man X-style action platformer built with plain HTML5 Canvas and JavaScrip
 - **Boomer Kuwanger** (`boomer-kuwanger.js`): 32 HP, AI states (idle, shoot, dash, deadlift, teleport, hurt, dying). Tower stage at (920, 140), activationX: 800.
 - **Armored Armadillo** (`armored-armadillo.js`): 32 HP, AI states (idle, shoot, roll_enter, roll, roll_exit, block, hurt, dying). Shipyard stage at (850, 860), activationX: 700.
 - **Sting Chameleon** (`sting-chameleon.js`): 32 HP, AI states (idle, shoot, tongue, hurt, dying). Aircraft Carrier stage at (2700, 100), activationX: 2500.
+- **Overdrive Ostrich** (`overdrive-ostrich.js`): 32 HP, AI states (idle, shoot, skip, skid, attack2, jump, hurt, dying). Desert Base 2 stage at (2800, 100), activationX: 2400. Spritesheet: `mavericksX2.png`. Attacks: slicer projectile, skip kick (aerial melee), skid charge (armored), attack2 ground combo.
 
 **Boss drops:** 100% guaranteed 2 RAM memory + 25% chance of second (offset 10px right). Implemented in `_spawnBossDrop()`.
 

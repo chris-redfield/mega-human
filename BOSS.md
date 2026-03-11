@@ -19,8 +19,9 @@ All boss sprites sourced from [MMX-Online-Deathmatch](https://github.com/gamemak
 | Boomer Kuwanger | X1 | tower | (920, 140) | 800 | `src/entities/boomer-kuwanger.js` | idle, shoot, dash, deadlift, teleport, jump_start, jump, land, hurt, dying |
 | Armored Armadillo | X1 | shipyard | (850, 860) | 700 | `src/entities/armored-armadillo.js` | idle, shoot, roll_enter, roll, roll_exit, block, jump_start, jump, land, hurt, dying |
 | Sting Chameleon | X1 | aircraftcarrier | (2700, 100) | 2500 | `src/entities/sting-chameleon.js` | idle, shoot, tongue1, tongue2, tongue3, jump_start, jump, land, hurt, dying |
+| Overdrive Ostrich | X2 | desertbase2 | (2800, 100) | 2400 | `src/entities/overdrive-ostrich.js` | idle, shoot, skip, skid, skid_end, attack2_start, attack2, attack2_end, jump_start, jump, land, hurt, dying |
 
-All 8 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded as `effectsSprite`). 32 HP each.
+X1 bosses use `mavericks.png` (loaded as `mavericksSprite`). X2 bosses use `mavericksX2.png` (loaded as `mavericksX2Sprite`). All use `effects.png` (loaded as `effectsSprite`). 32 HP each.
 
 ---
 
@@ -40,20 +41,20 @@ All 8 use `mavericks.png` (loaded as `mavericksSprite`) + `effects.png` (loaded 
 | Sting Chameleon | `stingc` | 23 | tongue (5 variants), spike projectile, chameleon sting, cling shoot, hang, climb | YES |
 | Velguarder | `velg` | 18 | fire/ice projectiles, pounce, wall kick/slide | NO |
 
-### MMX2 — `mavericksX2.png` (1570x1639, NOT yet in `assets/`)
+### MMX2 — `mavericksX2.png` (1570x1639, in `assets/`)
 
-| Boss | Prefix | Anims | Key Attacks |
-|------|--------|-------|-------------|
-| Wire Sponge | `wsponge` | 39 | vine throw, vine spin (shield), seed throw, thunder, spike (ceiling/ground/wall), angry mode |
-| Wheel Gator | `wheelg` | 22 | wheel throw, drill, dive, eat/spit, grab |
-| Bubble Crab | `bcrab` | 25 | bubble ring, shield, summon crab/bubble, ring attack |
-| Flame Stag | `fstag` | 33 | fireball (ground/wall), fire dash, updash, downdash, dash grab, punch, antler, angry mode |
-| Morph Moth (adult) | `morphm` | 21 | beam, sparkles, sweep, ground shoot |
-| Morph Moth (cocoon) | `morphmc` | 19 | silk line/spike, scrap projectile, spin, suck, burn |
-| Magna Centipede | `magnac` | 37 | shuriken throw, teleport in/out, drain, gravity shift, telekinesis, tail (detaches → notail_ variants) |
-| Crystal Snail | `csnail` | 41 | spit projectile, timestop, shell dash/spin/rocket/burstfire, noshell form (noshell_ variants) |
-| Overdrive Ostrich | `overdriveo` | 23 | slicer (normal/vertical), skip, skid, attack2, weakness glass |
-| Fake Zero | `fakezero` | 26 | buster shot, sword slash, ground punch, guard, climb, wall kick/slide |
+| Boss | Prefix | Anims | Key Attacks | Implemented |
+|------|--------|-------|-------------|-------------|
+| Wire Sponge | `wsponge` | 39 | vine throw, vine spin (shield), seed throw, thunder, spike (ceiling/ground/wall), angry mode | NO |
+| Wheel Gator | `wheelg` | 22 | wheel throw, drill, dive, eat/spit, grab | NO |
+| Bubble Crab | `bcrab` | 25 | bubble ring, shield, summon crab/bubble, ring attack | NO |
+| Flame Stag | `fstag` | 33 | fireball (ground/wall), fire dash, updash, downdash, dash grab, punch, antler, angry mode | NO |
+| Morph Moth (adult) | `morphm` | 21 | beam, sparkles, sweep, ground shoot | NO |
+| Morph Moth (cocoon) | `morphmc` | 19 | silk line/spike, scrap projectile, spin, suck, burn | NO |
+| Magna Centipede | `magnac` | 37 | shuriken throw, teleport in/out, drain, gravity shift, telekinesis, tail (detaches → notail_ variants) | NO |
+| Crystal Snail | `csnail` | 41 | spit projectile, timestop, shell dash/spin/rocket/burstfire, noshell form (noshell_ variants) | NO |
+| Overdrive Ostrich | `overdriveo` | 23 | slicer (normal/vertical), skip, skid, attack2, weakness glass | YES |
+| Fake Zero | `fakezero` | 26 | buster shot, sword slash, ground punch, guard, climb, wall kick/slide | NO |
 
 ### MMX3 — `mavericksX3.png` (1570x1496, NOT yet in `assets/`)
 

@@ -22,6 +22,7 @@ import { SparkMandrill } from '../entities/spark-mandrill.js';
 import { BoomerKuwanger } from '../entities/boomer-kuwanger.js';
 import { ArmoredArmadillo } from '../entities/armored-armadillo.js';
 import { StingChameleon } from '../entities/sting-chameleon.js';
+import { OverdriveOstrich } from '../entities/overdrive-ostrich.js';
 import { createLevelFromMap } from '../levels/level.js';
 import { loadSave, updateSave } from '../engine/save-manager.js';
 
@@ -304,6 +305,7 @@ export class GameplayState {
             tower:          { x: 920, y: 140 },
             shipyard:       { x: 850, y: 860 },
             aircraftcarrier: { x: 2700, y: 100 },
+            desertbase2:    { x: 2800, y: 90 },
         };
         if (bossSpawns[this.stageName]) {
             const pos = bossSpawns[this.stageName];
@@ -329,11 +331,16 @@ export class GameplayState {
             } else if (this.stageName === 'aircraftcarrier') {
                 boss = new StingChameleon(pos.x, pos.y);
                 boss.activationX = 2500;
+            } else if (this.stageName === 'desertbase2') {
+                boss = new OverdriveOstrich(pos.x, pos.y);
+                boss.activationX = 2400;
             } else {
                 boss = new ChillPenguin(pos.x, pos.y);
                 boss.activationX = 900;
             }
-            boss.spriteImage = this.assets.getImage('mavericksSprite');
+            // X2 bosses use mavericksX2 spritesheet
+            const isX2Boss = this.stageName === 'desertbase2';
+            boss.spriteImage = this.assets.getImage(isX2Boss ? 'mavericksX2Sprite' : 'mavericksSprite');
             boss.effectsImage = this.assets.getImage('effectsSprite');
             this.boss = boss;
         }
