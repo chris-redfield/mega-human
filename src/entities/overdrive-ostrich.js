@@ -30,16 +30,17 @@ const OO = {
     SKID_DAMAGE:      3,
     SKID_DURATION:    40,
 
-    // Slicer projectile
+    // Slicer projectile (horizontal)
     SLICER_SPEED:     4.0,
     SLICER_DAMAGE:    3,
     SLICER_LIFETIME:  90,
 
-    // Attack2 (ground combo)
-    ATTACK2_DAMAGE:   4,
-
-    // Air attack
-    ATTACK_DAMAGE:    4,
+    // Vertical slicer spread (attack2 — 5 slicers rise then rain down)
+    VSLICER_RISE_VY:  -6.0,
+    VSLICER_GRAVITY:   0.15,
+    VSLICER_DAMAGE:    3,
+    VSLICER_MAX_LIFE:  90,
+    VSLICER_SPREAD:    [ -90, -45, 0, 45, 90 ],  // X offsets from spawn
 
     // Combat
     CONTACT_DAMAGE:   3,
@@ -164,6 +165,16 @@ const SLICER_FRAMES = [
     { sx: 619, sy: 647, sw: 15, sh: 11, dur: 2, ox: -3 },
 ];
 
+// Vertical slicer projectile frames (center alignment, looping)
+const VSLICER_FRAMES = [
+    { sx: 1364, sy: 544, sw: 3,  sh: 16, dur: 2 },
+    { sx: 1371, sy: 544, sw: 10, sh: 16, dur: 2 },
+    { sx: 1385, sy: 544, sw: 14, sh: 16, dur: 2 },
+    { sx: 1403, sy: 544, sw: 16, sh: 16, dur: 2 },
+    { sx: 1423, sy: 544, sw: 14, sh: 16, dur: 2 },
+    { sx: 1441, sy: 544, sw: 10, sh: 16, dur: 2 },
+];
+
 // Explosion frames (from effects.png, same as all bosses)
 const EXPLOSION_FRAMES = [
     { sx: 591, sy: 315, sw: 16, sh: 16, dur: 2, ox: -1 },
@@ -224,8 +235,11 @@ export class OverdriveOstrich extends Entity {
         this.animName = 'idle';
         this.pingpongDir = 1; // for pingpong anims
 
-        // Slicer projectiles
+        // Slicer projectiles (horizontal)
         this.slicers = [];
+
+        // Vertical slicer projectiles (rise + fall)
+        this.vslicers = [];
 
         // Death explosion
         this.explosionFrame = 0;
@@ -271,6 +285,7 @@ export class OverdriveOstrich extends Entity {
         this._moveAndCollide(level);
         this._updateAnimation();
         this._updateSlicers(level);
+        this._updateVSlicers(level);
     }
 
     // --- AI States ---
@@ -295,9 +310,12 @@ export class OverdriveOstrich extends Entity {
         const myCX = this.x + this.hitboxX + this.hitboxW / 2;
         this.facing = playerCX > myCX ? 1 : -1;
 
-        // Walk toward player if far away
+        // Walk toward player if far away (hysteresis to prevent oscillation)
         const dist = Math.abs(playerCX - myCX);
-        if (dist > 90) {
+        const isRunning = this.animName === 'run';
+        const threshold = isRunning ? 70 : 100;
+
+        if (dist > threshold) {
             this.vx = OO.RUN_SPEED * this.facing;
             this._setAnim('run');
         } else {
@@ -420,6 +438,9 @@ export class OverdriveOstrich extends Entity {
     _skidState(player, level) {
         this.skidTimer++;
 
+        // Decelerate — friction each frame
+        this.vx *= 0.94;
+
         // Check body damage while skidding
         if (player && !player.dead && this.contactCooldown <= 0) {
             const myBox = this.getHitbox();
@@ -431,8 +452,8 @@ export class OverdriveOstrich extends Entity {
             }
         }
 
-        // Stop on wall or duration
-        if (this.skidTimer >= OO.SKID_DURATION) {
+        // Stop on wall, duration, or speed too low
+        if (this.skidTimer >= OO.SKID_DURATION || Math.abs(this.vx) < 0.5) {
             this.state = 'skid_end';
             this.vx = 0;
             this._setAnim('skid_end');
@@ -463,20 +484,9 @@ export class OverdriveOstrich extends Entity {
     _attack2State(player, level) {
         this.vx = 0;
 
-        // Melee hit check on frames 1-3
-        if (!this.attack2Hit && this.animFrame >= 1 && this.animFrame <= 3 && player && !player.dead) {
-            const atkBox = this._getAttack2Hitbox();
-            const playerBox = player.getHitbox();
-            if (boxOverlap(atkBox, playerBox)) {
-                const fromDir = this.facing;
-                player.takeDamage(OO.ATTACK2_DAMAGE, fromDir);
-                this.attack2Hit = true;
-            }
-        }
-
-        // Fire slicer on frame 3 (has POI)
+        // Fire 5 vertical slicers on frame 3 (has POI)
         if (!this.attack2ShotFired && this.animFrame >= 3) {
-            this._fireSlicer();
+            this._fireVerticalSlicerSpread();
             this.attack2ShotFired = true;
         }
 
@@ -574,6 +584,28 @@ export class OverdriveOstrich extends Entity {
         });
     }
 
+    _fireVerticalSlicerSpread() {
+        const feetX = this.x + this.hitboxX + this.hitboxW / 2;
+        const feetY = this.y + this.hitboxY + this.hitboxH;
+        const spawnX = feetX + 10 * this.facing;
+        const spawnY = feetY - 40;
+
+        // 5 slicers that rise up, spread horizontally, then rain down
+        for (const offsetX of OO.VSLICER_SPREAD) {
+            this.vslicers.push({
+                x: spawnX,
+                y: spawnY,
+                destX: spawnX + offsetX * this.facing,
+                vy: OO.VSLICER_RISE_VY,
+                rising: true,
+                active: true,
+                life: OO.VSLICER_MAX_LIFE,
+                animFrame: 0,
+                animTimer: 0,
+            });
+        }
+    }
+
     _getSkipHitbox() {
         const cx = this.x + this.hitboxX + this.hitboxW / 2;
         const cy = this.y + this.hitboxY + this.hitboxH / 2;
@@ -582,19 +614,6 @@ export class OverdriveOstrich extends Entity {
         return {
             x: this.facing > 0 ? cx - 5 : cx - w + 5,
             y: cy - h / 2 - 5,
-            w: w,
-            h: h,
-        };
-    }
-
-    _getAttack2Hitbox() {
-        const cx = this.x + this.hitboxX + this.hitboxW / 2;
-        const cy = this.y + this.hitboxY + this.hitboxH / 2;
-        const w = 50;
-        const h = 55;
-        return {
-            x: this.facing > 0 ? cx - 5 : cx - w + 5,
-            y: cy - h / 2,
             w: w,
             h: h,
         };
@@ -696,6 +715,22 @@ export class OverdriveOstrich extends Entity {
                 slicer.active = false;
             }
         }
+
+        // Vertical slicer damage
+        for (const vs of this.vslicers) {
+            if (!vs.active) continue;
+            const vsBox = {
+                x: vs.x - 8,
+                y: vs.y - 8,
+                w: 16,
+                h: 16,
+            };
+            if (boxOverlap(vsBox, playerBox)) {
+                const fromDir = this.facing;
+                player.takeDamage(OO.VSLICER_DAMAGE, fromDir);
+                vs.active = false;
+            }
+        }
     }
 
     // --- Projectiles ---
@@ -719,6 +754,43 @@ export class OverdriveOstrich extends Entity {
             }
         }
         this.slicers = this.slicers.filter(s => s.active);
+    }
+
+    _updateVSlicers(level) {
+        for (const vs of this.vslicers) {
+            if (!vs.active) continue;
+
+            // Lerp toward horizontal destination
+            const dx = vs.destX - vs.x;
+            vs.x += dx * 0.15;
+
+            // Apply gravity to vertical velocity
+            vs.vy += OO.VSLICER_GRAVITY;
+            vs.y += vs.vy;
+
+            // Transition from rising to falling
+            if (vs.rising && vs.vy > 0) {
+                vs.rising = false;
+            }
+
+            vs.life--;
+            if (vs.life <= 0) { vs.active = false; continue; }
+
+            // Destroy on ground hit (only when falling)
+            if (!vs.rising && isSolid(level, vs.x, vs.y + 8)) {
+                vs.active = false;
+                continue;
+            }
+
+            // Animate
+            vs.animTimer++;
+            const f = VSLICER_FRAMES[vs.animFrame % VSLICER_FRAMES.length];
+            if (vs.animTimer >= f.dur) {
+                vs.animTimer = 0;
+                vs.animFrame = (vs.animFrame + 1) % VSLICER_FRAMES.length;
+            }
+        }
+        this.vslicers = this.vslicers.filter(s => s.active);
     }
 
     // --- Animation ---
@@ -825,6 +897,7 @@ export class OverdriveOstrich extends Entity {
         }
 
         this._renderSlicers(ctx, camera);
+        this._renderVSlicers(ctx, camera);
     }
 
     _renderSlicers(ctx, camera) {
@@ -840,6 +913,22 @@ export class OverdriveOstrich extends Entity {
                 ctx.drawImage(this.spriteImage,
                     f.sx, f.sy, f.sw, f.sh,
                     sx - Math.floor(f.sw / 2) + fox, sy - Math.floor(f.sh / 2) + foy,
+                    f.sw, f.sh);
+            }
+        }
+    }
+
+    _renderVSlicers(ctx, camera) {
+        for (const vs of this.vslicers) {
+            if (!vs.active) continue;
+            const f = VSLICER_FRAMES[vs.animFrame % VSLICER_FRAMES.length];
+            const sx = Math.floor(vs.x - camera.x);
+            const sy = Math.floor(vs.y - camera.y);
+
+            if (this.spriteImage) {
+                ctx.drawImage(this.spriteImage,
+                    f.sx, f.sy, f.sw, f.sh,
+                    sx - Math.floor(f.sw / 2), sy - Math.floor(f.sh / 2),
                     f.sw, f.sh);
             }
         }
